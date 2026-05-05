@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   Activity,
@@ -14,9 +14,11 @@ import {
   FileText,
   Filter,
   LayoutDashboard,
+  Lock,
   Mail,
   MessageCircle,
   Plus,
+  Printer,
   Search,
   Send,
   Settings,
@@ -36,58 +38,65 @@ type QuoteService = "diagnostico" | "reparacion" | "mantencion" | "instalacion" 
 
 const NAV_ITEMS: Array<{ id: ModuleId; label: string; icon: React.ElementType; group: string }> = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Principal" },
-  { id: "leads", label: "Leads", icon: Activity, group: "GestiÃ³n" },
-  { id: "clientes", label: "Clientes", icon: BriefcaseMedical, group: "GestiÃ³n" },
-  { id: "productos", label: "Productos / Servicios", icon: Wrench, group: "GestiÃ³n" },
+  { id: "leads", label: "Leads", icon: Activity, group: "Gestión" },
+  { id: "clientes", label: "Clientes", icon: BriefcaseMedical, group: "Gestión" },
+  { id: "productos", label: "Productos / Servicios", icon: Wrench, group: "Gestión" },
   { id: "cotizaciones", label: "Cotizaciones", icon: ClipboardList, group: "Operaciones" },
-  { id: "protocolos", label: "Protocolos MantenciÃ³n", icon: FileArchive, group: "Operaciones" },
+  { id: "protocolos", label: "Protocolos Mantención", icon: FileArchive, group: "Operaciones" },
 ];
 
 const INITIAL_LEADS: Lead[] = [
-  { id: "1", nombre: "MarÃ­a GonzÃ¡lez", empresa: "ClÃ­nica Las Condes", tel: "+56 9 8765 4321", email: "maria@clinica.cl", canal: "wsp", estado: "no-gestionado", servicio: "ReparaciÃ³n", tiempo: "Hace 12 min", equipo: "Monitor de signos vitales" },
-  { id: "2", nombre: "Carlos Herrera", empresa: "Centro Dental Norte", tel: "+56 9 7654 3210", email: "carlos@dental.cl", canal: "email", estado: "no-gestionado", servicio: "DiagnÃ³stico", tiempo: "Hace 1 hora", equipo: "Autoclave" },
-  { id: "3", nombre: "Ana RamÃ­rez", empresa: "Lab. Providencia", tel: "+56 9 6543 2109", email: "ana@lab.cl", canal: "wsp", estado: "no-gestionado", servicio: "MantenciÃ³n", tiempo: "Hace 2 horas", equipo: "CentrÃ­fuga" },
-  { id: "4", nombre: "Pedro Soto", empresa: "ClÃ­nica EstÃ©tica Sur", tel: "+56 9 5432 1098", email: "pedro@estetica.cl", canal: "email", estado: "gestionado", servicio: "InstalaciÃ³n", tiempo: "Ayer", equipo: "Unidad dental" },
-  { id: "5", nombre: "Valentina Cruz", empresa: "Hospital Regional", tel: "+56 9 4321 0987", email: "vcruz@hospital.cl", canal: "wsp", estado: "no-gestionado", servicio: "ReparaciÃ³n", tiempo: "Hace 3 horas", equipo: "EcÃ³grafo" },
-  { id: "6", nombre: "Roberto Mora", empresa: "UnoSalud", tel: "+56 9 3210 9876", email: "rmora@unosalud.cl", canal: "email", estado: "gestionado", servicio: "DiagnÃ³stico", tiempo: "Hace 2 dÃ­as", equipo: "Autoclave" },
-  { id: "7", nombre: "Daniela Vega", empresa: "Vetlab", tel: "+56 9 2109 8765", email: "dvega@vetlab.cl", canal: "wsp", estado: "no-gestionado", servicio: "MantenciÃ³n", tiempo: "Hace 4 horas", equipo: "CentrÃ­fuga" },
-  { id: "8", nombre: "SebastiÃ¡n RÃ­os", empresa: "U. Mayor", tel: "+56 9 1098 7654", email: "srios@umayor.cl", canal: "email", estado: "gestionado", servicio: "InstalaciÃ³n", tiempo: "Hace 3 dÃ­as", equipo: "MÃ¡quina de anestesia" },
+  { id: "1", nombre: "María González", empresa: "Clínica Las Condes", tel: "+56 9 8765 4321", email: "maria@clinica.cl", canal: "wsp", estado: "no-gestionado", servicio: "Reparación", tiempo: "Hace 12 min", equipo: "Monitor de signos vitales" },
+  { id: "2", nombre: "Carlos Herrera", empresa: "Centro Dental Norte", tel: "+56 9 7654 3210", email: "carlos@dental.cl", canal: "email", estado: "no-gestionado", servicio: "Diagnóstico", tiempo: "Hace 1 hora", equipo: "Autoclave" },
+  { id: "3", nombre: "Ana Ramírez", empresa: "Lab. Providencia", tel: "+56 9 6543 2109", email: "ana@lab.cl", canal: "wsp", estado: "no-gestionado", servicio: "Mantención", tiempo: "Hace 2 horas", equipo: "Centrífuga" },
+  { id: "4", nombre: "Pedro Soto", empresa: "Clínica Estética Sur", tel: "+56 9 5432 1098", email: "pedro@estetica.cl", canal: "email", estado: "gestionado", servicio: "Instalación", tiempo: "Ayer", equipo: "Unidad dental" },
+  { id: "5", nombre: "Valentina Cruz", empresa: "Hospital Regional", tel: "+56 9 4321 0987", email: "vcruz@hospital.cl", canal: "wsp", estado: "no-gestionado", servicio: "Reparación", tiempo: "Hace 3 horas", equipo: "Ecógrafo" },
+  { id: "6", nombre: "Roberto Mora", empresa: "UnoSalud", tel: "+56 9 3210 9876", email: "rmora@unosalud.cl", canal: "email", estado: "gestionado", servicio: "Diagnóstico", tiempo: "Hace 2 días", equipo: "Autoclave" },
+  { id: "7", nombre: "Daniela Vega", empresa: "Vetlab", tel: "+56 9 2109 8765", email: "dvega@vetlab.cl", canal: "wsp", estado: "no-gestionado", servicio: "Mantención", tiempo: "Hace 4 horas", equipo: "Centrífuga" },
+  { id: "8", nombre: "Sebastián Ríos", empresa: "U. Mayor", tel: "+56 9 1098 7654", email: "srios@umayor.cl", canal: "email", estado: "gestionado", servicio: "Instalación", tiempo: "Hace 3 días", equipo: "Máquina de anestesia" },
 ];
 
 const INITIAL_CLIENTES: Cliente[] = [
-  { id: "C-001", rut: "61.608.023-8", nombre: "ClÃ­nica Las Condes", contacto: "Felipe Morales", correo: "felipe@clc.cl", rubro: "MÃ©dico", estado: "Activo" },
-  { id: "C-002", rut: "60.503.000-1", nombre: "Universidad de Chile", contacto: "Claudia Torres", correo: "claudia@uchile.cl", rubro: "MÃ©dico", estado: "Activo" },
-  { id: "C-003", rut: "76.543.210-K", nombre: "Centro MÃ©dico Providencia", contacto: "Andrea Silva", correo: "andrea@cmp.cl", rubro: "MÃ©dico", estado: "Activo" },
-  { id: "C-004", rut: "78.123.456-3", nombre: "Neovida", contacto: "Rodrigo Pinto", correo: "rodrigo@neovida.cl", rubro: "EstÃ©tico", estado: "Activo" },
-  { id: "C-005", rut: "77.654.321-5", nombre: "UnoSalud", contacto: "Patricia MuÃ±oz", correo: "patricia@unosalud.cl", rubro: "Dental", estado: "Inactivo" },
+  { id: "C-001", rut: "61.608.023-8", nombre: "Clínica Las Condes", contacto: "Felipe Morales", correo: "felipe@clc.cl", rubro: "Médico", estado: "Activo" },
+  { id: "C-002", rut: "60.503.000-1", nombre: "Universidad de Chile", contacto: "Claudia Torres", correo: "claudia@uchile.cl", rubro: "Médico", estado: "Activo" },
+  { id: "C-003", rut: "76.543.210-K", nombre: "Centro Médico Providencia", contacto: "Andrea Silva", correo: "andrea@cmp.cl", rubro: "Médico", estado: "Activo" },
+  { id: "C-004", rut: "78.123.456-3", nombre: "Neovida", contacto: "Rodrigo Pinto", correo: "rodrigo@neovida.cl", rubro: "Estético", estado: "Activo" },
+  { id: "C-005", rut: "77.654.321-5", nombre: "UnoSalud", contacto: "Patricia Muñoz", correo: "patricia@unosalud.cl", rubro: "Dental", estado: "Inactivo" },
   { id: "C-006", rut: "76.111.222-4", nombre: "Vetlab", contacto: "Jorge Espinoza", correo: "jorge@vetlab.cl", rubro: "Laboratorio", estado: "Activo" },
 ];
 
 const INITIAL_PRODUCTOS: Producto[] = [
-  { id: "P-001", nombre: "Monitor de Signos Vitales", cat: "Equipos mÃ©dicos", diag: 45000, rep: 120000, mant: 85000, inst: 95000 },
-  { id: "P-002", nombre: "Autoclave", cat: "Equipos mÃ©dicos", diag: 35000, rep: 185000, mant: 90000, inst: 110000 },
-  { id: "P-003", nombre: "EcÃ³grafo", cat: "Equipos mÃ©dicos", diag: 55000, rep: 250000, mant: 0, inst: 130000 },
-  { id: "P-004", nombre: "CentrÃ­fuga", cat: "Laboratorio", diag: 30000, rep: 75000, mant: 50000, inst: 60000 },
+  { id: "P-001", nombre: "Monitor de Signos Vitales", cat: "Equipos médicos", diag: 45000, rep: 120000, mant: 85000, inst: 95000 },
+  { id: "P-002", nombre: "Autoclave", cat: "Equipos médicos", diag: 35000, rep: 185000, mant: 90000, inst: 110000 },
+  { id: "P-003", nombre: "Ecógrafo", cat: "Equipos médicos", diag: 55000, rep: 250000, mant: 0, inst: 130000 },
+  { id: "P-004", nombre: "Centrífuga", cat: "Laboratorio", diag: 30000, rep: 75000, mant: 50000, inst: 60000 },
   { id: "P-005", nombre: "Unidad Dental", cat: "Equipos dentales", diag: 40000, rep: 95000, mant: 70000, inst: 120000 },
-  { id: "P-006", nombre: "MÃ¡quina de Anestesia", cat: "Equipos mÃ©dicos", diag: 60000, rep: 320000, mant: 150000, inst: 200000 },
+  { id: "P-006", nombre: "Máquina de Anestesia", cat: "Equipos médicos", diag: 60000, rep: 320000, mant: 150000, inst: 200000 },
 ];
 
 const INITIAL_COTIZACIONES: Cotizacion[] = [
   { id: "COT-001", nro: "COT-2026-012", cliente: "U. de Chile", monto: 320000, estado: "Pendiente", fecha: "2026-05-03" },
   { id: "COT-002", nro: "COT-2026-011", cliente: "Neovida", monto: 540000, estado: "Aprobada", fecha: "2026-05-02" },
-  { id: "COT-003", nro: "COT-2026-010", cliente: "UnoSalud", monto: 210000, estado: "En revisiÃ³n", fecha: "2026-05-01" },
+  { id: "COT-003", nro: "COT-2026-010", cliente: "UnoSalud", monto: 210000, estado: "En revisión", fecha: "2026-05-01" },
 ];
 
 const SERVICE_LABELS: Record<Exclude<QuoteService, "">, string> = {
-  diagnostico: "DiagnÃ³stico",
-  reparacion: "ReparaciÃ³n",
-  mantencion: "MantenciÃ³n preventiva",
-  instalacion: "InstalaciÃ³n",
+  diagnostico: "Diagnóstico",
+  reparacion: "Reparación",
+  mantencion: "Mantención preventiva",
+  instalacion: "Instalación",
   mixto: "Mixto",
 };
 
+const SERVICE_MAP: Record<string, QuoteService> = {
+  diagnóstico: "diagnostico", diagnostico: "diagnostico",
+  reparación: "reparacion", reparacion: "reparacion",
+  mantención: "mantencion", mantencion: "mantencion",
+  instalación: "instalacion", instalacion: "instalacion",
+};
+
 function money(value: number) {
-  return value ? `$${value.toLocaleString("es-CL")}` : "â€”";
+  return value ? `$${value.toLocaleString("es-CL")}` : "—";
 }
 
 function getPrice(productId: string, service: QuoteService, productos: Producto[]) {
@@ -111,7 +120,92 @@ function isActivo(estado: string) {
   return estado.toLowerCase() === "activo" || estado.toLowerCase() === "active";
 }
 
+function formatRut(raw: string): string {
+  const clean = raw.replace(/[^0-9kK]/g, "").toUpperCase();
+  if (clean.length < 2) return clean;
+  const dv = clean.slice(-1);
+  const body = clean.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${body}-${dv}`;
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function fmtActivityDate(raw: unknown): string {
+  if (!raw) return "";
+  const s = typeof raw === "object" && raw !== null && "value" in raw
+    ? String((raw as { value: unknown }).value)
+    : String(raw);
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? "" : d.toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" });
+}
+
+const LEAD_FORM_INIT: LeadForm = { nombre: "", empresa: "", tel: "+56 ", email: "", canal: "wsp", servicio: "Diagnóstico", equipo: "" };
+const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", cargo: "", tel: "+56 ", correo: "", rubro: "Médico" };
+const PRODUCTO_FORM_INIT: ProductoForm = { nombre: "", cat: "Equipos médicos", marca: "", diag: "", rep: "", mant: "", inst: "" };
+
+// ── Login ────────────────────────────────────────────────────────────────────
+
+function LoginScreen({ onLogin }: { onLogin: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !isValidEmail(email)) { setError("Ingresa un correo válido"); return; }
+    if (password !== "Biomeditech2026!") { setError("Contraseña incorrecta"); return; }
+    setError("");
+    onLogin();
+  }
+
+  return (
+    <div className="login-screen">
+      <div className="login-card">
+        <img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" className="login-logo" />
+        <h1>Sistema CRM</h1>
+        <p>Ingresa tus credenciales para continuar</p>
+        <form onSubmit={handleSubmit} className="login-form">
+          <label>
+            Correo electrónico
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="correo@biomeditech.cl"
+              maxLength={100}
+              autoFocus
+            />
+          </label>
+          <label>
+            Contraseña
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              maxLength={50}
+            />
+          </label>
+          {error && <p className="login-error">{error}</p>}
+          <button type="submit" className="primary">
+            <Lock size={16} /> Ingresar
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Main CRM ─────────────────────────────────────────────────────────────────
+
 export default function CRMPrototype() {
+  const [loggedIn, setLoggedIn] = useState(() => {
+    if (typeof window !== "undefined") return !!localStorage.getItem("crm_session");
+    return false;
+  });
+
   const [active, setActive] = useState<ModuleId>("dashboard");
   const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
   const [clientes, setClientes] = useState<Cliente[]>(INITIAL_CLIENTES);
@@ -128,16 +222,17 @@ export default function CRMPrototype() {
   const [editingProducto, setEditingProducto] = useState<Producto | null>(null);
   const [toast, setToast] = useState("");
   const [quote, setQuote] = useState({
-    cliente: "ClÃ­nica Las Condes",
+    cliente: "Clínica Las Condes",
     email: "felipe@clc.cl",
     nro: "COT-2026-013",
     service: "reparacion" as QuoteService,
     productId: "P-001",
     valor: "",
-    notas: "Incluye diagnÃ³stico inicial, reparaciÃ³n y pruebas de funcionamiento.",
+    notas: "Incluye diagnóstico inicial, reparación y pruebas de funcionamiento.",
   });
 
   useEffect(() => {
+    if (!loggedIn) return;
     Promise.all([
       api.fetchLeads(),
       api.fetchClientes(),
@@ -152,7 +247,11 @@ export default function CRMPrototype() {
       if (s) setStats(s);
       setIsLoading(false);
     });
-  }, []);
+  }, [loggedIn]);
+
+  if (!loggedIn) {
+    return <LoginScreen onLogin={() => { localStorage.setItem("crm_session", "1"); setLoggedIn(true); }} />;
+  }
 
   const noGestionados = leads.filter((l) => l.estado === "no-gestionado");
   const visibleLeads = leadFilter === "todos" ? leads : leads.filter((l) => l.estado === leadFilter);
@@ -198,7 +297,7 @@ export default function CRMPrototype() {
 
   async function handleDeleteLead(id: string) {
     const lead = leads.find((l) => l.id === id);
-    if (!window.confirm(`Â¿Eliminar el lead de ${lead?.nombre ?? "este registro"}?`)) return;
+    if (!window.confirm(`¿Eliminar el lead de ${lead?.nombre ?? "este registro"}?`)) return;
     setLeads((prev) => prev.filter((l) => l.id !== id));
     await api.deleteLead(id);
     notify("Lead eliminado");
@@ -207,6 +306,22 @@ export default function CRMPrototype() {
   function handleEditLead(lead: Lead) {
     setEditingLead(lead);
     setModal("lead");
+  }
+
+  function handleCotizarLead(lead: Lead) {
+    const match = clientes.find((c) =>
+      c.nombre.toLowerCase().includes(lead.empresa.toLowerCase()) ||
+      lead.empresa.toLowerCase().includes(c.nombre.toLowerCase())
+    );
+    const mappedService: QuoteService = SERVICE_MAP[lead.servicio.toLowerCase()] ?? "";
+    setQuote((prev) => ({
+      ...prev,
+      cliente: match?.nombre ?? lead.empresa,
+      email: match?.correo ?? lead.email,
+      notas: lead.equipo ? `Equipo: ${lead.equipo}.` : prev.notas,
+      service: mappedService,
+    }));
+    goTo("cotizaciones");
   }
 
   async function handleSaveLead(form: LeadForm) {
@@ -219,7 +334,7 @@ export default function CRMPrototype() {
       tiempo: "Justo ahora",
     };
     setLeads((prev) => [lead, ...prev]);
-    api.logActivity("nuevo_lead", "Nuevo lead registrado", `${form.nombre} (${form.empresa}) â€” ${form.servicio}`, lead.id, "lead");
+    api.logActivity("nuevo_lead", "Nuevo lead registrado", `${form.nombre} (${form.empresa}) — ${form.servicio}`, lead.id, "lead");
     notify("Lead agregado correctamente");
     closeModal();
   }
@@ -240,7 +355,7 @@ export default function CRMPrototype() {
   // --- Cliente actions ---
   async function handleDeleteCliente(id: string) {
     const cliente = clientes.find((c) => c.id === id);
-    if (!window.confirm(`Â¿Eliminar el cliente ${cliente?.nombre ?? "este registro"}?`)) return;
+    if (!window.confirm(`¿Eliminar el cliente ${cliente?.nombre ?? "este registro"}?`)) return;
     setClientes((prev) => prev.filter((c) => c.id !== id));
     await api.deleteCliente(id);
     notify("Cliente eliminado");
@@ -284,7 +399,7 @@ export default function CRMPrototype() {
   // --- Producto actions ---
   async function handleDeleteProducto(id: string) {
     const prod = productos.find((p) => p.id === id);
-    if (!window.confirm(`Â¿Eliminar el producto "${prod?.nombre ?? "este registro"}"?`)) return;
+    if (!window.confirm(`¿Eliminar el producto "${prod?.nombre ?? "este registro"}"?`)) return;
     setProductos((prev) => prev.filter((p) => p.id !== id));
     await api.deleteProducto(id);
     notify("Producto eliminado");
@@ -328,7 +443,7 @@ export default function CRMPrototype() {
     closeModal();
   }
 
-  // --- CotizaciÃ³n actions ---
+  // --- Cotización actions ---
   async function handleEmitirCotizacion() {
     const clienteObj = clientes.find((c) => c.nombre === quote.cliente);
     const newCot = await api.createCotizacion({
@@ -350,13 +465,46 @@ export default function CRMPrototype() {
     setCotizaciones((prev) => [cot, ...prev]);
     api.logActivity(
       "cotizacion_emitida",
-      `CotizaciÃ³n ${quote.nro} emitida`,
-      `${quote.cliente} â€” ${money(computedValue)} CLP`,
+      `Cotización ${quote.nro} emitida`,
+      `${quote.cliente} — ${money(computedValue)} CLP`,
       cot.id,
       "cotizacion",
     );
-    notify(`CotizaciÃ³n ${quote.nro} emitida y enviada`);
+    notify(`Cotización ${quote.nro} emitida y enviada`);
     setQuote((prev) => ({ ...prev, nro: incrementNro(prev.nro) }));
+  }
+
+  function handlePrintQuote() {
+    const el = document.getElementById("quote-preview-content");
+    if (!el) return;
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización ${quote.nro}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:system-ui,sans-serif;font-size:14px;color:#1e293b;padding:32px}
+      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #0f172a}
+      header img{height:36px;filter:invert(1) brightness(0)}
+      header div:last-child{text-align:right}
+      header strong{display:block;font-size:18px}
+      h3{margin:20px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#64748b}
+      dl{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;margin-bottom:8px}
+      dt{color:#64748b}
+      table{width:100%;border-collapse:collapse;margin-bottom:16px}
+      th{background:#0f172a;color:#fff;padding:8px 12px;text-align:left;font-size:13px}
+      td{padding:8px 12px;border-bottom:1px solid #e2e8f0}
+      .total{display:flex;justify-content:space-between;padding:12px;background:#f8fafc;border-radius:6px;font-weight:600}
+      .note{margin-top:12px;padding:12px;background:#fff7ed;border-left:3px solid #f97316;font-size:13px}
+      footer{margin-top:32px;padding-top:12px;border-top:1px solid #e2e8f0;text-align:center;font-size:12px;color:#94a3b8}
+    </style></head><body>${el.innerHTML}</body></html>`);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("crm_session");
+    setLoggedIn(false);
   }
 
   return (
@@ -369,7 +517,7 @@ export default function CRMPrototype() {
           <span>Sistema CRM</span>
         </div>
 
-        {["Principal", "GestiÃ³n", "Operaciones"].map((group) => (
+        {["Principal", "Gestión", "Operaciones"].map((group) => (
           <div key={group} className="nav-group">
             <p>{group}</p>
             {NAV_ITEMS.filter((item) => item.group === group).map((item) => {
@@ -387,12 +535,14 @@ export default function CRMPrototype() {
         ))}
 
         <div className="sidebar-footer">
-          <div className="avatar">JD</div>
+          <div className="avatar">BM</div>
           <div>
-            <strong>Juan DÃ­az</strong>
+            <strong>Biomeditech</strong>
             <span>Administrador</span>
           </div>
-          <Settings size={17} />
+          <button className="icon-button" aria-label="Cerrar sesión" onClick={handleLogout} title="Cerrar sesión">
+            <Settings size={17} />
+          </button>
         </div>
       </aside>
 
@@ -409,7 +559,7 @@ export default function CRMPrototype() {
             </button>
             <button className="primary small" onClick={() => setModal("cotizacion")}>
               <Plus size={16} />
-              Nueva cotizaciÃ³n
+              Nueva cotización
             </button>
           </div>
         </header>
@@ -459,7 +609,7 @@ export default function CRMPrototype() {
                       <div><Clock3 size={14} />{lead.tiempo}</div>
                     </dl>
                     <div className="card-actions">
-                      <button className="primary small" onClick={() => goTo("cotizaciones")}>
+                      <button className="primary small" onClick={() => handleCotizarLead(lead)}>
                         <ClipboardList size={15} />Cotizar
                       </button>
                       <button className="ghost small" onClick={() => handleToggleGestionar(lead.id)}>
@@ -520,12 +670,12 @@ export default function CRMPrototype() {
               title="Productos / Servicios"
               search={productQuery}
               setSearch={setProductQuery}
-              searchPlaceholder="Buscar por ID, producto, categorÃ­a o precio..."
+              searchPlaceholder="Buscar por ID, producto, categoría o precio..."
               onAdd={() => setModal("producto")}
             >
               <table>
                 <thead>
-                  <tr><th>ID</th><th>Producto / Servicio</th><th>CategorÃ­a</th><th>DiagnÃ³stico</th><th>ReparaciÃ³n</th><th>MantenciÃ³n</th><th>InstalaciÃ³n</th><th>Acciones</th></tr>
+                  <tr><th>ID</th><th>Producto / Servicio</th><th>Categoría</th><th>Diagnóstico</th><th>Reparación</th><th>Mantención</th><th>Instalación</th><th>Acciones</th></tr>
                 </thead>
                 <tbody>
                   {filteredProducts.map((product) => (
@@ -555,7 +705,7 @@ export default function CRMPrototype() {
             <section className="quote-layout">
               <div className="stack">
                 <div className="panel">
-                  <div className="panel-title"><ClipboardList size={18} />Nueva cotizaciÃ³n</div>
+                  <div className="panel-title"><ClipboardList size={18} />Nueva cotización</div>
                   <QuoteForm
                     quote={quote}
                     setQuote={setQuote}
@@ -568,7 +718,12 @@ export default function CRMPrototype() {
               </div>
 
               <div className="stack">
-                <div className="preview-label">PrevisualizaciÃ³n en tiempo real</div>
+                <div className="preview-label-row">
+                  <span className="preview-label">Previsualización en tiempo real</span>
+                  <button className="ghost small" onClick={handlePrintQuote}>
+                    <Printer size={15} />Descargar / Imprimir
+                  </button>
+                </div>
                 <QuotePreview quote={quote} selectedProduct={selectedProduct} computedValue={computedValue} fecha={fecha} />
                 <HistoryTable cotizaciones={cotizaciones} clientes={clientes} />
               </div>
@@ -627,12 +782,12 @@ function Dashboard({
       <div className="kpi-row">
         <Kpi icon={Activity} label="Leads pendientes" value={leadsValue} delta="Sin gestionar" tone="amber" />
         <Kpi icon={BriefcaseMedical} label="Clientes activos" value={clientesValue} delta="En base de datos" tone="green" />
-        <Kpi icon={ClipboardList} label="Cotizaciones abiertas" value={cotizacionesValue} delta="Emitidas / en revisiÃ³n" tone="amber" />
+        <Kpi icon={ClipboardList} label="Cotizaciones abiertas" value={cotizacionesValue} delta="Emitidas / en revisión" tone="amber" />
         <Kpi icon={FileText} label="Ventas aprobadas" value={ventasValue} delta="CLP acumulado" tone="green" />
       </div>
 
       <div className="flow-strip">
-        {["Lead recibido", "Consulta automÃ¡tica", "Cliente y producto", "CotizaciÃ³n", "EnvÃ­o y seguimiento"].map((step, index) => (
+        {["Lead recibido", "Consulta automática", "Cliente y producto", "Cotización", "Envío y seguimiento"].map((step, index) => (
           <div className="flow-step" key={step}>
             <span>{index + 1}</span>
             <strong>{step}</strong>
@@ -644,7 +799,7 @@ function Dashboard({
         <div className="panel">
           <div className="panel-head">
             <div className="panel-title"><Clock3 size={18} />Actividad reciente</div>
-            <button className="link-button" onClick={() => notify("Vista completa de actividad preparada para la versiÃ³n final")}>Ver todo</button>
+            <button className="link-button" onClick={() => notify("Vista completa de actividad preparada para la versión final")}>Ver todo</button>
           </div>
           <div className="activity-list">
             {stats?.actividadReciente && stats.actividadReciente.length > 0 ? (
@@ -653,17 +808,17 @@ function Dashboard({
                   key={i}
                   tone="green"
                   icon={Activity}
-                  text={<><strong>{item.titulo}</strong>{item.descripcion ? ` â€” ${item.descripcion}` : ""}</>}
-                  time={item.creado_en ? new Date(item.creado_en).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" }) : ""}
+                  text={<><strong>{item.titulo}</strong>{item.descripcion ? ` — ${item.descripcion}` : ""}</>}
+                  time={fmtActivityDate(item.creado_en)}
                 />
               ))
             ) : (
               <>
-                <ActivityRow tone="green" icon={Activity} text={<><strong>Nuevo lead vÃ­a WhatsApp</strong> - ClÃ­nica Las Condes solicitÃ³ reparaciÃ³n de monitor.</>} time="Hace 12 min" />
-                <ActivityRow tone="navy" icon={ClipboardList} text={<><strong>CotizaciÃ³n COT-2026-012</strong> enviada a Universidad de Chile por $320.000 CLP.</>} time="Hace 1 hora" />
-                <ActivityRow tone="green" icon={BriefcaseMedical} text={<><strong>Nuevo cliente registrado</strong> - Centro MÃ©dico Providencia.</>} time="Hace 3 horas" />
-                <ActivityRow tone="amber" icon={Wrench} text={<><strong>Producto actualizado</strong> - ReparaciÃ³n Autoclave ajustada a $185.000.</>} time="Ayer 16:40" />
-                <ActivityRow tone="navy" icon={Check} text={<><strong>CotizaciÃ³n COT-2026-011</strong> aprobada por Neovida.</>} time="Ayer 11:20" />
+                <ActivityRow tone="green" icon={Activity} text={<><strong>Nuevo lead vía WhatsApp</strong> - Clínica Las Condes solicitó reparación de monitor.</>} time="Hace 12 min" />
+                <ActivityRow tone="navy" icon={ClipboardList} text={<><strong>Cotización COT-2026-012</strong> enviada a Universidad de Chile por $320.000 CLP.</>} time="Hace 1 hora" />
+                <ActivityRow tone="green" icon={BriefcaseMedical} text={<><strong>Nuevo cliente registrado</strong> - Centro Médico Providencia.</>} time="Hace 3 horas" />
+                <ActivityRow tone="amber" icon={Wrench} text={<><strong>Producto actualizado</strong> - Reparación Autoclave ajustada a $185.000.</>} time="Ayer 16:40" />
+                <ActivityRow tone="navy" icon={Check} text={<><strong>Cotización COT-2026-011</strong> aprobada por Neovida.</>} time="Ayer 11:20" />
               </>
             )}
           </div>
@@ -678,7 +833,7 @@ function Dashboard({
               <span className={lead.canal} />
               <div>
                 <strong>{lead.nombre}</strong>
-                <small>{lead.empresa} Â· {lead.tiempo}</small>
+                <small>{lead.empresa} · {lead.tiempo}</small>
               </div>
               <Eye size={15} />
             </button>
@@ -740,7 +895,7 @@ function RowActions({ notify, quote, onDelete, onEdit }: {
 }) {
   return (
     <div className="row-actions">
-      <button aria-label="Editar" onClick={() => onEdit ? onEdit() : notify("Modo ediciÃ³n abierto")}>
+      <button aria-label="Editar" onClick={() => onEdit ? onEdit() : notify("Modo edición abierto")}>
         <Edit3 size={15} />
       </button>
       {quote ? <button aria-label="Cotizar" onClick={quote}><ClipboardList size={15} /></button> : null}
@@ -786,8 +941,8 @@ function QuoteForm({
           {clientes.map((c) => <option key={c.id}>{c.nombre}</option>)}
         </select>
       </label>
-      <label>Correo cliente<input value={quote.email} onChange={(e) => update("email", e.target.value)} /></label>
-      <label>NÂ° CotizaciÃ³n<input value={quote.nro} onChange={(e) => update("nro", e.target.value)} /></label>
+      <label>Correo cliente<input value={quote.email} onChange={(e) => update("email", e.target.value)} maxLength={100} /></label>
+      <label>N° Cotización<input value={quote.nro} onChange={(e) => update("nro", e.target.value)} maxLength={30} /></label>
       <label>
         Tipo de servicio
         <select value={quote.service} onChange={(e) => update("service", e.target.value as QuoteService)}>
@@ -801,8 +956,8 @@ function QuoteForm({
           {productos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
         </select>
       </label>
-      <label>Valor del servicio (CLP)<input type="number" value={quote.valor} onChange={(e) => update("valor", e.target.value)} placeholder="Usar precio base automÃ¡tico" /></label>
-      <label>Notas adicionales<textarea rows={3} value={quote.notas} onChange={(e) => update("notas", e.target.value)} /></label>
+      <label>Valor del servicio (CLP)<input type="number" value={quote.valor} onChange={(e) => update("valor", e.target.value)} placeholder="Usar precio base automático" /></label>
+      <label>Notas adicionales<textarea rows={3} value={quote.notas} onChange={(e) => update("notas", e.target.value)} maxLength={500} /></label>
       <div className="split-actions">
         <button className="ghost" onClick={() => update("valor", quote.valor)}><Eye size={16} />Actualizar vista</button>
         <button className="primary" onClick={onEmitir}><Send size={16} />Emitir y enviar</button>
@@ -816,11 +971,11 @@ function ProcessTimeline() {
     <div className="panel">
       <div className="panel-title"><Activity size={18} />Estado del proceso</div>
       <div className="timeline">
-        <TimelineItem state="done" title="Lead recibido" detail="AutomÃ¡tico vÃ­a WhatsApp o landing" />
+        <TimelineItem state="done" title="Lead recibido" detail="Automático vía WhatsApp o landing" />
         <TimelineItem state="done" title="Cliente registrado" detail="Base de datos actualizada" />
-        <TimelineItem state="current" title="CotizaciÃ³n en borrador" detail="Producto y servicio seleccionados" />
-        <TimelineItem state="pending" title="EnvÃ­o por correo" detail="Pendiente" />
-        <TimelineItem state="pending" title="AprobaciÃ³n cliente" detail="Seguimiento automÃ¡tico" />
+        <TimelineItem state="current" title="Cotización en borrador" detail="Producto y servicio seleccionados" />
+        <TimelineItem state="pending" title="Envío por correo" detail="Pendiente" />
+        <TimelineItem state="pending" title="Aprobación cliente" detail="Seguimiento automático" />
       </div>
     </div>
   );
@@ -848,41 +1003,43 @@ function QuotePreview({
 }) {
   return (
     <article className="quote-preview">
-      <header>
-        <div>
-          <img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" />
-          <p>ReparaciÃ³n y mantenciÃ³n de equipos mÃ©dicos</p>
-        </div>
-        <div><strong>{quote.nro}</strong><span>{fecha}</span><span>biomeditech.cl</span></div>
-      </header>
-      <section>
-        <h3>Datos del cliente</h3>
-        <dl className="quote-data">
-          <dt>Empresa</dt><dd>{quote.cliente || "â€”"}</dd>
-          <dt>Correo</dt><dd>{quote.email || "â€”"}</dd>
-          <dt>Tipo servicio</dt><dd>{quote.service ? SERVICE_LABELS[quote.service] : "â€”"}</dd>
-        </dl>
-        <h3>Detalle del servicio</h3>
-        <table className="quote-table">
-          <thead><tr><th>Producto / Equipo</th><th>Servicio</th><th>Valor</th></tr></thead>
-          <tbody>
-            <tr>
-              <td>{selectedProduct?.nombre ?? ""}</td>
-              <td>{quote.service ? SERVICE_LABELS[quote.service] : "â€”"}</td>
-              <td>{money(computedValue)}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div className="total-bar"><span>Total estimado</span><strong>{money(computedValue)} CLP</strong></div>
-        {quote.notas ? <p className="quote-note">{quote.notas}</p> : null}
-        <h3>Condiciones</h3>
-        <dl className="quote-data">
-          <dt>Forma de pago</dt><dd>50% inicio - 50% entrega</dd>
-          <dt>Validez</dt><dd>30 dÃ­as desde emisiÃ³n</dd>
-          <dt>DiagnÃ³stico</dt><dd>Gratis si acepta el presupuesto</dd>
-        </dl>
-      </section>
-      <footer>contacto@biomeditech.cl Â· biomeditech.cl Â· VÃ¡lida por 30 dÃ­as</footer>
+      <div id="quote-preview-content">
+        <header>
+          <div>
+            <img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" />
+            <p>Reparación y mantención de equipos médicos</p>
+          </div>
+          <div><strong>{quote.nro}</strong><span>{fecha}</span><span>biomeditech.cl</span></div>
+        </header>
+        <section>
+          <h3>Datos del cliente</h3>
+          <dl className="quote-data">
+            <dt>Empresa</dt><dd>{quote.cliente || "—"}</dd>
+            <dt>Correo</dt><dd>{quote.email || "—"}</dd>
+            <dt>Tipo servicio</dt><dd>{quote.service ? SERVICE_LABELS[quote.service] : "—"}</dd>
+          </dl>
+          <h3>Detalle del servicio</h3>
+          <table className="quote-table">
+            <thead><tr><th>Producto / Equipo</th><th>Servicio</th><th>Valor</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>{selectedProduct?.nombre ?? ""}</td>
+                <td>{quote.service ? SERVICE_LABELS[quote.service] : "—"}</td>
+                <td>{money(computedValue)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div className="total-bar"><span>Total estimado</span><strong>{money(computedValue)} CLP</strong></div>
+          {quote.notas ? <p className="quote-note">{quote.notas}</p> : null}
+          <h3>Condiciones</h3>
+          <dl className="quote-data">
+            <dt>Forma de pago</dt><dd>50% inicio - 50% entrega</dd>
+            <dt>Validez</dt><dd>30 días desde emisión</dd>
+            <dt>Diagnóstico</dt><dd>Gratis si acepta el presupuesto</dd>
+          </dl>
+        </section>
+        <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 30 días</footer>
+      </div>
     </article>
   );
 }
@@ -897,7 +1054,7 @@ function HistoryTable({ cotizaciones, clientes }: { cotizaciones: Cotizacion[]; 
     <div className="panel table-card compact">
       <div className="panel-title"><FileText size={18} />Historial reciente</div>
       <table>
-        <thead><tr><th>NÂ°</th><th>Cliente</th><th>Monto</th><th>Estado</th></tr></thead>
+        <thead><tr><th>N°</th><th>Cliente</th><th>Monto</th><th>Estado</th></tr></thead>
         <tbody>
           {cotizaciones.slice(0, 10).map((cot) => (
             <tr key={cot.id}>
@@ -905,7 +1062,7 @@ function HistoryTable({ cotizaciones, clientes }: { cotizaciones: Cotizacion[]; 
               <td>{getClienteName(cot.cliente)}</td>
               <td>{money(cot.monto)}</td>
               <td>
-                <span className={`tag ${cot.estado === "Aprobada" ? "green" : cot.estado === "En revisiÃ³n" ? "navy" : "amber"}`}>
+                <span className={`tag ${cot.estado === "Aprobada" ? "green" : cot.estado === "En revisión" ? "navy" : "amber"}`}>
                   {cot.estado}
                 </span>
               </td>
@@ -922,22 +1079,18 @@ function Protocols() {
     <section className="stack">
       <div className="protocol-hero">
         <FileArchive size={52} />
-        <h2>Protocolos de MantenciÃ³n</h2>
-        <p>MÃ³dulo reservado para programar mantenciones preventivas, asociar protocolos tÃ©cnicos por equipo y generar informes de seguimiento.</p>
-        <button><Bell size={16} />Notificar cuando estÃ© listo</button>
+        <h2>Protocolos de Mantención</h2>
+        <p>Módulo reservado para programar mantenciones preventivas, asociar protocolos técnicos por equipo y generar informes de seguimiento.</p>
+        <button><Bell size={16} />Notificar cuando esté listo</button>
       </div>
       <div className="protocol-grid">
-        <article><CalendarDays size={30} /><strong>Agenda de mantenciones</strong><span>PrÃ³ximamente</span></article>
-        <article><FileText size={30} /><strong>Documentos tÃ©cnicos</strong><span>PrÃ³ximamente</span></article>
-        <article><Activity size={30} /><strong>Informes de seguimiento</strong><span>PrÃ³ximamente</span></article>
+        <article><CalendarDays size={30} /><strong>Agenda de mantenciones</strong><span>Próximamente</span></article>
+        <article><FileText size={30} /><strong>Documentos técnicos</strong><span>Próximamente</span></article>
+        <article><Activity size={30} /><strong>Informes de seguimiento</strong><span>Próximamente</span></article>
       </div>
     </section>
   );
 }
-
-const LEAD_FORM_INIT: LeadForm = { nombre: "", empresa: "", tel: "", email: "", canal: "wsp", servicio: "DiagnÃ³stico", equipo: "" };
-const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", cargo: "", tel: "", correo: "", rubro: "MÃ©dico" };
-const PRODUCTO_FORM_INIT: ProductoForm = { nombre: "", cat: "Equipos mÃ©dicos", marca: "", diag: "", rep: "", mant: "", inst: "" };
 
 function Modal({
   kind,
@@ -978,7 +1131,7 @@ function Modal({
     if (kind === "lead" && editingLead) {
       setLeadForm({ nombre: editingLead.nombre, empresa: editingLead.empresa, tel: editingLead.tel, email: editingLead.email, canal: editingLead.canal, servicio: editingLead.servicio, equipo: editingLead.equipo });
     } else if (kind === "cliente" && editingCliente) {
-      setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, cargo: "", tel: "", correo: editingCliente.correo, rubro: editingCliente.rubro });
+      setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, cargo: "", tel: "+56 ", correo: editingCliente.correo, rubro: editingCliente.rubro });
     } else if (kind === "producto" && editingProducto) {
       setProductoForm({ nombre: editingProducto.nombre, cat: editingProducto.cat, marca: "", diag: String(editingProducto.diag), rep: String(editingProducto.rep), mant: String(editingProducto.mant), inst: String(editingProducto.inst) });
     } else {
@@ -999,18 +1152,20 @@ function Modal({
     lead: isEditing ? "Editar Lead" : "Nuevo Lead",
     cliente: isEditing ? "Editar cliente" : "Agregar cliente",
     producto: isEditing ? "Editar producto / servicio" : "Agregar producto / servicio",
-    cotizacion: "Nueva cotizaciÃ³n rÃ¡pida",
+    cotizacion: "Nueva cotización rápida",
   };
 
   function handleSave() {
     if (kind === "lead") {
-      if (!leadForm.nombre) { notify("El nombre es requerido"); return; }
+      if (!leadForm.nombre.trim()) { notify("El nombre es requerido"); return; }
+      if (leadForm.email && !isValidEmail(leadForm.email)) { notify("El correo no tiene un formato válido"); return; }
       editingLead ? onUpdateLead(editingLead.id, leadForm) : onSaveLead(leadForm);
     } else if (kind === "cliente") {
-      if (!clienteForm.nombre) { notify("El nombre de la empresa es requerido"); return; }
+      if (!clienteForm.nombre.trim()) { notify("El nombre de la empresa es requerido"); return; }
+      if (clienteForm.correo && !isValidEmail(clienteForm.correo)) { notify("El correo no tiene un formato válido"); return; }
       editingCliente ? onUpdateCliente(editingCliente.id, clienteForm) : onSaveCliente(clienteForm);
     } else if (kind === "producto") {
-      if (!productoForm.nombre) { notify("El nombre del producto es requerido"); return; }
+      if (!productoForm.nombre.trim()) { notify("El nombre del producto es requerido"); return; }
       editingProducto ? onUpdateProducto(editingProducto.id, productoForm) : onSaveProducto(productoForm);
     } else if (kind === "cotizacion") {
       close();
@@ -1028,9 +1183,9 @@ function Modal({
         <div className="modal-grid">
           {kind === "lead" && (
             <>
-              <label>Nombre contacto<input value={leadForm.nombre} onChange={(e) => setLeadForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: MarÃ­a GonzÃ¡lez" /></label>
-              <label>Empresa<input value={leadForm.empresa} onChange={(e) => setLeadForm((f) => ({ ...f, empresa: e.target.value }))} placeholder="Ej: ClÃ­nica Santiago" /></label>
-              <label>TelÃ©fono<input value={leadForm.tel} onChange={(e) => setLeadForm((f) => ({ ...f, tel: e.target.value }))} placeholder="+56 9 XXXX XXXX" /></label>
+              <label>Nombre contacto<input value={leadForm.nombre} onChange={(e) => setLeadForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: María González" maxLength={100} /></label>
+              <label>Empresa<input value={leadForm.empresa} onChange={(e) => setLeadForm((f) => ({ ...f, empresa: e.target.value }))} placeholder="Ej: Clínica Santiago" maxLength={100} /></label>
+              <label>Teléfono<input value={leadForm.tel} onChange={(e) => setLeadForm((f) => ({ ...f, tel: e.target.value }))} placeholder="+56 9 XXXX XXXX" maxLength={20} /></label>
               <label>
                 Canal
                 <select value={leadForm.canal} onChange={(e) => setLeadForm((f) => ({ ...f, canal: e.target.value }))}>
@@ -1038,46 +1193,53 @@ function Modal({
                   <option value="email">Correo</option>
                 </select>
               </label>
-              <label>Correo<input value={leadForm.email} onChange={(e) => setLeadForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@empresa.cl" /></label>
+              <label>Correo<input type="email" value={leadForm.email} onChange={(e) => setLeadForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@empresa.cl" maxLength={100} /></label>
               <label>
                 Servicio
                 <select value={leadForm.servicio} onChange={(e) => setLeadForm((f) => ({ ...f, servicio: e.target.value }))}>
-                  <option>DiagnÃ³stico</option>
-                  <option>ReparaciÃ³n</option>
-                  <option>MantenciÃ³n</option>
-                  <option>InstalaciÃ³n</option>
+                  <option>Diagnóstico</option>
+                  <option>Reparación</option>
+                  <option>Mantención</option>
+                  <option>Instalación</option>
                 </select>
               </label>
-              <label className="wide">Equipo / Producto<input value={leadForm.equipo} onChange={(e) => setLeadForm((f) => ({ ...f, equipo: e.target.value }))} placeholder="Ej: Monitor de signos vitales" /></label>
+              <label className="wide">Equipo / Producto<input value={leadForm.equipo} onChange={(e) => setLeadForm((f) => ({ ...f, equipo: e.target.value }))} placeholder="Ej: Monitor de signos vitales" maxLength={200} /></label>
             </>
           )}
           {kind === "cliente" && (
             <>
-              <label>RUT empresa<input value={clienteForm.rut} onChange={(e) => setClienteForm((f) => ({ ...f, rut: e.target.value }))} placeholder="76.XXX.XXX-X" /></label>
-              <label>Nombre empresa<input value={clienteForm.nombre} onChange={(e) => setClienteForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="ClÃ­nica Las Condes" /></label>
-              <label>Contacto<input value={clienteForm.contacto} onChange={(e) => setClienteForm((f) => ({ ...f, contacto: e.target.value }))} placeholder="Nombre del contacto" /></label>
-              <label>Cargo<input value={clienteForm.cargo} onChange={(e) => setClienteForm((f) => ({ ...f, cargo: e.target.value }))} placeholder="Jefe de MantenciÃ³n" /></label>
-              <label>TelÃ©fono<input value={clienteForm.tel} onChange={(e) => setClienteForm((f) => ({ ...f, tel: e.target.value }))} placeholder="+56 9 XXXX XXXX" /></label>
-              <label>Correo<input value={clienteForm.correo} onChange={(e) => setClienteForm((f) => ({ ...f, correo: e.target.value }))} placeholder="contacto@empresa.cl" /></label>
+              <label>RUT empresa
+                <input
+                  value={clienteForm.rut}
+                  onChange={(e) => setClienteForm((f) => ({ ...f, rut: formatRut(e.target.value) }))}
+                  placeholder="76.XXX.XXX-X"
+                  maxLength={15}
+                />
+              </label>
+              <label>Nombre empresa<input value={clienteForm.nombre} onChange={(e) => setClienteForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Clínica Las Condes" maxLength={100} /></label>
+              <label>Contacto<input value={clienteForm.contacto} onChange={(e) => setClienteForm((f) => ({ ...f, contacto: e.target.value }))} placeholder="Nombre del contacto" maxLength={100} /></label>
+              <label>Cargo<input value={clienteForm.cargo} onChange={(e) => setClienteForm((f) => ({ ...f, cargo: e.target.value }))} placeholder="Jefe de Mantención" maxLength={80} /></label>
+              <label>Teléfono<input value={clienteForm.tel} onChange={(e) => setClienteForm((f) => ({ ...f, tel: e.target.value }))} placeholder="+56 9 XXXX XXXX" maxLength={20} /></label>
+              <label>Correo<input type="email" value={clienteForm.correo} onChange={(e) => setClienteForm((f) => ({ ...f, correo: e.target.value }))} placeholder="contacto@empresa.cl" maxLength={100} /></label>
             </>
           )}
           {kind === "producto" && (
             <>
-              <label className="wide">Nombre equipo / producto<input value={productoForm.nombre} onChange={(e) => setProductoForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Monitor de Signos Vitales" /></label>
+              <label className="wide">Nombre equipo / producto<input value={productoForm.nombre} onChange={(e) => setProductoForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Monitor de Signos Vitales" maxLength={150} /></label>
               <label>
-                CategorÃ­a
+                Categoría
                 <select value={productoForm.cat} onChange={(e) => setProductoForm((f) => ({ ...f, cat: e.target.value }))}>
-                  <option>Equipos mÃ©dicos</option>
+                  <option>Equipos médicos</option>
                   <option>Equipos dentales</option>
                   <option>Laboratorio</option>
-                  <option>Equipos estÃ©ticos</option>
+                  <option>Equipos estéticos</option>
                 </select>
               </label>
-              <label>Marca / Modelo<input value={productoForm.marca} onChange={(e) => setProductoForm((f) => ({ ...f, marca: e.target.value }))} placeholder="Philips MP5" /></label>
-              <label>Precio diagnÃ³stico<input type="number" value={productoForm.diag} onChange={(e) => setProductoForm((f) => ({ ...f, diag: e.target.value }))} placeholder="0" /></label>
-              <label>Precio reparaciÃ³n<input type="number" value={productoForm.rep} onChange={(e) => setProductoForm((f) => ({ ...f, rep: e.target.value }))} placeholder="0" /></label>
-              <label>Precio mantenciÃ³n<input type="number" value={productoForm.mant} onChange={(e) => setProductoForm((f) => ({ ...f, mant: e.target.value }))} placeholder="0" /></label>
-              <label>Precio instalaciÃ³n<input type="number" value={productoForm.inst} onChange={(e) => setProductoForm((f) => ({ ...f, inst: e.target.value }))} placeholder="0" /></label>
+              <label>Marca / Modelo<input value={productoForm.marca} onChange={(e) => setProductoForm((f) => ({ ...f, marca: e.target.value }))} placeholder="Philips MP5" maxLength={100} /></label>
+              <label>Precio diagnóstico<input type="number" value={productoForm.diag} onChange={(e) => setProductoForm((f) => ({ ...f, diag: e.target.value }))} placeholder="0" /></label>
+              <label>Precio reparación<input type="number" value={productoForm.rep} onChange={(e) => setProductoForm((f) => ({ ...f, rep: e.target.value }))} placeholder="0" /></label>
+              <label>Precio mantención<input type="number" value={productoForm.mant} onChange={(e) => setProductoForm((f) => ({ ...f, mant: e.target.value }))} placeholder="0" /></label>
+              <label>Precio instalación<input type="number" value={productoForm.inst} onChange={(e) => setProductoForm((f) => ({ ...f, inst: e.target.value }))} placeholder="0" /></label>
             </>
           )}
           {kind === "cotizacion" && (
@@ -1091,10 +1253,10 @@ function Modal({
               <label>
                 Servicio
                 <select>
-                  <option>DiagnÃ³stico</option>
-                  <option>ReparaciÃ³n</option>
-                  <option>MantenciÃ³n</option>
-                  <option>InstalaciÃ³n</option>
+                  <option>Diagnóstico</option>
+                  <option>Reparación</option>
+                  <option>Mantención</option>
+                  <option>Instalación</option>
                 </select>
               </label>
             </>
@@ -1110,4 +1272,3 @@ function Modal({
     </div>
   );
 }
-

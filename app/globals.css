@@ -32,6 +32,39 @@ body {
   min-height: 100%;
 }
 
+/* ── Login ─────────────────────────────────────────────────── */
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--navy);
+}
+.login-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.login-logo { height: 40px; margin-bottom: 8px; }
+.login-card h1 { font-size: 20px; color: var(--navy); margin: 0; }
+.login-card > p { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+.login-form { width: 100%; display: flex; flex-direction: column; gap: 14px; }
+.login-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: var(--slate); }
+.login-form input { padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius); font-size: 14px; outline: none; }
+.login-form input:focus { border-color: var(--bio-green); box-shadow: 0 0 0 3px var(--bio-green-soft); }
+.login-form button { margin-top: 4px; justify-content: center; }
+.login-error { color: var(--red); font-size: 13px; margin: 0; text-align: center; }
+
+/* ── Preview label row ──────────────────────────────────────── */
+.preview-label-row { display: flex; align-items: center; justify-content: space-between; }
+
 body {
   margin: 0;
   color: var(--ink);
