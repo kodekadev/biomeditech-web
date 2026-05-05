@@ -237,6 +237,11 @@ export default function CRMPrototype() {
     notas: "Incluye diagnóstico inicial, reparación y pruebas de funcionamiento.",
   });
 
+  const fecha = useMemo(
+    () => new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" }),
+    [],
+  );
+
   useEffect(() => {
     if (!loggedIn) return;
     Promise.all([
@@ -265,10 +270,6 @@ export default function CRMPrototype() {
   const filteredProducts = productos.filter((p) => JSON.stringify(p).toLowerCase().includes(productQuery.toLowerCase()));
   const selectedProduct = productos.find((p) => p.id === quote.productId);
   const computedValue = Number(quote.valor) || getPrice(quote.productId, quote.service, productos);
-  const fecha = useMemo(
-    () => new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" }),
-    [],
-  );
   const activeTitle = NAV_ITEMS.find((item) => item.id === active)?.label ?? "Dashboard";
 
   function notify(message: string) {
