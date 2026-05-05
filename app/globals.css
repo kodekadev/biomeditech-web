@@ -799,7 +799,8 @@ td small {
   color: var(--slate);
 }
 
-.row-actions .danger:hover {
+.row-actions .danger:hover,
+.danger:hover {
   border-color: var(--red);
   background: var(--red-soft);
   color: var(--red);
@@ -1293,4 +1294,49 @@ textarea:focus {
   .quote-preview header > div:last-child {
     text-align: left;
   }
+}
+
+/* Loading bar */
+@keyframes loading-slide {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9999;
+  background: var(--bio-green-soft);
+  overflow: hidden;
+}
+
+.loading-bar::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: 40%;
+  background: var(--bio-green);
+  animation: loading-slide 1.1s ease-in-out infinite;
+}
+
+/* Compact icon-only buttons in lead cards */
+.card-icon-btn {
+  width: 32px !important;
+  min-width: 32px !important;
+  padding: 0 !important;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card-icon-btn.danger {
+  color: var(--red);
+}
+
+.card-icon-btn.danger:hover {
+  border-color: var(--red);
+  background: var(--red-soft);
+  color: var(--red);
 }
