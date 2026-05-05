@@ -1,5 +1,40 @@
 const BASE = process.env.NEXT_PUBLIC_CRM_API_URL ?? "http://127.0.0.1:4000";
 
+// --- Auth helpers ---
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("crm_token");
+}
+
+export function saveToken(token: string): void {
+  localStorage.setItem("crm_token", token);
+  localStorage.setItem("crm_session", "1");
+}
+
+export function clearToken(): void {
+  localStorage.removeItem("crm_token");
+  localStorage.removeItem("crm_session");
+}
+
+function authHeaders(): HeadersInit {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export async function login(email: string, password: string): Promise<{ token: string; user: { email: string; rol: string } } | { error: string } | null> {
+  try {
+    const res = await fetch(`${BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 // --- UI-facing types (match the component's data model) ---
 
 export interface Lead {
@@ -180,7 +215,8 @@ function mapCotizacion(value: unknown): Cotizacion {
 
 async function apiGet<T>(path: string): Promise<T | null> {
   try {
-    const res = await fetch(`${BASE}${path}`);
+    const res = await fetch(`${BASE}${path}`, { headers: authHeaders() });
+    if (res.status === 401) { clearToken(); return null; }
     if (!res.ok) return null;
     return res.json() as Promise<T>;
   } catch {
@@ -192,9 +228,10 @@ async function apiMutate<T>(method: string, path: string, body?: unknown): Promi
   try {
     const res = await fetch(`${BASE}${path}`, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
+    if (res.status === 401) { clearToken(); return null; }
     if (!res.ok) return null;
     return res.json() as Promise<T>;
   } catch {

@@ -147,17 +147,23 @@ const PRODUCTO_FORM_INIT: ProductoForm = { nombre: "", cat: "Equipos médicos", 
 
 // ── Login ────────────────────────────────────────────────────────────────────
 
-function LoginScreen({ onLogin }: { onLogin: () => void }) {
+function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !isValidEmail(email)) { setError("Ingresa un correo válido"); return; }
-    if (password !== "Biomeditech2026!") { setError("Contraseña incorrecta"); return; }
+    if (!password) { setError("Ingresa tu contraseña"); return; }
+    setLoading(true);
     setError("");
-    onLogin();
+    const result = await api.login(email, password);
+    setLoading(false);
+    if (!result) { setError("No se pudo conectar con el servidor"); return; }
+    if ("error" in result) { setError(result.error); return; }
+    onLogin(result.token);
   }
 
   return (
@@ -189,8 +195,8 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
             />
           </label>
           {error && <p className="login-error">{error}</p>}
-          <button type="submit" className="primary">
-            <Lock size={16} /> Ingresar
+          <button type="submit" className="primary" disabled={loading}>
+            <Lock size={16} /> {loading ? "Ingresando..." : "Ingresar"}
           </button>
         </form>
       </div>
@@ -202,7 +208,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
 
 export default function CRMPrototype() {
   const [loggedIn, setLoggedIn] = useState(() => {
-    if (typeof window !== "undefined") return !!localStorage.getItem("crm_session");
+    if (typeof window !== "undefined") return !!localStorage.getItem("crm_token");
     return false;
   });
 
@@ -250,7 +256,7 @@ export default function CRMPrototype() {
   }, [loggedIn]);
 
   if (!loggedIn) {
-    return <LoginScreen onLogin={() => { localStorage.setItem("crm_session", "1"); setLoggedIn(true); }} />;
+    return <LoginScreen onLogin={(token) => { api.saveToken(token); setLoggedIn(true); }} />;
   }
 
   const noGestionados = leads.filter((l) => l.estado === "no-gestionado");
@@ -503,7 +509,7 @@ export default function CRMPrototype() {
   }
 
   function handleLogout() {
-    localStorage.removeItem("crm_session");
+    api.clearToken();
     setLoggedIn(false);
   }
 
