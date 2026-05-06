@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import * as api from "@/lib/api";
-import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, Plantilla, CotizacionItemForm } from "@/lib/api";
+import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, CatalogoItemForm, Plantilla, CotizacionItemForm } from "@/lib/api";
 
 type ModuleId = "dashboard" | "leads" | "clientes" | "productos" | "cotizaciones" | "protocolos";
 type LeadStatus = "gestionado" | "no-gestionado";
@@ -57,12 +57,12 @@ const INITIAL_LEADS: Lead[] = [
 ];
 
 const INITIAL_CLIENTES: Cliente[] = [
-  { id: "C-001", rut: "61.608.023-8", nombre: "Clínica Las Condes", contacto: "Felipe Morales", correo: "felipe@clc.cl", rubro: "Médico", estado: "Activo" },
-  { id: "C-002", rut: "60.503.000-1", nombre: "Universidad de Chile", contacto: "Claudia Torres", correo: "claudia@uchile.cl", rubro: "Médico", estado: "Activo" },
-  { id: "C-003", rut: "76.543.210-K", nombre: "Centro Médico Providencia", contacto: "Andrea Silva", correo: "andrea@cmp.cl", rubro: "Médico", estado: "Activo" },
-  { id: "C-004", rut: "78.123.456-3", nombre: "Neovida", contacto: "Rodrigo Pinto", correo: "rodrigo@neovida.cl", rubro: "Estético", estado: "Activo" },
-  { id: "C-005", rut: "77.654.321-5", nombre: "UnoSalud", contacto: "Patricia Muñoz", correo: "patricia@unosalud.cl", rubro: "Dental", estado: "Inactivo" },
-  { id: "C-006", rut: "76.111.222-4", nombre: "Vetlab", contacto: "Jorge Espinoza", correo: "jorge@vetlab.cl", rubro: "Laboratorio", estado: "Activo" },
+  { id: "C-001", rut: "61.608.023-8", nombre: "Clínica Las Condes", contacto: "Felipe Morales", correo: "felipe@clc.cl", rubro: "Médico", estado: "Activo", telefono: "", direccion: "", ciudad: "", comuna: "" },
+  { id: "C-002", rut: "60.503.000-1", nombre: "Universidad de Chile", contacto: "Claudia Torres", correo: "claudia@uchile.cl", rubro: "Médico", estado: "Activo", telefono: "", direccion: "", ciudad: "", comuna: "" },
+  { id: "C-003", rut: "76.543.210-K", nombre: "Centro Médico Providencia", contacto: "Andrea Silva", correo: "andrea@cmp.cl", rubro: "Médico", estado: "Activo", telefono: "", direccion: "", ciudad: "", comuna: "" },
+  { id: "C-004", rut: "78.123.456-3", nombre: "Neovida", contacto: "Rodrigo Pinto", correo: "rodrigo@neovida.cl", rubro: "Estético", estado: "Activo", telefono: "", direccion: "", ciudad: "", comuna: "" },
+  { id: "C-005", rut: "77.654.321-5", nombre: "UnoSalud", contacto: "Patricia Muñoz", correo: "patricia@unosalud.cl", rubro: "Dental", estado: "Inactivo", telefono: "", direccion: "", ciudad: "", comuna: "" },
+  { id: "C-006", rut: "76.111.222-4", nombre: "Vetlab", contacto: "Jorge Espinoza", correo: "jorge@vetlab.cl", rubro: "Laboratorio", estado: "Activo", telefono: "", direccion: "", ciudad: "", comuna: "" },
 ];
 
 const INITIAL_PRODUCTOS: Producto[] = [
@@ -142,7 +142,8 @@ function fmtActivityDate(raw: unknown): string {
 }
 
 const LEAD_FORM_INIT: LeadForm = { nombre: "", empresa: "", tel: "+56 ", email: "", canal: "wsp", servicio: "Diagnóstico", equipo: "" };
-const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", cargo: "", tel: "+56 ", correo: "", rubro: "Médico" };
+const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", tel: "+56 ", correo: "", rubro: "Médico", estado: "activo", direccion: "", ciudad: "", comuna: "" };
+const CATALOGO_FORM_INIT: CatalogoItemForm = { codigo: "", categoria: "MP", servicio: "", equipo: "", unidad: "Servicio", precio_neto: "", texto_base_key: "", descripcion_larga: "" };
 const PRODUCTO_FORM_INIT: ProductoForm = { nombre: "", cat: "Equipos médicos", marca: "", diag: "", rep: "", mant: "", inst: "" };
 
 // ── Login ────────────────────────────────────────────────────────────────────
@@ -226,6 +227,8 @@ export default function CRMPrototype() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [editingProducto, setEditingProducto] = useState<Producto | null>(null);
+  const [editingCatalogo, setEditingCatalogo] = useState<CatalogoItem | null>(null);
+  const [leadView, setLeadView] = useState<"iconos" | "lista" | "detalle">("iconos");
   const [toast, setToast] = useState("");
   const [catalogo, setCatalogo] = useState<CatalogoItem[]>([]);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
@@ -324,6 +327,11 @@ export default function CRMPrototype() {
     setModal("lead");
   }
 
+  function handleCotizarCliente(cliente: Cliente) {
+    setCotizClienteId(cliente.id);
+    goTo("cotizaciones");
+  }
+
   function handleCotizarLead(lead: Lead) {
     const match = clientes.find((c) =>
       c.nombre.toLowerCase().includes(lead.empresa.toLowerCase()) ||
@@ -385,7 +393,11 @@ export default function CRMPrototype() {
       contacto: form.contacto,
       correo: form.correo,
       rubro: form.rubro,
-      estado: "Activo",
+      estado: form.estado || "activo",
+      telefono: form.tel,
+      direccion: form.direccion,
+      ciudad: form.ciudad,
+      comuna: form.comuna,
     };
     setClientes((prev) => [cliente, ...prev]);
     api.logActivity("nuevo_cliente", "Nuevo cliente registrado", `${form.nombre}`, cliente.id, "cliente");
@@ -399,7 +411,7 @@ export default function CRMPrototype() {
       setClientes((prev) => prev.map((c) => (c.id === id ? updated : c)));
     } else {
       setClientes((prev) => prev.map((c) =>
-        c.id === id ? { ...c, rut: form.rut, nombre: form.nombre, contacto: form.contacto, correo: form.correo, rubro: form.rubro } : c
+        c.id === id ? { ...c, rut: form.rut, nombre: form.nombre, contacto: form.contacto, correo: form.correo, rubro: form.rubro, estado: form.estado, telefono: form.tel, direccion: form.direccion, ciudad: form.ciudad, comuna: form.comuna } : c
       ));
     }
     notify("Cliente actualizado");
@@ -539,7 +551,8 @@ export default function CRMPrototype() {
       <dt>Empresa</dt><dd>${clienteObj?.nombre ?? det.cliente_id}</dd>
       <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
       <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
-      <dt>Dirección</dt><dd>${(clienteObj as any)?.direccion ?? "—"}</dd>
+      <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
+      <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
     </dl>
     <h3>Detalle del servicio</h3>
     <table>
@@ -650,7 +663,7 @@ export default function CRMPrototype() {
               <div className="module-toolbar">
                 <div className="segmented">
                   <button className={leadFilter === "todos" ? "selected" : ""} onClick={() => setLeadFilter("todos")}>
-                    Todos mis leads <span>{leads.length}</span>
+                    Todos <span>{leads.length}</span>
                   </button>
                   <button className={leadFilter === "gestionado" ? "selected" : ""} onClick={() => setLeadFilter("gestionado")}>
                     Gestionados <span>{leads.filter((l) => l.estado === "gestionado").length}</span>
@@ -659,49 +672,117 @@ export default function CRMPrototype() {
                     Sin gestionar <span>{noGestionados.length}</span>
                   </button>
                 </div>
-                <button className="primary" onClick={() => setModal("lead")}>
-                  <UserPlus size={16} />Agregar lead
-                </button>
+                <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+                  <div className="segmented">
+                    <button className={leadView === "iconos" ? "selected" : ""} onClick={() => setLeadView("iconos")} title="Vista tarjetas">
+                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="1" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor"/></svg>
+                    </button>
+                    <button className={leadView === "lista" ? "selected" : ""} onClick={() => setLeadView("lista")} title="Vista lista">
+                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="2" width="13" height="2" rx="1" fill="currentColor"/><rect x="1" y="6.5" width="13" height="2" rx="1" fill="currentColor"/><rect x="1" y="11" width="13" height="2" rx="1" fill="currentColor"/></svg>
+                    </button>
+                    <button className={leadView === "detalle" ? "selected" : ""} onClick={() => setLeadView("detalle")} title="Vista detalle">
+                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="13" height="4" rx="1" fill="currentColor"/><rect x="1" y="7" width="13" height="4" rx="1" fill="currentColor"/></svg>
+                    </button>
+                  </div>
+                  <button className="primary" onClick={() => setModal("lead")}>
+                    <UserPlus size={16} />Agregar lead
+                  </button>
+                </div>
               </div>
-              <div className="lead-grid">
-                {visibleLeads.map((lead) => (
-                  <article className={`lead-card ${lead.estado}`} key={lead.id}>
-                    <div className="lead-card-head">
-                      <div>
-                        <h3>{lead.nombre}</h3>
-                        <p>{lead.empresa}</p>
+
+              {leadView === "iconos" && (
+                <div className="lead-grid">
+                  {visibleLeads.map((lead) => (
+                    <article className={`lead-card ${lead.estado}`} key={lead.id}>
+                      <div className="lead-card-head">
+                        <div>
+                          <h3>{lead.nombre}</h3>
+                          <p>{lead.empresa}</p>
+                        </div>
+                        <div className="lead-badges">
+                          <span className={lead.canal}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span>
+                          <span className={lead.estado === "gestionado" ? "ok" : "pending"}>
+                            {lead.estado === "gestionado" ? "Gestionado" : "Sin gestionar"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="lead-badges">
-                        <span className={lead.canal}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span>
-                        <span className={lead.estado === "gestionado" ? "ok" : "pending"}>
-                          {lead.estado === "gestionado" ? "Gestionado" : "Sin gestionar"}
-                        </span>
+                      <dl className="lead-meta">
+                        <div><MessageCircle size={14} />{lead.tel}</div>
+                        <div><Mail size={14} />{lead.email}</div>
+                        <div><Wrench size={14} />{lead.servicio}{lead.equipo ? ` / ${lead.equipo}` : ""}</div>
+                        <div><Clock3 size={14} />{lead.tiempo}</div>
+                      </dl>
+                      <div className="card-actions">
+                        <button className="primary small" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} />Cotizar</button>
+                        <button className="ghost small" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} />{lead.estado === "gestionado" ? "Desmarcar" : "Gestionar"}</button>
+                        <button className="ghost small card-icon-btn" aria-label="Editar" onClick={() => handleEditLead(lead)}><Edit3 size={14} /></button>
+                        <button className="ghost small card-icon-btn danger" aria-label="Eliminar" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={14} /></button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              {leadView === "lista" && (
+                <div className="table-card">
+                  <table>
+                    <thead>
+                      <tr><th>Nombre</th><th>Empresa</th><th>Canal</th><th>Servicio</th><th>Estado</th><th>Tiempo</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody>
+                      {visibleLeads.map((lead) => (
+                        <tr key={lead.id}>
+                          <td><strong>{lead.nombre}</strong></td>
+                          <td>{lead.empresa}</td>
+                          <td><span className={`tag ${lead.canal === "wsp" ? "green" : "navy"}`}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span></td>
+                          <td>{lead.servicio}</td>
+                          <td><span className={`tag ${lead.estado === "gestionado" ? "green" : "amber"}`}>{lead.estado === "gestionado" ? "Gestionado" : "Sin gestionar"}</span></td>
+                          <td style={{ color: "#64748b", fontSize: 12 }}>{lead.tiempo}</td>
+                          <td>
+                            <div className="row-actions">
+                              <button aria-label="Cotizar" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} /></button>
+                              <button aria-label="Gestionar" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} /></button>
+                              <button aria-label="Editar" onClick={() => handleEditLead(lead)}><Edit3 size={15} /></button>
+                              <button aria-label="Eliminar" className="danger" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={15} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {leadView === "detalle" && (
+                <div className="stack" style={{ gap: 10 }}>
+                  {visibleLeads.map((lead) => (
+                    <div key={lead.id} className={`panel lead-detalle ${lead.estado}`} style={{ padding: "14px 18px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <strong style={{ fontSize: 15 }}>{lead.nombre}</strong>
+                            <span style={{ color: "#64748b", fontSize: 13 }}>— {lead.empresa}</span>
+                            <span className={`tag ${lead.canal === "wsp" ? "green" : "navy"}`} style={{ fontSize: 11 }}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span>
+                            <span className={`tag ${lead.estado === "gestionado" ? "green" : "amber"}`} style={{ fontSize: 11 }}>{lead.estado === "gestionado" ? "Gestionado" : "Sin gestionar"}</span>
+                          </div>
+                          <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#64748b", flexWrap: "wrap" }}>
+                            <span><MessageCircle size={12} style={{ display: "inline", marginRight: 4 }} />{lead.tel}</span>
+                            <span><Mail size={12} style={{ display: "inline", marginRight: 4 }} />{lead.email}</span>
+                            <span><Wrench size={12} style={{ display: "inline", marginRight: 4 }} />{lead.servicio}{lead.equipo ? ` — ${lead.equipo}` : ""}</span>
+                            <span><Clock3 size={12} style={{ display: "inline", marginRight: 4 }} />{lead.tiempo}</span>
+                          </div>
+                        </div>
+                        <div className="card-actions" style={{ flexShrink: 0 }}>
+                          <button className="primary small" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} />Cotizar</button>
+                          <button className="ghost small" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} />{lead.estado === "gestionado" ? "Desmarcar" : "Gestionar"}</button>
+                          <button className="ghost small card-icon-btn" aria-label="Editar" onClick={() => handleEditLead(lead)}><Edit3 size={14} /></button>
+                          <button className="ghost small card-icon-btn danger" aria-label="Eliminar" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={14} /></button>
+                        </div>
                       </div>
                     </div>
-                    <dl className="lead-meta">
-                      <div><MessageCircle size={14} />{lead.tel}</div>
-                      <div><Mail size={14} />{lead.email}</div>
-                      <div><Wrench size={14} />{lead.servicio}{lead.equipo ? ` / ${lead.equipo}` : ""}</div>
-                      <div><Clock3 size={14} />{lead.tiempo}</div>
-                    </dl>
-                    <div className="card-actions">
-                      <button className="primary small" onClick={() => handleCotizarLead(lead)}>
-                        <ClipboardList size={15} />Cotizar
-                      </button>
-                      <button className="ghost small" onClick={() => handleToggleGestionar(lead.id)}>
-                        <Check size={15} />
-                        {lead.estado === "gestionado" ? "Desmarcar" : "Gestionar"}
-                      </button>
-                      <button className="ghost small card-icon-btn" aria-label="Editar" onClick={() => handleEditLead(lead)}>
-                        <Edit3 size={14} />
-                      </button>
-                      <button className="ghost small card-icon-btn danger" aria-label="Eliminar" onClick={() => handleDeleteLead(lead.id)}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 
@@ -715,21 +796,21 @@ export default function CRMPrototype() {
             >
               <table>
                 <thead>
-                  <tr><th>ID</th><th>RUT</th><th>Nombre / Empresa</th><th>Contacto</th><th>Rubro</th><th>Estado</th><th>Acciones</th></tr>
+                  <tr><th>RUT</th><th>Nombre / Empresa</th><th>Contacto</th><th>Teléfono</th><th>Ciudad</th><th>Estado</th><th>Acciones</th></tr>
                 </thead>
                 <tbody>
                   {filteredClients.map((client) => (
                     <tr key={client.id}>
-                      <td className="mono">{client.id}</td>
-                      <td className="mono">{client.rut}</td>
+                      <td className="mono" style={{ fontSize: 12 }}>{client.rut}</td>
                       <td><strong>{client.nombre}</strong><small>{client.correo}</small></td>
                       <td>{client.contacto}</td>
-                      <td><span className="tag navy">{client.rubro}</span></td>
+                      <td style={{ fontSize: 12, color: "#64748b" }}>{client.telefono || "—"}</td>
+                      <td style={{ fontSize: 12 }}>{client.ciudad || (client.comuna ? client.comuna : "—")}</td>
                       <td><span className={`tag ${isActivo(client.estado) ? "green" : "amber"}`}>{client.estado}</span></td>
                       <td>
                         <RowActions
                           notify={notify}
-                          quote={() => goTo("cotizaciones")}
+                          quote={() => handleCotizarCliente(client)}
                           onEdit={() => handleEditCliente(client)}
                           onDelete={() => handleDeleteCliente(client.id)}
                         />
@@ -744,6 +825,7 @@ export default function CRMPrototype() {
           {active === "productos" && (
             <CatalogoModule
               catalogo={catalogo}
+              setCatalogo={setCatalogo}
               productos={productos}
               filteredProducts={filteredProducts}
               productQuery={productQuery}
@@ -813,6 +895,7 @@ export default function CRMPrototype() {
                     items={cotizItems}
                     setItems={setCotizItems}
                     onEmitir={handleEmitirCotizacion}
+                    onDescargarPDF={handlePrintQuote}
                   />
                 </div>
                 <ProcessTimeline />
@@ -1033,7 +1116,7 @@ function CotizadorForm({
   notas, setNotas,
   formaPago, setFormaPago,
   items, setItems,
-  onEmitir,
+  onEmitir, onDescargarPDF,
 }: {
   clientes: Cliente[];
   catalogo: CatalogoItem[];
@@ -1047,6 +1130,7 @@ function CotizadorForm({
   items: CotizacionItemForm[];
   setItems: React.Dispatch<React.SetStateAction<CotizacionItemForm[]>>;
   onEmitir: () => void;
+  onDescargarPDF: () => void;
 }) {
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -1141,20 +1225,20 @@ function CotizadorForm({
       </div>
 
       {items.length > 0 && (
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 52px 100px 64px 28px", gap: "4px 8px", marginBottom: 6 }}>
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12, overflowX: "auto" }}>
+          <div style={{ minWidth: 360, display: "grid", gridTemplateColumns: "1fr 48px 90px 58px 24px", gap: "4px 6px", marginBottom: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>DESCRIPCIÓN</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textAlign: "center" }}>CANT.</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>PRECIO NETO</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>DSCTO %</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>DSCTO%</span>
             <span />
           </div>
           {items.map((it, idx) => (
-            <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 52px 100px 64px 28px", gap: "4px 8px", alignItems: "center", marginBottom: 6, fontSize: 12 }}>
+            <div key={idx} style={{ minWidth: 360, display: "grid", gridTemplateColumns: "1fr 48px 90px 58px 24px", gap: "4px 6px", alignItems: "center", marginBottom: 6, fontSize: 12 }}>
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingTop: 2 }} title={it.descripcion}>{it.descripcion}</span>
-              <input type="number" min={1} value={it.cantidad} onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) })} style={{ textAlign: "center", padding: "4px 6px", minHeight: 32 }} />
-              <input type="number" min={0} value={it.precio_unitario} onChange={(e) => updateItem(idx, { precio_unitario: Number(e.target.value) })} style={{ padding: "4px 8px", minHeight: 32 }} />
-              <input type="number" min={0} max={100} value={it.descuento_pct} onChange={(e) => updateItem(idx, { descuento_pct: Number(e.target.value) })} style={{ textAlign: "center", padding: "4px 6px", minHeight: 32 }} />
+              <input type="number" min={1} value={it.cantidad} onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) })} style={{ textAlign: "center", padding: "4px 4px", minHeight: 30 }} />
+              <input type="number" min={0} value={it.precio_unitario} onChange={(e) => updateItem(idx, { precio_unitario: Number(e.target.value) })} style={{ padding: "4px 6px", minHeight: 30 }} />
+              <input type="number" min={0} max={100} value={it.descuento_pct} onChange={(e) => updateItem(idx, { descuento_pct: Number(e.target.value) })} style={{ textAlign: "center", padding: "4px 4px", minHeight: 30 }} />
               <button onClick={() => removeItem(idx)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0, display: "flex", alignItems: "center" }}>
                 <X size={14} />
               </button>
@@ -1168,12 +1252,15 @@ function CotizadorForm({
 
       <label>Notas / Observaciones<textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} maxLength={500} /></label>
 
-      <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-        <button className="ghost" style={{ flex: 1 }} onClick={() => { setItems([]); }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+        <button className="ghost" style={{ flex: "1 1 80px" }} onClick={() => setItems([])}>
           <X size={15} />Limpiar
         </button>
-        <button className="primary" style={{ flex: 2 }} onClick={onEmitir} disabled={!clienteId || items.length === 0}>
-          <Send size={16} />Guardar y generar PDF
+        <button className="ghost" style={{ flex: "2 1 120px" }} onClick={onDescargarPDF} disabled={items.length === 0}>
+          <Printer size={16} />Descargar PDF
+        </button>
+        <button className="primary" style={{ flex: "2 1 140px" }} onClick={onEmitir} disabled={!clienteId || items.length === 0}>
+          <Send size={16} />Emitir cotización
         </button>
       </div>
     </div>
@@ -1235,6 +1322,7 @@ function CotizadorPreview({
             <dt>Empresa</dt><dd>{clienteObj?.nombre ?? "—"}</dd>
             <dt>RUT</dt><dd>{clienteObj?.rut ?? "—"}</dd>
             <dt>Contacto</dt><dd>{clienteObj?.contacto ?? "—"}</dd>
+            <dt>Teléfono</dt><dd>{clienteObj?.telefono || "—"}</dd>
           </dl>
           <h3>Detalle del servicio</h3>
           <table className="quote-table">
@@ -1278,10 +1366,11 @@ function CotizadorPreview({
 }
 
 function CatalogoModule({
-  catalogo, productos, filteredProducts, productQuery, setProductQuery,
+  catalogo, setCatalogo, productos, filteredProducts, productQuery, setProductQuery,
   onEdit, onDelete, onAdd, notify,
 }: {
   catalogo: CatalogoItem[];
+  setCatalogo: React.Dispatch<React.SetStateAction<CatalogoItem[]>>;
   productos: Producto[];
   filteredProducts: Producto[];
   productQuery: string;
@@ -1294,6 +1383,10 @@ function CatalogoModule({
   const [tab, setTab] = useState<"catalogo" | "personalizados">("catalogo");
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [editingCat, setEditingCat] = useState<CatalogoItem | null>(null);
+  const [catModal, setCatModal] = useState(false);
+  const [catForm, setCatForm] = useState<CatalogoItemForm>(CATALOGO_FORM_INIT);
+  const [saving, setSaving] = useState(false);
 
   const catLabels: Record<string, string> = {
     VS: "Visita técnica", MP: "Mant. preventiva", MC: "Mant. correctiva",
@@ -1309,6 +1402,41 @@ function CatalogoModule({
     return true;
   });
 
+  function openAdd() {
+    setEditingCat(null);
+    setCatForm(CATALOGO_FORM_INIT);
+    setCatModal(true);
+  }
+
+  function openEdit(item: CatalogoItem) {
+    setEditingCat(item);
+    setCatForm({ codigo: item.codigo, categoria: item.categoria, servicio: item.servicio, equipo: item.equipo, unidad: item.unidad, precio_neto: String(item.precio_neto), texto_base_key: item.texto_base_key, descripcion_larga: "" });
+    setCatModal(true);
+  }
+
+  async function handleDeleteCat(item: CatalogoItem) {
+    if (!window.confirm(`¿Eliminar "${item.equipo || item.servicio}"?`)) return;
+    setCatalogo((prev) => prev.filter((c) => c.id !== item.id));
+    await api.deleteCatalogoItem(item.id);
+    notify("Ítem eliminado del catálogo");
+  }
+
+  async function handleSaveCat() {
+    if (!catForm.servicio.trim() && !catForm.equipo.trim()) { notify("Ingresa servicio o equipo"); return; }
+    setSaving(true);
+    if (editingCat) {
+      const updated = await api.updateCatalogoItem(editingCat.id, catForm);
+      if (updated) setCatalogo((prev) => prev.map((c) => c.id === editingCat.id ? updated : c));
+      notify("Ítem actualizado");
+    } else {
+      const created = await api.createCatalogoItem(catForm);
+      if (created) setCatalogo((prev) => [...prev, created]);
+      notify("Ítem agregado al catálogo");
+    }
+    setSaving(false);
+    setCatModal(false);
+  }
+
   return (
     <section className="stack">
       <div className="module-toolbar">
@@ -1320,10 +1448,43 @@ function CatalogoModule({
             Personalizados <span>{productos.length}</span>
           </button>
         </div>
+        {tab === "catalogo" && (
+          <button className="primary" onClick={openAdd}><Plus size={16} />Agregar ítem</button>
+        )}
         {tab === "personalizados" && (
           <button className="primary" onClick={onAdd}><Plus size={16} />Agregar producto</button>
         )}
       </div>
+
+      {catModal && (
+        <div className="modal-backdrop" onClick={() => setCatModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h2>{editingCat ? "Editar ítem catálogo" : "Nuevo ítem catálogo"}</h2>
+              <button onClick={() => setCatModal(false)} aria-label="Cerrar"><X size={17} /></button>
+            </div>
+            <div className="modal-grid">
+              <label>Código<input value={catForm.codigo} onChange={(e) => setCatForm((f) => ({ ...f, codigo: e.target.value }))} placeholder="MP-001" maxLength={30} /></label>
+              <label>
+                Categoría
+                <select value={catForm.categoria} onChange={(e) => setCatForm((f) => ({ ...f, categoria: e.target.value }))}>
+                  {Object.entries(catLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </label>
+              <label>Servicio<input value={catForm.servicio} onChange={(e) => setCatForm((f) => ({ ...f, servicio: e.target.value }))} placeholder="Mantención preventiva" maxLength={120} /></label>
+              <label>Equipo<input value={catForm.equipo} onChange={(e) => setCatForm((f) => ({ ...f, equipo: e.target.value }))} placeholder="Monitor de signos vitales" maxLength={120} /></label>
+              <label>Unidad<input value={catForm.unidad} onChange={(e) => setCatForm((f) => ({ ...f, unidad: e.target.value }))} placeholder="Servicio" maxLength={40} /></label>
+              <label>Precio neto (CLP)<input type="number" min={0} value={catForm.precio_neto} onChange={(e) => setCatForm((f) => ({ ...f, precio_neto: e.target.value }))} placeholder="85000" /></label>
+              <label>Clave plantilla texto<input value={catForm.texto_base_key} onChange={(e) => setCatForm((f) => ({ ...f, texto_base_key: e.target.value }))} placeholder="MP_GENERICO" maxLength={60} /></label>
+              <label className="wide">Descripción larga<textarea rows={3} value={catForm.descripcion_larga} onChange={(e) => setCatForm((f) => ({ ...f, descripcion_larga: e.target.value }))} maxLength={800} /></label>
+            </div>
+            <div className="modal-actions">
+              <button className="ghost" onClick={() => setCatModal(false)}>Cancelar</button>
+              <button className="primary" onClick={handleSaveCat} disabled={saving}>{saving ? "Guardando..." : editingCat ? "Actualizar" : "Guardar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {tab === "catalogo" && (
         <div className="panel table-card">
@@ -1336,7 +1497,7 @@ function CatalogoModule({
           </div>
           <table>
             <thead>
-              <tr><th>Código</th><th>Categoría</th><th>Equipo / Servicio</th><th>Unidad</th><th>Precio neto</th><th>Plantilla texto</th></tr>
+              <tr><th>Código</th><th>Categoría</th><th>Equipo / Servicio</th><th>Unidad</th><th>Precio neto</th><th>Plantilla texto</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               {filteredCat.slice(0, 100).map((c) => (
@@ -1347,6 +1508,12 @@ function CatalogoModule({
                   <td style={{ color: "#64748b", fontSize: 12 }}>{c.unidad}</td>
                   <td style={{ fontWeight: 600 }}>{money(c.precio_neto)} CLP</td>
                   <td style={{ color: "#64748b", fontSize: 11 }}>{c.texto_base_key}</td>
+                  <td>
+                    <div className="row-actions">
+                      <button aria-label="Editar" onClick={() => openEdit(c)}><Edit3 size={15} /></button>
+                      <button aria-label="Eliminar" className="danger" onClick={() => handleDeleteCat(c)}><Trash2 size={15} /></button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1508,7 +1675,7 @@ function Modal({
     if (kind === "lead" && editingLead) {
       setLeadForm({ nombre: editingLead.nombre, empresa: editingLead.empresa, tel: editingLead.tel, email: editingLead.email, canal: editingLead.canal, servicio: editingLead.servicio, equipo: editingLead.equipo });
     } else if (kind === "cliente" && editingCliente) {
-      setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, cargo: "", tel: "+56 ", correo: editingCliente.correo, rubro: editingCliente.rubro });
+      setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, tel: editingCliente.telefono || "+56 ", correo: editingCliente.correo, rubro: editingCliente.rubro, estado: editingCliente.estado || "activo", direccion: editingCliente.direccion || "", ciudad: editingCliente.ciudad || "", comuna: editingCliente.comuna || "" });
     } else if (kind === "producto" && editingProducto) {
       setProductoForm({ nombre: editingProducto.nombre, cat: editingProducto.cat, marca: "", diag: String(editingProducto.diag), rep: String(editingProducto.rep), mant: String(editingProducto.mant), inst: String(editingProducto.inst) });
     } else {
@@ -1595,9 +1762,29 @@ function Modal({
               </label>
               <label>Nombre empresa<input value={clienteForm.nombre} onChange={(e) => setClienteForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Clínica Las Condes" maxLength={100} /></label>
               <label>Contacto<input value={clienteForm.contacto} onChange={(e) => setClienteForm((f) => ({ ...f, contacto: e.target.value }))} placeholder="Nombre del contacto" maxLength={100} /></label>
-              <label>Cargo<input value={clienteForm.cargo} onChange={(e) => setClienteForm((f) => ({ ...f, cargo: e.target.value }))} placeholder="Jefe de Mantención" maxLength={80} /></label>
               <label>Teléfono<input value={clienteForm.tel} onChange={(e) => setClienteForm((f) => ({ ...f, tel: e.target.value }))} placeholder="+56 9 XXXX XXXX" maxLength={20} /></label>
               <label>Correo<input type="email" value={clienteForm.correo} onChange={(e) => setClienteForm((f) => ({ ...f, correo: e.target.value }))} placeholder="contacto@empresa.cl" maxLength={100} /></label>
+              <label>
+                Rubro
+                <select value={clienteForm.rubro} onChange={(e) => setClienteForm((f) => ({ ...f, rubro: e.target.value }))}>
+                  <option>Médico</option>
+                  <option>Dental</option>
+                  <option>Laboratorio</option>
+                  <option>Estético</option>
+                  <option>Veterinario</option>
+                  <option>Otro</option>
+                </select>
+              </label>
+              <label>
+                Estado
+                <select value={clienteForm.estado} onChange={(e) => setClienteForm((f) => ({ ...f, estado: e.target.value }))}>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </label>
+              <label className="wide">Dirección<input value={clienteForm.direccion} onChange={(e) => setClienteForm((f) => ({ ...f, direccion: e.target.value }))} placeholder="Av. Providencia 1234" maxLength={150} /></label>
+              <label>Ciudad<input value={clienteForm.ciudad} onChange={(e) => setClienteForm((f) => ({ ...f, ciudad: e.target.value }))} placeholder="Santiago" maxLength={80} /></label>
+              <label>Comuna<input value={clienteForm.comuna} onChange={(e) => setClienteForm((f) => ({ ...f, comuna: e.target.value }))} placeholder="Providencia" maxLength={80} /></label>
             </>
           )}
           {kind === "producto" && (

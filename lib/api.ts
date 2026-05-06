@@ -58,6 +58,10 @@ export interface Cliente {
   correo: string;
   rubro: string;
   estado: string;
+  telefono: string;
+  direccion: string;
+  ciudad: string;
+  comuna: string;
 }
 
 export interface Producto {
@@ -168,10 +172,24 @@ export type ClienteForm = {
   rut: string;
   nombre: string;
   contacto: string;
-  cargo: string;
   tel: string;
   correo: string;
   rubro: string;
+  estado: string;
+  direccion: string;
+  ciudad: string;
+  comuna: string;
+};
+
+export type CatalogoItemForm = {
+  codigo: string;
+  categoria: string;
+  servicio: string;
+  equipo: string;
+  unidad: string;
+  precio_neto: string;
+  texto_base_key: string;
+  descripcion_larga: string;
 };
 
 export type ProductoForm = {
@@ -245,6 +263,10 @@ function mapCliente(value: unknown): Cliente {
     correo: str(raw.email),
     rubro: str(raw.rubro),
     estado: str(raw.estado),
+    telefono: str(raw.telefono),
+    direccion: str(raw.direccion),
+    ciudad: str(raw.ciudad),
+    comuna: str(raw.comuna),
   };
 }
 
@@ -347,11 +369,13 @@ export async function createCliente(form: ClienteForm): Promise<Cliente | null> 
     rut: form.rut,
     nombre_empresa: form.nombre,
     contacto_nombre: form.contacto,
-    contacto_cargo: form.cargo,
     telefono: form.tel,
     email: form.correo,
     rubro: form.rubro,
-    estado: "activo",
+    estado: form.estado || "activo",
+    direccion: form.direccion,
+    ciudad: form.ciudad,
+    comuna: form.comuna,
   });
   return r?.data ? mapCliente(r.data) : null;
 }
@@ -448,10 +472,13 @@ export async function saveCliente(id: string, form: ClienteForm): Promise<Client
     rut: form.rut,
     nombre_empresa: form.nombre,
     contacto_nombre: form.contacto,
-    contacto_cargo: form.cargo,
     telefono: form.tel,
     email: form.correo,
     rubro: form.rubro,
+    estado: form.estado,
+    direccion: form.direccion,
+    ciudad: form.ciudad,
+    comuna: form.comuna,
   });
   return r?.data ? mapCliente(r.data) : null;
 }
@@ -598,6 +625,69 @@ export async function createCotizacionMulti(form: CotizacionForm): Promise<Cotiz
     emitida_en: str(raw.emitida_en),
     items,
   };
+}
+
+export async function createCatalogoItem(form: CatalogoItemForm): Promise<CatalogoItem | null> {
+  const r = await apiMutate<{ data: unknown }>("POST", "/api/catalogo", {
+    codigo: form.codigo,
+    categoria: form.categoria,
+    servicio: form.servicio,
+    equipo: form.equipo,
+    unidad: form.unidad || "Servicio",
+    precio_neto: Number(form.precio_neto) || 0,
+    grupo: form.categoria,
+    texto_base_key: form.texto_base_key,
+    activo: true,
+  });
+  if (!r?.data) return null;
+  const raw = r.data as Record<string, unknown>;
+  // Also save description template if provided
+  if (form.descripcion_larga && form.texto_base_key) {
+    await apiMutate("POST", "/api/plantillas", {
+      codigo: form.texto_base_key,
+      descripcion_larga: form.descripcion_larga,
+    });
+  }
+  return {
+    id: str(raw.id),
+    codigo: str(raw.codigo),
+    categoria: str(raw.categoria),
+    servicio: str(raw.servicio),
+    equipo: str(raw.equipo),
+    unidad: str(raw.unidad),
+    precio_neto: num(raw.precio_neto),
+    grupo: str(raw.grupo),
+    texto_base_key: str(raw.texto_base_key),
+  };
+}
+
+export async function updateCatalogoItem(id: string, form: CatalogoItemForm): Promise<CatalogoItem | null> {
+  const r = await apiMutate<{ data: unknown }>("PATCH", `/api/catalogo/${id}`, {
+    codigo: form.codigo,
+    categoria: form.categoria,
+    servicio: form.servicio,
+    equipo: form.equipo,
+    unidad: form.unidad || "Servicio",
+    precio_neto: Number(form.precio_neto) || 0,
+    texto_base_key: form.texto_base_key,
+  });
+  if (!r?.data) return null;
+  const raw = r.data as Record<string, unknown>;
+  return {
+    id: str(raw.id),
+    codigo: str(raw.codigo),
+    categoria: str(raw.categoria),
+    servicio: str(raw.servicio),
+    equipo: str(raw.equipo),
+    unidad: str(raw.unidad),
+    precio_neto: num(raw.precio_neto),
+    grupo: str(raw.grupo),
+    texto_base_key: str(raw.texto_base_key),
+  };
+}
+
+export async function deleteCatalogoItem(id: string): Promise<void> {
+  await apiMutate("DELETE", `/api/catalogo/${id}`);
 }
 
 export async function fetchDashboard(): Promise<DashboardStats | null> {
