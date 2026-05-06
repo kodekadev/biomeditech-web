@@ -582,49 +582,83 @@ export async function fetchCotizacionDetalle(id: string): Promise<CotizacionDeta
 }
 
 export async function createCotizacionMulti(form: CotizacionForm): Promise<CotizacionDetalle | null> {
+  const subtotal = form.items.reduce((sum, it) => {
+    return sum + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100));
+  }, 0);
+  const iva = Math.round(subtotal * 0.19);
+  const numero = `COT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+
   const r = await apiMutate<{ data: unknown }>("POST", "/api/cotizaciones", {
+    numero,
     cliente_id: form.cliente_id,
+    estado: "emitida",
+    subtotal_neto: subtotal,
+    iva,
+    total_con_iva: subtotal + iva,
+    moneda: "CLP",
     notas_cliente: form.notas_cliente,
     forma_pago: form.forma_pago,
     validez_dias: form.validez_dias,
-    items: form.items.map((it) => ({
+    diagnostico_incluido: true,
+    emitida_en: new Date().toISOString(),
+  });
+  if (!r?.data) return null;
+
+  const raw = r.data as Record<string, unknown>;
+  const createdItems = await Promise.all(form.items.map((it, idx) =>
+    apiMutate<{ data: unknown }>("POST", "/api/servicios-cotizacion", {
+      cotizacion_id: str(raw.id),
       producto_id: it.producto_id,
-      codigo: it.codigo,
+      linea_numero: idx + 1,
       descripcion: it.descripcion,
-      descripcion_larga: it.descripcion_larga,
       tipo_servicio: it.tipo_servicio,
       precio_unitario: it.precio_unitario,
       cantidad: it.cantidad,
       descuento_pct: it.descuento_pct,
-    })),
-  });
-  if (!r?.data) return null;
-  const raw = r.data as Record<string, unknown>;
-  const items = ((raw.items as unknown[]) ?? []).map((it) => {
-    const i = it as Record<string, unknown>;
+      subtotal: Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100)),
+    })
+  ));
+
+  const items = createdItems.map((created, idx) => {
+    const fallback = form.items[idx];
+    const row = created?.data as Record<string, unknown> | undefined;
+    if (!row) {
+      return {
+        id: `${str(raw.id)}-${idx + 1}`,
+        linea_numero: idx + 1,
+        descripcion: fallback.descripcion,
+        descripcion_larga: fallback.descripcion_larga,
+        tipo_servicio: fallback.tipo_servicio,
+        precio_unitario: fallback.precio_unitario,
+        cantidad: fallback.cantidad,
+        descuento_pct: fallback.descuento_pct,
+        subtotal: Math.round(fallback.precio_unitario * fallback.cantidad * (1 - fallback.descuento_pct / 100)),
+      };
+    }
     return {
-      id: str(i.id),
-      linea_numero: num(i.linea_numero),
-      descripcion: str(i.descripcion),
-      descripcion_larga: str(i.descripcion_larga),
-      tipo_servicio: str(i.tipo_servicio),
-      precio_unitario: num(i.precio_unitario),
-      cantidad: num(i.cantidad) || 1,
-      descuento_pct: num(i.descuento_pct),
-      subtotal: num(i.subtotal),
+      id: str(row.id),
+      linea_numero: num(row.linea_numero),
+      descripcion: str(row.descripcion),
+      descripcion_larga: fallback.descripcion_larga,
+      tipo_servicio: str(row.tipo_servicio),
+      precio_unitario: num(row.precio_unitario),
+      cantidad: num(row.cantidad) || 1,
+      descuento_pct: num(row.descuento_pct),
+      subtotal: num(row.subtotal),
     };
   });
+
   return {
     id: str(raw.id),
-    numero: str(raw.numero),
+    numero: str(raw.numero) || numero,
     cliente_id: str(raw.cliente_id),
     estado: str(raw.estado),
-    subtotal_neto: num(raw.subtotal_neto),
-    iva: num(raw.iva),
-    total_con_iva: num(raw.total_con_iva),
+    subtotal_neto: num(raw.subtotal_neto) || subtotal,
+    iva: num(raw.iva) || iva,
+    total_con_iva: num(raw.total_con_iva) || subtotal + iva,
     moneda: str(raw.moneda) || "CLP",
-    forma_pago: str(raw.forma_pago),
-    validez_dias: num(raw.validez_dias) || 30,
+    forma_pago: str(raw.forma_pago) || form.forma_pago,
+    validez_dias: num(raw.validez_dias) || form.validez_dias,
     notas_cliente: str(raw.notas_cliente),
     emitida_en: str(raw.emitida_en),
     pdf_url: raw.pdf_url ? str(raw.pdf_url) : undefined,
