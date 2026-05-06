@@ -841,9 +841,15 @@ td small {
 
 .quote-layout {
   display: grid;
-  grid-template-columns: 380px minmax(0, 1fr);
+  grid-template-columns: minmax(460px, 520px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .quote-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .form-stack,

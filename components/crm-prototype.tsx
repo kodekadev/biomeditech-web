@@ -742,6 +742,24 @@ export default function CRMPrototype() {
           )}
 
           {active === "productos" && (
+            <CatalogoModule
+              catalogo={catalogo}
+              productos={productos}
+              filteredProducts={filteredProducts}
+              productQuery={productQuery}
+              setProductQuery={setProductQuery}
+              onEdit={(p) => handleEditProducto(p)}
+              onDelete={async (id) => {
+                setProductos((prev) => prev.filter((p) => p.id !== id));
+                await api.deleteProducto(id);
+                notify("Producto eliminado");
+              }}
+              onAdd={() => setModal("producto")}
+              notify={notify}
+            />
+          )}
+
+          {(false as boolean) && active === "productos" && (
             <DataModule
               title="Productos / Servicios"
               search={productQuery}
@@ -951,24 +969,27 @@ function ActivityRow({ icon: Icon, text, time, tone }: { icon: React.ElementType
   );
 }
 
-function DataModule({ children, search, setSearch, searchPlaceholder, onAdd }: {
+function DataModule({ children, search, setSearch, searchPlaceholder, onAdd, hideHeader }: {
   children: React.ReactNode;
   search: string;
   setSearch: (value: string) => void;
   searchPlaceholder: string;
   onAdd: () => void;
   title: string;
+  hideHeader?: boolean;
 }) {
   return (
     <section className="stack">
-      <div className="module-toolbar">
-        <label className="search-box">
-          <Search size={17} />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={searchPlaceholder} />
-        </label>
-        <button className="ghost"><Filter size={16} />Filtros</button>
-        <button className="primary" onClick={onAdd}><Plus size={16} />Agregar</button>
-      </div>
+      {!hideHeader && (
+        <div className="module-toolbar">
+          <label className="search-box">
+            <Search size={17} />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={searchPlaceholder} />
+          </label>
+          <button className="ghost"><Filter size={16} />Filtros</button>
+          <button className="primary" onClick={onAdd}><Plus size={16} />Agregar</button>
+        </div>
+      )}
       <div className="table-card">{children}</div>
     </section>
   );
@@ -1121,29 +1142,39 @@ function CotizadorForm({
 
       {items.length > 0 && (
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}>
-          <p style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Ítems de esta cotización</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 52px 100px 64px 28px", gap: "4px 8px", marginBottom: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>DESCRIPCIÓN</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textAlign: "center" }}>CANT.</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>PRECIO NETO</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>DSCTO %</span>
+            <span />
+          </div>
           {items.map((it, idx) => (
-            <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 70px 70px 70px auto", gap: 6, alignItems: "center", marginBottom: 8, fontSize: 12 }}>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={it.descripcion}>{it.descripcion}</span>
-              <input type="number" min={1} value={it.cantidad} onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) })} style={{ textAlign: "center" }} placeholder="Cant." />
-              <input type="number" min={0} value={it.precio_unitario} onChange={(e) => updateItem(idx, { precio_unitario: Number(e.target.value) })} placeholder="Precio" />
-              <input type="number" min={0} max={100} value={it.descuento_pct} onChange={(e) => updateItem(idx, { descuento_pct: Number(e.target.value) })} placeholder="% desc." />
-              <button onClick={() => removeItem(idx)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}>
+            <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 52px 100px 64px 28px", gap: "4px 8px", alignItems: "center", marginBottom: 6, fontSize: 12 }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingTop: 2 }} title={it.descripcion}>{it.descripcion}</span>
+              <input type="number" min={1} value={it.cantidad} onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) })} style={{ textAlign: "center", padding: "4px 6px", minHeight: 32 }} />
+              <input type="number" min={0} value={it.precio_unitario} onChange={(e) => updateItem(idx, { precio_unitario: Number(e.target.value) })} style={{ padding: "4px 8px", minHeight: 32 }} />
+              <input type="number" min={0} max={100} value={it.descuento_pct} onChange={(e) => updateItem(idx, { descuento_pct: Number(e.target.value) })} style={{ textAlign: "center", padding: "4px 6px", minHeight: 32 }} />
+              <button onClick={() => removeItem(idx)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0, display: "flex", alignItems: "center" }}>
                 <X size={14} />
               </button>
             </div>
           ))}
-          <div style={{ textAlign: "right", fontWeight: 700, fontSize: 14, marginTop: 8 }}>
-            Neto: {money(subtotal)} CLP · IVA: {money(Math.round(subtotal * 0.19))} CLP · <strong>Total: {money(subtotal + Math.round(subtotal * 0.19))} CLP</strong>
+          <div style={{ textAlign: "right", fontWeight: 700, fontSize: 13, marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
+            Neto: {money(subtotal)} · IVA: {money(Math.round(subtotal * 0.19))} · <span style={{ fontSize: 15 }}>Total: {money(subtotal + Math.round(subtotal * 0.19))} CLP</span>
           </div>
         </div>
       )}
 
       <label>Notas / Observaciones<textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} maxLength={500} /></label>
 
-      <div className="split-actions">
-        <span style={{ fontSize: 12, color: "#94a3b8" }}>{items.length} ítem(s)</span>
-        <button className="primary" onClick={onEmitir}><Send size={16} />Emitir cotización</button>
+      <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+        <button className="ghost" style={{ flex: 1 }} onClick={() => { setItems([]); }}>
+          <X size={15} />Limpiar
+        </button>
+        <button className="primary" style={{ flex: 2 }} onClick={onEmitir} disabled={!clienteId || items.length === 0}>
+          <Send size={16} />Guardar y generar PDF
+        </button>
       </div>
     </div>
   );
@@ -1246,28 +1277,172 @@ function CotizadorPreview({
   );
 }
 
+function CatalogoModule({
+  catalogo, productos, filteredProducts, productQuery, setProductQuery,
+  onEdit, onDelete, onAdd, notify,
+}: {
+  catalogo: CatalogoItem[];
+  productos: Producto[];
+  filteredProducts: Producto[];
+  productQuery: string;
+  setProductQuery: (v: string) => void;
+  onEdit: (p: Producto) => void;
+  onDelete: (id: string) => void;
+  onAdd: () => void;
+  notify: (msg: string) => void;
+}) {
+  const [tab, setTab] = useState<"catalogo" | "personalizados">("catalogo");
+  const [catFilter, setCatFilter] = useState("");
+  const [search, setSearch] = useState("");
+
+  const catLabels: Record<string, string> = {
+    VS: "Visita técnica", MP: "Mant. preventiva", MC: "Mant. correctiva",
+    BS: "Bloque servicio", EV: "Evaluación diag.", RS: "Repuesto / Insumo",
+  };
+
+  const filteredCat = catalogo.filter((c) => {
+    if (catFilter && c.categoria !== catFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return c.codigo.toLowerCase().includes(q) || c.equipo.toLowerCase().includes(q) || c.servicio.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  return (
+    <section className="stack">
+      <div className="module-toolbar">
+        <div className="segmented">
+          <button className={tab === "catalogo" ? "selected" : ""} onClick={() => setTab("catalogo")}>
+            Catálogo Biomeditech <span>{catalogo.length}</span>
+          </button>
+          <button className={tab === "personalizados" ? "selected" : ""} onClick={() => setTab("personalizados")}>
+            Personalizados <span>{productos.length}</span>
+          </button>
+        </div>
+        {tab === "personalizados" && (
+          <button className="primary" onClick={onAdd}><Plus size={16} />Agregar producto</button>
+        )}
+      </div>
+
+      {tab === "catalogo" && (
+        <div className="panel table-card">
+          <div style={{ padding: "12px 16px", display: "flex", gap: 8 }}>
+            <select style={{ width: 180 }} value={catFilter} onChange={(e) => setCatFilter(e.target.value)}>
+              <option value="">Todas las categorías</option>
+              {Object.entries(catLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <input placeholder="Buscar código, equipo o servicio..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
+          </div>
+          <table>
+            <thead>
+              <tr><th>Código</th><th>Categoría</th><th>Equipo / Servicio</th><th>Unidad</th><th>Precio neto</th><th>Plantilla texto</th></tr>
+            </thead>
+            <tbody>
+              {filteredCat.slice(0, 100).map((c) => (
+                <tr key={c.id}>
+                  <td className="mono" style={{ fontSize: 12 }}>{c.codigo}</td>
+                  <td><span className="tag navy">{catLabels[c.categoria] ?? c.categoria}</span></td>
+                  <td><strong>{c.equipo}</strong>{c.servicio ? <small style={{ display: "block", color: "#64748b" }}>{c.servicio}</small> : null}</td>
+                  <td style={{ color: "#64748b", fontSize: 12 }}>{c.unidad}</td>
+                  <td style={{ fontWeight: 600 }}>{money(c.precio_neto)} CLP</td>
+                  <td style={{ color: "#64748b", fontSize: 11 }}>{c.texto_base_key}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filteredCat.length > 100 && <p style={{ padding: "8px 16px", fontSize: 12, color: "#94a3b8" }}>Mostrando 100 de {filteredCat.length} ítems. Usa el buscador para filtrar.</p>}
+        </div>
+      )}
+
+      {tab === "personalizados" && (
+        <DataModule
+          title=""
+          search={productQuery}
+          setSearch={setProductQuery}
+          searchPlaceholder="Buscar por ID, producto, categoría o precio..."
+          onAdd={onAdd}
+          hideHeader
+        >
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Producto</th><th>Categoría</th><th>Diagnóstico</th><th>Reparación</th><th>Mantención</th><th>Instalación</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+              {filteredProducts.map((product) => (
+                <tr key={product.id}>
+                  <td className="mono">{product.id}</td>
+                  <td><strong>{product.nombre}</strong></td>
+                  <td><span className="tag navy">{product.cat}</span></td>
+                  <td>{money(product.diag)}</td>
+                  <td>{money(product.rep)}</td>
+                  <td>{money(product.mant)}</td>
+                  <td>{money(product.inst)}</td>
+                  <td>
+                    <RowActions
+                      notify={notify}
+                      onEdit={() => onEdit(product)}
+                      onDelete={() => onDelete(product.id)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </DataModule>
+      )}
+    </section>
+  );
+}
+
 function HistoryTable({ cotizaciones, clientes }: { cotizaciones: Cotizacion[]; clientes: Cliente[] }) {
+  const [clienteFilter, setClienteFilter] = useState("");
+
   function getClienteName(clienteId: string) {
     const found = clientes.find((c) => c.id === clienteId || c.nombre === clienteId);
     return found?.nombre ?? clienteId;
   }
 
+  const visible = cotizaciones.filter((cot) => {
+    if (!clienteFilter) return true;
+    const nombre = getClienteName(cot.cliente).toLowerCase();
+    return nombre.includes(clienteFilter.toLowerCase());
+  }).slice(0, 15);
+
   return (
     <div className="panel table-card compact">
-      <div className="panel-title"><FileText size={18} />Historial reciente</div>
+      <div className="panel-title"><FileText size={18} />Historial de cotizaciones</div>
+      <div style={{ padding: "0 16px 10px", display: "flex", gap: 8, alignItems: "center" }}>
+        <Search size={14} style={{ color: "#94a3b8", flexShrink: 0 }} />
+        <input
+          placeholder="Filtrar por cliente..."
+          value={clienteFilter}
+          onChange={(e) => setClienteFilter(e.target.value)}
+          style={{ flex: 1, minHeight: 32, fontSize: 12 }}
+        />
+        {clienteFilter && (
+          <button onClick={() => setClienteFilter("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 0 }}>
+            <X size={14} />
+          </button>
+        )}
+      </div>
       <table>
-        <thead><tr><th>N°</th><th>Cliente</th><th>Monto</th><th>Estado</th></tr></thead>
+        <thead><tr><th>N° Cotización</th><th>Cliente</th><th>Monto total</th><th>Estado</th><th>Fecha</th></tr></thead>
         <tbody>
-          {cotizaciones.slice(0, 10).map((cot) => (
+          {visible.length === 0 && (
+            <tr><td colSpan={5} style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>Sin resultados</td></tr>
+          )}
+          {visible.map((cot) => (
             <tr key={cot.id}>
-              <td>{cot.nro}</td>
+              <td style={{ fontFamily: "monospace", fontSize: 12 }}>{cot.nro}</td>
               <td>{getClienteName(cot.cliente)}</td>
-              <td>{money(cot.monto)}</td>
+              <td>{money(cot.monto)} CLP</td>
               <td>
                 <span className={`tag ${cot.estado === "Aprobada" ? "green" : cot.estado === "En revisión" ? "navy" : "amber"}`}>
                   {cot.estado}
                 </span>
               </td>
+              <td style={{ color: "#64748b", fontSize: 12 }}>{cot.fecha}</td>
             </tr>
           ))}
         </tbody>
