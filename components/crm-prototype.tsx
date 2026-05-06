@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import * as api from "@/lib/api";
-import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm } from "@/lib/api";
+import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, Plantilla, CotizacionItemForm } from "@/lib/api";
 
 type ModuleId = "dashboard" | "leads" | "clientes" | "productos" | "cotizaciones" | "protocolos";
 type LeadStatus = "gestionado" | "no-gestionado";
@@ -227,14 +227,21 @@ export default function CRMPrototype() {
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [editingProducto, setEditingProducto] = useState<Producto | null>(null);
   const [toast, setToast] = useState("");
+  const [catalogo, setCatalogo] = useState<CatalogoItem[]>([]);
+  const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
+  const [cotizClienteId, setCotizClienteId] = useState("");
+  const [cotizNotas, setCotizNotas] = useState("");
+  const [cotizFormaPago, setCotizFormaPago] = useState("50% inicio - 50% entrega");
+  const [cotizItems, setCotizItems] = useState<CotizacionItemForm[]>([]);
+  // legacy single-line state kept for backward compat with pre-fill from lead
   const [quote, setQuote] = useState({
-    cliente: "Clínica Las Condes",
-    email: "felipe@clc.cl",
-    nro: "COT-2026-013",
-    service: "reparacion" as QuoteService,
-    productId: "P-001",
+    cliente: "",
+    email: "",
+    nro: "",
+    service: "" as QuoteService,
+    productId: "",
     valor: "",
-    notas: "Incluye diagnóstico inicial, reparación y pruebas de funcionamiento.",
+    notas: "",
   });
 
   const fecha = useMemo(
@@ -250,12 +257,16 @@ export default function CRMPrototype() {
       api.fetchProductos(),
       api.fetchCotizaciones(),
       api.fetchDashboard(),
-    ]).then(([l, c, p, cot, s]) => {
+      api.fetchCatalogo(),
+      api.fetchPlantillas(),
+    ]).then(([l, c, p, cot, s, cat, plt]) => {
       if (l.length > 0) setLeads(l);
       if (c.length > 0) setClientes(c);
       if (p.length > 0) setProductos(p);
       if (cot.length > 0) setCotizaciones(cot);
       if (s) setStats(s);
+      if (cat.length > 0) setCatalogo(cat);
+      if (plt.length > 0) setPlantillas(plt);
       setIsLoading(false);
     });
   }, [loggedIn]);
@@ -268,8 +279,6 @@ export default function CRMPrototype() {
   const visibleLeads = leadFilter === "todos" ? leads : leads.filter((l) => l.estado === leadFilter);
   const filteredClients = clientes.filter((c) => JSON.stringify(c).toLowerCase().includes(clientQuery.toLowerCase()));
   const filteredProducts = productos.filter((p) => JSON.stringify(p).toLowerCase().includes(productQuery.toLowerCase()));
-  const selectedProduct = productos.find((p) => p.id === quote.productId);
-  const computedValue = Number(quote.valor) || getPrice(quote.productId, quote.service, productos);
   const activeTitle = NAV_ITEMS.find((item) => item.id === active)?.label ?? "Dashboard";
 
   function notify(message: string) {
@@ -320,14 +329,8 @@ export default function CRMPrototype() {
       c.nombre.toLowerCase().includes(lead.empresa.toLowerCase()) ||
       lead.empresa.toLowerCase().includes(c.nombre.toLowerCase())
     );
-    const mappedService: QuoteService = SERVICE_MAP[lead.servicio.toLowerCase()] ?? "";
-    setQuote((prev) => ({
-      ...prev,
-      cliente: match?.nombre ?? lead.empresa,
-      email: match?.correo ?? lead.email,
-      notas: lead.equipo ? `Equipo: ${lead.equipo}.` : prev.notas,
-      service: mappedService,
-    }));
+    if (match) setCotizClienteId(match.id);
+    setCotizNotas(lead.equipo ? `Equipo referenciado: ${lead.equipo}.` : "");
     goTo("cotizaciones");
   }
 
@@ -452,33 +455,112 @@ export default function CRMPrototype() {
 
   // --- Cotización actions ---
   async function handleEmitirCotizacion() {
-    const clienteObj = clientes.find((c) => c.nombre === quote.cliente);
-    const newCot = await api.createCotizacion({
-      cliente_id: clienteObj?.id ?? quote.cliente,
-      numero: quote.nro,
-      subtotal_neto: computedValue,
-      notas_cliente: quote.notas,
-      servicio: quote.service,
-      producto_id: quote.productId,
+    if (!cotizClienteId) { notify("Selecciona un cliente"); return; }
+    if (cotizItems.length === 0) { notify("Agrega al menos un ítem"); return; }
+    const result = await api.createCotizacionMulti({
+      cliente_id: cotizClienteId,
+      notas_cliente: cotizNotas,
+      forma_pago: cotizFormaPago,
+      validez_dias: 30,
+      items: cotizItems,
     });
-    const cot: Cotizacion = newCot ?? {
-      id: String(Date.now()),
-      nro: quote.nro,
-      cliente: quote.cliente,
-      monto: computedValue,
+    const clienteObj = clientes.find((c) => c.id === cotizClienteId);
+    const total = result?.total_con_iva ?? cotizItems.reduce((s, it) => {
+      const sub = Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100));
+      return s + sub;
+    }, 0);
+    const cot: Cotizacion = {
+      id: result?.id ?? String(Date.now()),
+      nro: result?.numero ?? "",
+      cliente: clienteObj?.id ?? cotizClienteId,
+      monto: total,
       estado: "Pendiente",
       fecha: new Date().toISOString().slice(0, 10),
     };
     setCotizaciones((prev) => [cot, ...prev]);
     api.logActivity(
       "cotizacion_emitida",
-      `Cotización ${quote.nro} emitida`,
-      `${quote.cliente} — ${money(computedValue)} CLP`,
+      `Cotización ${cot.nro} emitida`,
+      `${clienteObj?.nombre ?? cotizClienteId} — ${money(total)} CLP`,
       cot.id,
       "cotizacion",
     );
-    notify(`Cotización ${quote.nro} emitida y enviada`);
-    setQuote((prev) => ({ ...prev, nro: incrementNro(prev.nro) }));
+    notify(`Cotización ${cot.nro} emitida`);
+    setCotizItems([]);
+    setCotizNotas("");
+    // open print window with the latest emitted cotizacion
+    if (result) handlePrintDetalle(result);
+  }
+
+  function handlePrintDetalle(det: import("@/lib/api").CotizacionDetalle) {
+    const clienteObj = clientes.find((c) => c.id === det.cliente_id);
+    const fechaStr = new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
+    const rowsHtml = det.items.map((it, i) => {
+      const disc = it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : "";
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${it.descripcion}${disc}</td>
+        <td>${it.cantidad}</td>
+        <td>${money(it.precio_unitario)}</td>
+        <td><strong>${money(it.subtotal)}</strong></td>
+      </tr>
+      ${it.descripcion_larga ? `<tr><td></td><td colspan="4" style="color:#64748b;font-size:12px;white-space:pre-line;padding:4px 12px 12px">${it.descripcion_larga}</td></tr>` : ""}`;
+    }).join("");
+    const win = window.open("", "_blank", "width=920,height=750");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización ${det.numero}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
+      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0f172a}
+      header img{height:40px}
+      header .right{text-align:right}
+      header .right strong{display:block;font-size:20px;color:#0f172a}
+      h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
+      .client-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-bottom:16px}
+      .client-grid dt{color:#64748b;font-size:12px}
+      .client-grid dd{font-size:13px;font-weight:500}
+      table{width:100%;border-collapse:collapse;margin-bottom:20px}
+      thead th{background:#0f172a;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
+      td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+      .totals{width:320px;margin-left:auto;margin-bottom:16px}
+      .totals tr td{padding:5px 12px}
+      .totals tr:last-child{font-weight:700;font-size:15px;border-top:2px solid #0f172a}
+      .conditions{font-size:12px;color:#475569;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:16px}
+      .conditions strong{display:block;margin-bottom:4px}
+      footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
+    </style></head><body>
+    <header>
+      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
+      <div class="right"><strong>${det.numero}</strong><span>${fechaStr}</span><br/><span style="color:#64748b">biomeditech.cl</span></div>
+    </header>
+    <h3>Datos del cliente</h3>
+    <dl class="client-grid">
+      <dt>Empresa</dt><dd>${clienteObj?.nombre ?? det.cliente_id}</dd>
+      <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
+      <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
+      <dt>Dirección</dt><dd>${(clienteObj as any)?.direccion ?? "—"}</dd>
+    </dl>
+    <h3>Detalle del servicio</h3>
+    <table>
+      <thead><tr><th>#</th><th>Descripción</th><th>Cant.</th><th>P. Unitario</th><th>Subtotal</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <table class="totals">
+      <tr><td>Neto</td><td>${money(det.subtotal_neto)} CLP</td></tr>
+      <tr><td>IVA (19%)</td><td>${money(det.iva)} CLP</td></tr>
+      <tr><td>Total</td><td>${money(det.total_con_iva)} CLP</td></tr>
+    </table>
+    <div class="conditions">
+      <strong>Condiciones</strong>
+      Forma de pago: ${det.forma_pago} · Validez: ${det.validez_dias} días · Diagnóstico incluido en servicio aceptado
+    </div>
+    ${det.notas_cliente ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${det.notas_cliente}</em></p>` : ""}
+    <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por ${det.validez_dias} días desde emisión</footer>
+    </body></html>`);
+    win.document.close();
+    win.focus();
+    win.print();
   }
 
   function handlePrintQuote() {
@@ -486,23 +568,10 @@ export default function CRMPrototype() {
     if (!el) return;
     const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización ${quote.nro}</title>
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:system-ui,sans-serif;font-size:14px;color:#1e293b;padding:32px}
-      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #0f172a}
-      header img{height:36px;filter:invert(1) brightness(0)}
-      header div:last-child{text-align:right}
-      header strong{display:block;font-size:18px}
-      h3{margin:20px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#64748b}
-      dl{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;margin-bottom:8px}
-      dt{color:#64748b}
-      table{width:100%;border-collapse:collapse;margin-bottom:16px}
-      th{background:#0f172a;color:#fff;padding:8px 12px;text-align:left;font-size:13px}
-      td{padding:8px 12px;border-bottom:1px solid #e2e8f0}
-      .total{display:flex;justify-content:space-between;padding:12px;background:#f8fafc;border-radius:6px;font-weight:600}
-      .note{margin-top:12px;padding:12px;background:#fff7ed;border-left:3px solid #f97316;font-size:13px}
-      footer{margin-top:32px;padding-top:12px;border-top:1px solid #e2e8f0;text-align:center;font-size:12px;color:#94a3b8}
     </style></head><body>${el.innerHTML}</body></html>`);
     win.document.close();
     win.focus();
@@ -713,11 +782,18 @@ export default function CRMPrototype() {
               <div className="stack">
                 <div className="panel">
                   <div className="panel-title"><ClipboardList size={18} />Nueva cotización</div>
-                  <QuoteForm
-                    quote={quote}
-                    setQuote={setQuote}
+                  <CotizadorForm
                     clientes={clientes}
-                    productos={productos}
+                    catalogo={catalogo}
+                    plantillas={plantillas}
+                    clienteId={cotizClienteId}
+                    setClienteId={setCotizClienteId}
+                    notas={cotizNotas}
+                    setNotas={setCotizNotas}
+                    formaPago={cotizFormaPago}
+                    setFormaPago={setCotizFormaPago}
+                    items={cotizItems}
+                    setItems={setCotizItems}
                     onEmitir={handleEmitirCotizacion}
                   />
                 </div>
@@ -726,12 +802,16 @@ export default function CRMPrototype() {
 
               <div className="stack">
                 <div className="preview-label-row">
-                  <span className="preview-label">Previsualización en tiempo real</span>
-                  <button className="ghost small" onClick={handlePrintQuote}>
-                    <Printer size={15} />Descargar / Imprimir
-                  </button>
+                  <span className="preview-label">Vista previa</span>
                 </div>
-                <QuotePreview quote={quote} selectedProduct={selectedProduct} computedValue={computedValue} fecha={fecha} />
+                <CotizadorPreview
+                  clientes={clientes}
+                  clienteId={cotizClienteId}
+                  items={cotizItems}
+                  notas={cotizNotas}
+                  formaPago={cotizFormaPago}
+                  fecha={fecha}
+                />
                 <HistoryTable cotizaciones={cotizaciones} clientes={clientes} />
               </div>
             </section>
@@ -917,57 +997,153 @@ function RowActions({ notify, quote, onDelete, onEdit }: {
   );
 }
 
-function QuoteForm({
-  quote,
-  setQuote,
-  clientes,
-  productos,
+const CAT_LABELS: Record<string, string> = {
+  VS: "Visita técnica",
+  MP: "Mantención preventiva",
+  MC: "Mantención correctiva",
+  BS: "Bloque servicio",
+  EV: "Evaluación diagnóstica",
+  RS: "Repuesto / Insumo",
+};
+
+function CotizadorForm({
+  clientes, catalogo, plantillas,
+  clienteId, setClienteId,
+  notas, setNotas,
+  formaPago, setFormaPago,
+  items, setItems,
   onEmitir,
 }: {
-  quote: { cliente: string; email: string; nro: string; service: QuoteService; productId: string; valor: string; notas: string };
-  setQuote: React.Dispatch<React.SetStateAction<{ cliente: string; email: string; nro: string; service: QuoteService; productId: string; valor: string; notas: string }>>;
   clientes: Cliente[];
-  productos: Producto[];
+  catalogo: CatalogoItem[];
+  plantillas: Plantilla[];
+  clienteId: string;
+  setClienteId: (v: string) => void;
+  notas: string;
+  setNotas: (v: string) => void;
+  formaPago: string;
+  setFormaPago: (v: string) => void;
+  items: CotizacionItemForm[];
+  setItems: React.Dispatch<React.SetStateAction<CotizacionItemForm[]>>;
   onEmitir: () => void;
 }) {
-  function update<K extends keyof typeof quote>(key: K, value: (typeof quote)[K]) {
-    setQuote((current) => ({ ...current, [key]: value }));
+  const [catFilter, setCatFilter] = useState("");
+  const [search, setSearch] = useState("");
+
+  const filtered = catalogo.filter((c) => {
+    if (catFilter && c.categoria !== catFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return c.codigo.toLowerCase().includes(q) || c.equipo.toLowerCase().includes(q) || c.servicio.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  function addItem(cat: CatalogoItem) {
+    const plantilla = plantillas.find((p) => p.codigo === cat.texto_base_key);
+    setItems((prev) => [
+      ...prev,
+      {
+        producto_id: cat.id,
+        codigo: cat.codigo,
+        descripcion: `${cat.servicio} — ${cat.equipo}`.trim().replace(/\s*—\s*$/, ""),
+        descripcion_larga: plantilla?.descripcion_larga ?? "",
+        tipo_servicio: cat.texto_base_key,
+        precio_unitario: cat.precio_neto,
+        cantidad: 1,
+        descuento_pct: 0,
+      },
+    ]);
   }
 
-  function handleClienteChange(nombre: string) {
-    const found = clientes.find((c) => c.nombre === nombre);
-    update("cliente", nombre);
-    if (found) update("email", found.correo);
+  function updateItem(idx: number, patch: Partial<CotizacionItemForm>) {
+    setItems((prev) => prev.map((it, i) => i === idx ? { ...it, ...patch } : it));
   }
+
+  function removeItem(idx: number) {
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  const subtotal = items.reduce((s, it) => s + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100)), 0);
 
   return (
     <div className="form-stack">
       <label>
-        Cliente
-        <select value={quote.cliente} onChange={(e) => handleClienteChange(e.target.value)}>
-          {clientes.map((c) => <option key={c.id}>{c.nombre}</option>)}
+        Cliente *
+        <select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+          <option value="">— Seleccionar cliente —</option>
+          {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
         </select>
       </label>
-      <label>Correo cliente<input value={quote.email} onChange={(e) => update("email", e.target.value)} maxLength={100} /></label>
-      <label>N° Cotización<input value={quote.nro} onChange={(e) => update("nro", e.target.value)} maxLength={30} /></label>
-      <label>
-        Tipo de servicio
-        <select value={quote.service} onChange={(e) => update("service", e.target.value as QuoteService)}>
-          <option value="">Seleccionar</option>
-          {Object.entries(SERVICE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </select>
+
+      <label>Forma de pago
+        <input value={formaPago} onChange={(e) => setFormaPago(e.target.value)} maxLength={80} />
       </label>
-      <label>
-        Producto / Equipo
-        <select value={quote.productId} onChange={(e) => update("productId", e.target.value)}>
-          {productos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-        </select>
-      </label>
-      <label>Valor del servicio (CLP)<input type="number" value={quote.valor} onChange={(e) => update("valor", e.target.value)} placeholder="Usar precio base automático" /></label>
-      <label>Notas adicionales<textarea rows={3} value={quote.notas} onChange={(e) => update("notas", e.target.value)} maxLength={500} /></label>
+
+      <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}>
+        <p style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Agregar ítems del catálogo</p>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <select style={{ flex: "0 0 160px" }} value={catFilter} onChange={(e) => setCatFilter(e.target.value)}>
+            <option value="">Todas las categorías</option>
+            {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <input placeholder="Buscar equipo o código..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
+        </div>
+        <div style={{ maxHeight: 180, overflowY: "auto", fontSize: 12 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#f8fafc" }}>
+                <th style={{ padding: "4px 8px", textAlign: "left" }}>Código</th>
+                <th style={{ padding: "4px 8px", textAlign: "left" }}>Descripción</th>
+                <th style={{ padding: "4px 8px", textAlign: "right" }}>Precio neto</th>
+                <th style={{ padding: "4px 8px" }} />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.slice(0, 50).map((c) => (
+                <tr key={c.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "4px 8px", color: "#64748b" }}>{c.codigo}</td>
+                  <td style={{ padding: "4px 8px" }}>{c.equipo || c.servicio}</td>
+                  <td style={{ padding: "4px 8px", textAlign: "right" }}>{money(c.precio_neto)}</td>
+                  <td style={{ padding: "4px 8px" }}>
+                    <button
+                      style={{ padding: "2px 8px", fontSize: 11, background: "#0f172a", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}
+                      onClick={() => addItem(c)}
+                    >+ Agregar</button>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && <tr><td colSpan={4} style={{ padding: 8, color: "#94a3b8" }}>Sin resultados</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {items.length > 0 && (
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}>
+          <p style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Ítems de esta cotización</p>
+          {items.map((it, idx) => (
+            <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 70px 70px 70px auto", gap: 6, alignItems: "center", marginBottom: 8, fontSize: 12 }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={it.descripcion}>{it.descripcion}</span>
+              <input type="number" min={1} value={it.cantidad} onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) })} style={{ textAlign: "center" }} placeholder="Cant." />
+              <input type="number" min={0} value={it.precio_unitario} onChange={(e) => updateItem(idx, { precio_unitario: Number(e.target.value) })} placeholder="Precio" />
+              <input type="number" min={0} max={100} value={it.descuento_pct} onChange={(e) => updateItem(idx, { descuento_pct: Number(e.target.value) })} placeholder="% desc." />
+              <button onClick={() => removeItem(idx)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}>
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+          <div style={{ textAlign: "right", fontWeight: 700, fontSize: 14, marginTop: 8 }}>
+            Neto: {money(subtotal)} CLP · IVA: {money(Math.round(subtotal * 0.19))} CLP · <strong>Total: {money(subtotal + Math.round(subtotal * 0.19))} CLP</strong>
+          </div>
+        </div>
+      )}
+
+      <label>Notas / Observaciones<textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} maxLength={500} /></label>
+
       <div className="split-actions">
-        <button className="ghost" onClick={() => update("valor", quote.valor)}><Eye size={16} />Actualizar vista</button>
-        <button className="primary" onClick={onEmitir}><Send size={16} />Emitir y enviar</button>
+        <span style={{ fontSize: 12, color: "#94a3b8" }}>{items.length} ítem(s)</span>
+        <button className="primary" onClick={onEmitir}><Send size={16} />Emitir cotización</button>
       </div>
     </div>
   );
@@ -997,17 +1173,21 @@ function TimelineItem({ state, title, detail }: { state: string; title: string; 
   );
 }
 
-function QuotePreview({
-  quote,
-  selectedProduct,
-  computedValue,
-  fecha,
+function CotizadorPreview({
+  clientes, clienteId, items, notas, formaPago, fecha,
 }: {
-  quote: { cliente: string; email: string; nro: string; service: QuoteService; notas: string };
-  selectedProduct?: Producto;
-  computedValue: number;
+  clientes: Cliente[];
+  clienteId: string;
+  items: CotizacionItemForm[];
+  notas: string;
+  formaPago: string;
   fecha: string;
 }) {
+  const clienteObj = clientes.find((c) => c.id === clienteId);
+  const subtotal = items.reduce((s, it) => s + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100)), 0);
+  const iva = Math.round(subtotal * 0.19);
+  const total = subtotal + iva;
+
   return (
     <article className="quote-preview">
       <div id="quote-preview-content">
@@ -1016,33 +1196,48 @@ function QuotePreview({
             <img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" />
             <p>Reparación y mantención de equipos médicos</p>
           </div>
-          <div><strong>{quote.nro}</strong><span>{fecha}</span><span>biomeditech.cl</span></div>
+          <div><strong>BORRADOR</strong><span>{fecha}</span><span>biomeditech.cl</span></div>
         </header>
         <section>
           <h3>Datos del cliente</h3>
           <dl className="quote-data">
-            <dt>Empresa</dt><dd>{quote.cliente || "—"}</dd>
-            <dt>Correo</dt><dd>{quote.email || "—"}</dd>
-            <dt>Tipo servicio</dt><dd>{quote.service ? SERVICE_LABELS[quote.service] : "—"}</dd>
+            <dt>Empresa</dt><dd>{clienteObj?.nombre ?? "—"}</dd>
+            <dt>RUT</dt><dd>{clienteObj?.rut ?? "—"}</dd>
+            <dt>Contacto</dt><dd>{clienteObj?.contacto ?? "—"}</dd>
           </dl>
           <h3>Detalle del servicio</h3>
           <table className="quote-table">
-            <thead><tr><th>Producto / Equipo</th><th>Servicio</th><th>Valor</th></tr></thead>
+            <thead><tr><th>#</th><th>Descripción</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead>
             <tbody>
-              <tr>
-                <td>{selectedProduct?.nombre ?? ""}</td>
-                <td>{quote.service ? SERVICE_LABELS[quote.service] : "—"}</td>
-                <td>{money(computedValue)}</td>
-              </tr>
+              {items.length === 0 && (
+                <tr><td colSpan={5} style={{ textAlign: "center", color: "#94a3b8", padding: "16px" }}>Agrega ítems desde el catálogo</td></tr>
+              )}
+              {items.map((it, i) => {
+                const sub = Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100));
+                return (
+                  <tr key={i}>
+                    <td>{i + 1}</td>
+                    <td>{it.descripcion}{it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : ""}</td>
+                    <td>{it.cantidad}</td>
+                    <td>{money(it.precio_unitario)}</td>
+                    <td><strong>{money(sub)}</strong></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-          <div className="total-bar"><span>Total estimado</span><strong>{money(computedValue)} CLP</strong></div>
-          {quote.notas ? <p className="quote-note">{quote.notas}</p> : null}
+          {items.length > 0 && (
+            <div className="total-bar">
+              <span>Neto {money(subtotal)} · IVA {money(iva)}</span>
+              <strong>Total {money(total)} CLP</strong>
+            </div>
+          )}
+          {notas ? <p className="quote-note">{notas}</p> : null}
           <h3>Condiciones</h3>
           <dl className="quote-data">
-            <dt>Forma de pago</dt><dd>50% inicio - 50% entrega</dd>
+            <dt>Forma de pago</dt><dd>{formaPago}</dd>
             <dt>Validez</dt><dd>30 días desde emisión</dd>
-            <dt>Diagnóstico</dt><dd>Gratis si acepta el presupuesto</dd>
+            <dt>Diagnóstico</dt><dd>Incluido si acepta el presupuesto</dd>
           </dl>
         </section>
         <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 30 días</footer>

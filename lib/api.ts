@@ -79,6 +79,71 @@ export interface Cotizacion {
   fecha: string;
 }
 
+export interface CotizacionDetalle {
+  id: string;
+  numero: string;
+  cliente_id: string;
+  estado: string;
+  subtotal_neto: number;
+  iva: number;
+  total_con_iva: number;
+  moneda: string;
+  forma_pago: string;
+  validez_dias: number;
+  notas_cliente: string;
+  emitida_en: string;
+  items: CotizacionItem[];
+}
+
+export interface CotizacionItem {
+  id: string;
+  linea_numero: number;
+  descripcion: string;
+  descripcion_larga: string;
+  tipo_servicio: string;
+  precio_unitario: number;
+  cantidad: number;
+  descuento_pct: number;
+  subtotal: number;
+}
+
+export interface CatalogoItem {
+  id: string;
+  codigo: string;
+  categoria: string;
+  servicio: string;
+  equipo: string;
+  unidad: string;
+  precio_neto: number;
+  grupo: string;
+  texto_base_key: string;
+}
+
+export interface Plantilla {
+  id: string;
+  codigo: string;
+  descripcion_larga: string;
+}
+
+export type CotizacionItemForm = {
+  producto_id: string;
+  codigo: string;
+  descripcion: string;
+  descripcion_larga: string;
+  tipo_servicio: string;
+  precio_unitario: number;
+  cantidad: number;
+  descuento_pct: number;
+};
+
+export type CotizacionForm = {
+  cliente_id: string;
+  notas_cliente: string;
+  forma_pago: string;
+  validez_dias: number;
+  items: CotizacionItemForm[];
+};
+
 export interface DashboardStats {
   leadsPendientes: number;
   clientesActivos: number;
@@ -418,6 +483,121 @@ export async function logActivity(
     referencia_id: refId,
     referencia_tipo: refTipo,
   });
+}
+
+export async function fetchCatalogo(): Promise<CatalogoItem[]> {
+  const r = await apiGet<{ data: unknown[] }>("/api/catalogo?limit=200");
+  return (r?.data ?? []).map((v) => {
+    const raw = v as Record<string, unknown>;
+    return {
+      id: str(raw.id),
+      codigo: str(raw.codigo),
+      categoria: str(raw.categoria),
+      servicio: str(raw.servicio),
+      equipo: str(raw.equipo),
+      unidad: str(raw.unidad),
+      precio_neto: num(raw.precio_neto),
+      grupo: str(raw.grupo),
+      texto_base_key: str(raw.texto_base_key),
+    };
+  });
+}
+
+export async function fetchPlantillas(): Promise<Plantilla[]> {
+  const r = await apiGet<{ data: unknown[] }>("/api/plantillas?limit=50");
+  return (r?.data ?? []).map((v) => {
+    const raw = v as Record<string, unknown>;
+    return {
+      id: str(raw.id),
+      codigo: str(raw.codigo),
+      descripcion_larga: str(raw.descripcion_larga),
+    };
+  });
+}
+
+export async function fetchCotizacionDetalle(id: string): Promise<CotizacionDetalle | null> {
+  const r = await apiGet<{ data: unknown }>(`/api/cotizaciones/${id}`);
+  if (!r?.data) return null;
+  const raw = r.data as Record<string, unknown>;
+  const items = ((raw.items as unknown[]) ?? []).map((it) => {
+    const i = it as Record<string, unknown>;
+    return {
+      id: str(i.id),
+      linea_numero: num(i.linea_numero),
+      descripcion: str(i.descripcion),
+      descripcion_larga: str(i.descripcion_larga),
+      tipo_servicio: str(i.tipo_servicio),
+      precio_unitario: num(i.precio_unitario),
+      cantidad: num(i.cantidad) || 1,
+      descuento_pct: num(i.descuento_pct),
+      subtotal: num(i.subtotal),
+    };
+  });
+  return {
+    id: str(raw.id),
+    numero: str(raw.numero),
+    cliente_id: str(raw.cliente_id),
+    estado: str(raw.estado),
+    subtotal_neto: num(raw.subtotal_neto),
+    iva: num(raw.iva),
+    total_con_iva: num(raw.total_con_iva),
+    moneda: str(raw.moneda) || "CLP",
+    forma_pago: str(raw.forma_pago),
+    validez_dias: num(raw.validez_dias) || 30,
+    notas_cliente: str(raw.notas_cliente),
+    emitida_en: str(raw.emitida_en),
+    items,
+  };
+}
+
+export async function createCotizacionMulti(form: CotizacionForm): Promise<CotizacionDetalle | null> {
+  const r = await apiMutate<{ data: unknown }>("POST", "/api/cotizaciones", {
+    cliente_id: form.cliente_id,
+    notas_cliente: form.notas_cliente,
+    forma_pago: form.forma_pago,
+    validez_dias: form.validez_dias,
+    items: form.items.map((it) => ({
+      producto_id: it.producto_id,
+      codigo: it.codigo,
+      descripcion: it.descripcion,
+      descripcion_larga: it.descripcion_larga,
+      tipo_servicio: it.tipo_servicio,
+      precio_unitario: it.precio_unitario,
+      cantidad: it.cantidad,
+      descuento_pct: it.descuento_pct,
+    })),
+  });
+  if (!r?.data) return null;
+  const raw = r.data as Record<string, unknown>;
+  const items = ((raw.items as unknown[]) ?? []).map((it) => {
+    const i = it as Record<string, unknown>;
+    return {
+      id: str(i.id),
+      linea_numero: num(i.linea_numero),
+      descripcion: str(i.descripcion),
+      descripcion_larga: str(i.descripcion_larga),
+      tipo_servicio: str(i.tipo_servicio),
+      precio_unitario: num(i.precio_unitario),
+      cantidad: num(i.cantidad) || 1,
+      descuento_pct: num(i.descuento_pct),
+      subtotal: num(i.subtotal),
+    };
+  });
+  return {
+    id: str(raw.id),
+    numero: str(raw.numero),
+    cliente_id: str(raw.cliente_id),
+    estado: str(raw.estado),
+    subtotal_neto: num(raw.subtotal_neto),
+    iva: num(raw.iva),
+    total_con_iva: num(raw.total_con_iva),
+    moneda: str(raw.moneda) || "CLP",
+    forma_pago: str(raw.forma_pago),
+    validez_dias: num(raw.validez_dias) || 30,
+    notas_cliente: str(raw.notas_cliente),
+    emitida_en: str(raw.emitida_en),
+    items,
+  };
 }
 
 export async function fetchDashboard(): Promise<DashboardStats | null> {
