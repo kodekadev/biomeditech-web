@@ -138,6 +138,10 @@ function formatRut(raw: string): string {
   return `${body}-${dv}`;
 }
 
+function normalizeRut(rut: string): string {
+  return rut.replace(/[.\-\s]/g, "").toLowerCase();
+}
+
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -151,7 +155,7 @@ function fmtActivityDate(raw: unknown): string {
   return isNaN(d.getTime()) ? "" : d.toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" });
 }
 
-const LEAD_FORM_INIT: LeadForm = { nombre: "", empresa: "", tel: "+56 ", email: "", canal: "wsp", servicio: "MP", equipo: "" };
+const LEAD_FORM_INIT: LeadForm = { rut: "", nombre: "", empresa: "", tel: "+56 ", email: "", canal: "wsp", servicio: "", equipo: "" };
 const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", tel: "+56 ", correo: "", rubro: "Médico", estado: "activo", direccion: "", ciudad: "", comuna: "" };
 const CATALOGO_FORM_INIT: CatalogoItemForm = { codigo: "", categoria: "MP", servicio: "", equipo: "", unidad: "Servicio", precio_neto: "", texto_base_key: "", descripcion_larga: "" };
 const PRODUCTO_FORM_INIT: ProductoForm = { nombre: "", cat: "Equipos médicos", marca: "", diag: "", rep: "", mant: "", inst: "" };
@@ -232,6 +236,7 @@ export default function CRMPrototype() {
   const [isLoading, setIsLoading] = useState(true);
   const [leadFilter, setLeadFilter] = useState<"todos" | LeadStatus>("todos");
   const [clientQuery, setClientQuery] = useState("");
+  const [clientSearchField, setClientSearchField] = useState<"todos" | "rut" | "nombre" | "contacto" | "correo">("todos");
   const [productQuery, setProductQuery] = useState("");
   const [modal, setModal] = useState<"lead" | "cliente" | "producto" | "cotizacion" | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -292,7 +297,16 @@ export default function CRMPrototype() {
 
   const noGestionados = leads.filter((l) => l.estado === "no-gestionado");
   const visibleLeads = leadFilter === "todos" ? leads : leads.filter((l) => l.estado === leadFilter);
-  const filteredClients = clientes.filter((c) => JSON.stringify(c).toLowerCase().includes(clientQuery.toLowerCase()));
+  const filteredClients = clientes.filter((c) => {
+    if (!clientQuery) return true;
+    const q = clientQuery.toLowerCase();
+    const qNorm = normalizeRut(clientQuery);
+    if (clientSearchField === "rut") return normalizeRut(c.rut).includes(qNorm);
+    if (clientSearchField === "nombre") return c.nombre.toLowerCase().includes(q);
+    if (clientSearchField === "contacto") return c.contacto.toLowerCase().includes(q);
+    if (clientSearchField === "correo") return c.correo.toLowerCase().includes(q);
+    return normalizeRut(c.rut).includes(qNorm) || c.nombre.toLowerCase().includes(q) || c.contacto.toLowerCase().includes(q) || c.correo.toLowerCase().includes(q) || (c.ciudad ?? "").toLowerCase().includes(q);
+  });
   const filteredProducts = productos.filter((p) => JSON.stringify(p).toLowerCase().includes(productQuery.toLowerCase()));
   const activeTitle = NAV_ITEMS.find((item) => item.id === active)?.label ?? "Dashboard";
 
@@ -392,7 +406,45 @@ export default function CRMPrototype() {
       setLeadPreItems((prev) => ({ ...prev, [lead.id]: items }));
     }
     api.logActivity("nuevo_lead", "Nuevo lead registrado", `${form.nombre} (${form.empresa}) — ${form.servicio}`, lead.id, "lead");
-    notify("Lead agregado correctamente");
+
+    // Auto-create client if not yet registered (leads come with client data from Google Ads)
+    const rutNorm = normalizeRut(form.rut ?? "");
+    const clienteExiste = clientes.some((c) =>
+      (rutNorm.length > 4 && normalizeRut(c.rut) === rutNorm) ||
+      c.nombre.toLowerCase().trim() === (form.empresa || form.nombre).toLowerCase().trim()
+    );
+    if (!clienteExiste && (form.rut || form.empresa)) {
+      const clienteForm: ClienteForm = {
+        rut: form.rut ?? "",
+        nombre: form.empresa || form.nombre,
+        contacto: form.nombre,
+        tel: form.tel,
+        correo: form.email,
+        rubro: "Médico",
+        estado: "activo",
+        direccion: "",
+        ciudad: "",
+        comuna: "",
+      };
+      const newCliente = await api.createCliente(clienteForm);
+      const cliente: Cliente = newCliente ?? {
+        id: `C-${String(Date.now())}`,
+        rut: clienteForm.rut,
+        nombre: clienteForm.nombre,
+        contacto: clienteForm.contacto,
+        correo: clienteForm.correo,
+        rubro: clienteForm.rubro,
+        estado: clienteForm.estado,
+        telefono: clienteForm.tel,
+        direccion: "",
+        ciudad: "",
+        comuna: "",
+      };
+      setClientes((prev) => [cliente, ...prev]);
+      notify("Lead registrado y cliente creado automáticamente");
+    } else {
+      notify("Lead agregado correctamente");
+    }
     closeModal();
   }
 
@@ -895,8 +947,21 @@ export default function CRMPrototype() {
               title="Clientes"
               search={clientQuery}
               setSearch={setClientQuery}
-              searchPlaceholder="Buscar por ID, RUT, nombre, contacto o correo..."
+              searchPlaceholder="Buscar clientes..."
               onAdd={() => setModal("cliente")}
+              filterEl={
+                <select
+                  value={clientSearchField}
+                  onChange={(e) => setClientSearchField(e.target.value as typeof clientSearchField)}
+                  style={{ minHeight: 38, fontSize: 13, padding: "0 10px", borderRadius: 8, border: "1px solid var(--border)", background: "#fff" }}
+                >
+                  <option value="todos">Todos los campos</option>
+                  <option value="rut">RUT</option>
+                  <option value="nombre">Empresa</option>
+                  <option value="contacto">Contacto</option>
+                  <option value="correo">Correo</option>
+                </select>
+              }
             >
               <table>
                 <thead>
@@ -1006,7 +1071,30 @@ export default function CRMPrototype() {
               </div>
 
               <div className="stack">
-                <div className="preview-label-row">
+                {noGestionados.length > 0 && (
+                <div className="panel">
+                  <div className="panel-head">
+                    <div className="panel-title"><Activity size={18} />Leads por cotizar</div>
+                    <span className="tag amber">{noGestionados.length} pendiente{noGestionados.length !== 1 ? "s" : ""}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 4 }}>
+                    {noGestionados.slice(0, 6).map((lead) => (
+                      <div key={lead.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8fafc", borderRadius: 6, gap: 12 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: "#0f2340", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.empresa || lead.nombre}</div>
+                          <div style={{ fontSize: 12, color: "#64748b" }}>
+                            {serviceLabel(lead.servicio)}{lead.equipo ? ` · ${lead.equipo}` : ""}
+                          </div>
+                        </div>
+                        <button className="primary small" style={{ flexShrink: 0 }} onClick={() => handleCotizarLead(lead)}>
+                          <ClipboardList size={13} />Cotizar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="preview-label-row">
                   <span className="preview-label">Vista previa</span>
                 </div>
                 <CotizadorPreview
@@ -1162,7 +1250,7 @@ function ActivityRow({ icon: Icon, text, time, tone }: { icon: React.ElementType
   );
 }
 
-function DataModule({ children, search, setSearch, searchPlaceholder, onAdd, hideHeader }: {
+function DataModule({ children, search, setSearch, searchPlaceholder, onAdd, hideHeader, filterEl }: {
   children: React.ReactNode;
   search: string;
   setSearch: (value: string) => void;
@@ -1170,6 +1258,7 @@ function DataModule({ children, search, setSearch, searchPlaceholder, onAdd, hid
   onAdd: () => void;
   title: string;
   hideHeader?: boolean;
+  filterEl?: React.ReactNode;
 }) {
   return (
     <section className="stack">
@@ -1179,6 +1268,7 @@ function DataModule({ children, search, setSearch, searchPlaceholder, onAdd, hid
             <Search size={17} />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={searchPlaceholder} />
           </label>
+          {filterEl}
           <button className="primary" onClick={onAdd}><Plus size={16} />Agregar</button>
         </div>
       )}
@@ -1518,6 +1608,7 @@ function CatalogoModule({
   const [catModal, setCatModal] = useState(false);
   const [catForm, setCatForm] = useState<CatalogoItemForm>(CATALOGO_FORM_INIT);
   const [saving, setSaving] = useState(false);
+  const [catPrices, setCatPrices] = useState<Record<string, string>>({});
 
   const catLabels: Record<string, string> = {
     VS: "Visita técnica", MP: "Mant. preventiva", MC: "Mant. correctiva",
@@ -1543,9 +1634,9 @@ function CatalogoModule({
   }
 
   function openAdd() {
-    const defaultCat = "MP";
     setEditingCat(null);
-    setCatForm({ ...CATALOGO_FORM_INIT, codigo: nextCodeForCat(defaultCat) });
+    setCatForm({ ...CATALOGO_FORM_INIT, categoria: "", codigo: "" });
+    setCatPrices({});
     setCatModal(true);
   }
 
@@ -1563,16 +1654,29 @@ function CatalogoModule({
   }
 
   async function handleSaveCat() {
-    if (!catForm.servicio.trim() && !catForm.equipo.trim()) { notify("Ingresa servicio o equipo"); return; }
+    if (!catForm.equipo.trim()) { notify("Ingresa el nombre del equipo o servicio"); return; }
     setSaving(true);
     if (editingCat) {
       const updated = await api.updateCatalogoItem(editingCat.id, catForm);
       if (updated) setCatalogo((prev) => prev.map((c) => c.id === editingCat.id ? updated : c));
       notify("Ítem actualizado");
     } else {
-      const created = await api.createCatalogoItem(catForm);
-      if (created) setCatalogo((prev) => [...prev, created]);
-      notify("Ítem agregado al catálogo");
+      const selectedCats = Object.keys(catPrices);
+      if (selectedCats.length === 0) { notify("Selecciona al menos una categoría"); setSaving(false); return; }
+      let count = 0;
+      for (const cat of selectedCats) {
+        const itemForm = {
+          ...catForm,
+          categoria: cat,
+          codigo: nextCodeForCat(cat),
+          precio_neto: catPrices[cat] || "0",
+          servicio: catLabels[cat] ?? cat,
+          texto_base_key: cat,
+        };
+        const created = await api.createCatalogoItem(itemForm);
+        if (created) { setCatalogo((prev) => [...prev, created]); count++; }
+      }
+      notify(`${count} ítem${count !== 1 ? "s" : ""} agregado${count !== 1 ? "s" : ""} al catálogo`);
     }
     setSaving(false);
     setCatModal(false);
@@ -1605,21 +1709,54 @@ function CatalogoModule({
               <button onClick={() => setCatModal(false)} aria-label="Cerrar"><X size={17} /></button>
             </div>
             <div className="modal-grid">
-              <label>
-                Categoría
-                <select value={catForm.categoria} onChange={(e) => {
-                  const newCat = e.target.value;
-                  setCatForm((f) => ({ ...f, categoria: newCat, codigo: editingCat ? f.codigo : nextCodeForCat(newCat) }));
-                }}>
-                  {Object.entries(catLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </label>
-              <label>Código<input value={catForm.codigo} onChange={(e) => setCatForm((f) => ({ ...f, codigo: e.target.value }))} placeholder="MP-001" maxLength={30} /></label>
-              <label>Servicio<input value={catForm.servicio} onChange={(e) => setCatForm((f) => ({ ...f, servicio: e.target.value }))} placeholder="Mantención preventiva" maxLength={120} /></label>
-              <label>Equipo<input value={catForm.equipo} onChange={(e) => setCatForm((f) => ({ ...f, equipo: e.target.value }))} placeholder="Monitor de signos vitales" maxLength={120} /></label>
-              <label>Unidad<input value={catForm.unidad} onChange={(e) => setCatForm((f) => ({ ...f, unidad: e.target.value }))} placeholder="Servicio" maxLength={40} /></label>
-              <label>Precio neto (CLP)<input type="number" min={0} value={catForm.precio_neto} onChange={(e) => setCatForm((f) => ({ ...f, precio_neto: e.target.value }))} placeholder="85000" /></label>
-              <label>Clave plantilla texto<input value={catForm.texto_base_key} onChange={(e) => setCatForm((f) => ({ ...f, texto_base_key: e.target.value }))} placeholder="MP_GENERICO" maxLength={60} /></label>
+              {editingCat ? (
+                <>
+                  <label>
+                    Categoría
+                    <select value={catForm.categoria} onChange={(e) => setCatForm((f) => ({ ...f, categoria: e.target.value }))}>
+                      {Object.entries(catLabels).map(([k, v]) => <option key={k} value={k}>{k} — {v}</option>)}
+                    </select>
+                  </label>
+                  <label>Código<input value={catForm.codigo} onChange={(e) => setCatForm((f) => ({ ...f, codigo: e.target.value }))} placeholder="MP-001" maxLength={30} /></label>
+                  <label>Precio neto (CLP)<input type="number" min={0} value={catForm.precio_neto} onChange={(e) => setCatForm((f) => ({ ...f, precio_neto: e.target.value }))} placeholder="85000" /></label>
+                  <label>Unidad<input value={catForm.unidad} onChange={(e) => setCatForm((f) => ({ ...f, unidad: e.target.value }))} placeholder="Servicio" maxLength={40} /></label>
+                </>
+              ) : (
+                <label className="wide">
+                  Categorías — selecciona una o más *
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6 }}>
+                    {Object.entries(catLabels).map(([k, v]) => (
+                      <label key={k} style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={k in catPrices}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setCatPrices((prev) => ({ ...prev, [k]: "" }));
+                            } else {
+                              setCatPrices((prev) => { const n = { ...prev }; delete n[k]; return n; });
+                            }
+                          }}
+                          style={{ minHeight: 0, height: 15, width: 15, padding: 0, margin: 0 }}
+                        />
+                        {k} — {v}
+                      </label>
+                    ))}
+                  </div>
+                </label>
+              )}
+              <label className="wide">Equipo / descripción<input value={catForm.equipo} onChange={(e) => setCatForm((f) => ({ ...f, equipo: e.target.value }))} placeholder="Monitor de signos vitales" maxLength={120} /></label>
+              {!editingCat && (
+                <label>Unidad <span style={{ fontWeight: 400, color: "#94a3b8" }}>(aplica a todas)</span>
+                  <input value={catForm.unidad} onChange={(e) => setCatForm((f) => ({ ...f, unidad: e.target.value }))} placeholder="Servicio" maxLength={40} />
+                </label>
+              )}
+              {!editingCat && Object.keys(catPrices).map((cat) => (
+                <label key={cat}>
+                  Precio {cat} — {catLabels[cat]} (CLP)
+                  <input type="number" min={0} value={catPrices[cat]} onChange={(e) => setCatPrices((prev) => ({ ...prev, [cat]: e.target.value }))} placeholder="85000" />
+                </label>
+              ))}
               <label className="wide">Descripción larga<textarea rows={3} value={catForm.descripcion_larga} onChange={(e) => setCatForm((f) => ({ ...f, descripcion_larga: e.target.value }))} maxLength={800} /></label>
             </div>
             <div className="modal-actions">
@@ -1839,7 +1976,7 @@ function Modal({
 
   useEffect(() => {
     if (kind === "lead" && editingLead) {
-      setLeadForm({ nombre: editingLead.nombre, empresa: editingLead.empresa, tel: editingLead.tel, email: editingLead.email, canal: editingLead.canal, servicio: editingLead.servicio, equipo: editingLead.equipo });
+      setLeadForm({ rut: "", nombre: editingLead.nombre, empresa: editingLead.empresa, tel: editingLead.tel, email: editingLead.email, canal: editingLead.canal, servicio: editingLead.servicio, equipo: editingLead.equipo });
       setLeadItems(leadPreItems[editingLead.id] ?? []);
     } else if (kind === "cliente" && editingCliente) {
       setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, tel: editingCliente.telefono || "+56 ", correo: editingCliente.correo, rubro: editingCliente.rubro, estado: editingCliente.estado || "activo", direccion: editingCliente.direccion || "", ciudad: editingCliente.ciudad || "", comuna: editingCliente.comuna || "" });
@@ -1926,9 +2063,13 @@ function Modal({
         <div className="modal-grid">
           {kind === "lead" && (
             <>
-              <label>Nombre contacto<input value={leadForm.nombre} onChange={(e) => setLeadForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: María González" maxLength={100} /></label>
+              <label>RUT empresa / cliente
+                <input value={leadForm.rut ?? ""} onChange={(e) => setLeadForm((f) => ({ ...f, rut: formatRut(e.target.value) }))} placeholder="76.XXX.XXX-X" maxLength={15} />
+              </label>
               <label>Empresa<input value={leadForm.empresa} onChange={(e) => setLeadForm((f) => ({ ...f, empresa: e.target.value }))} placeholder="Ej: Clínica Santiago" maxLength={100} /></label>
+              <label>Nombre contacto<input value={leadForm.nombre} onChange={(e) => setLeadForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: María González" maxLength={100} /></label>
               <label>Teléfono<input value={leadForm.tel} onChange={(e) => setLeadForm((f) => ({ ...f, tel: e.target.value }))} placeholder="+56 9 XXXX XXXX" maxLength={20} /></label>
+              <label>Correo<input type="email" value={leadForm.email} onChange={(e) => setLeadForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@empresa.cl" maxLength={100} /></label>
               <label>
                 Canal
                 <select value={leadForm.canal} onChange={(e) => setLeadForm((f) => ({ ...f, canal: e.target.value }))}>
@@ -1936,14 +2077,14 @@ function Modal({
                   <option value="email">Correo</option>
                 </select>
               </label>
-              <label>Correo<input type="email" value={leadForm.email} onChange={(e) => setLeadForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@empresa.cl" maxLength={100} /></label>
               <label>
-                Servicio
+                Servicio de interés
                 <select value={leadForm.servicio} onChange={(e) => {
                   const value = e.target.value;
                   setLeadForm((f) => ({ ...f, servicio: value }));
-                  if (CAT_LABELS[value]) setLeadCatFilter(value);
+                  setLeadCatFilter(value);
                 }}>
+                  <option value="">— Todos los servicios —</option>
                   {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{k} - {v}</option>)}
                 </select>
               </label>
@@ -1956,75 +2097,55 @@ function Modal({
                     setLeadForm((f) => ({ ...f, equipo: v }));
                     setLeadCatSearch(v);
                   }}
-                  placeholder="Ej: Monitor de signos vitales"
+                  placeholder="Ej: Monitor de signos vitales — escribe para buscar en catálogo"
                   maxLength={200}
                 />
               </label>
-              <div className="wide" style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12, marginTop: 4 }}>
-                <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#0f2340" }}>Productos / servicios a cotizar</p>
-                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                  <select style={{ flex: "0 0 150px", fontSize: 12 }} value={effectiveLeadCat} onChange={(e) => setLeadCatFilter(e.target.value)}>
-                    <option value="">Todas las categorías</option>
-                    {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{k} - {v}</option>)}
-                  </select>
-                  <input
-                    placeholder="Buscar equipo o código..."
-                    value={leadCatSearch}
-                    onChange={(e) => {
-                      setLeadCatSearch(e.target.value);
-                      if (!leadForm.equipo) setLeadForm((f) => ({ ...f, equipo: e.target.value }));
-                    }}
-                    style={{ flex: 1, fontSize: 12 }}
-                  />
+              {(leadCatalogResults.length > 0 || canCreateLeadCatalogItem || leadItems.length > 0) && (
+                <div className="wide" style={{ border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+                  <div style={{ maxHeight: 160, overflowY: "auto", fontSize: 12 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <tbody>
+                        {leadCatalogResults.slice(0, 40).map((c) => (
+                          <tr key={c.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                            <td style={{ padding: "4px 8px", color: "#64748b", fontSize: 11, width: 70 }}>{c.codigo}</td>
+                            <td style={{ padding: "4px 8px" }}>{c.equipo || c.servicio}</td>
+                            <td style={{ padding: "4px 8px", textAlign: "right", color: "#64748b" }}>{money(c.precio_neto)}</td>
+                            <td style={{ padding: "4px 8px" }}>
+                              <button
+                                style={{ padding: "2px 8px", fontSize: 11, background: leadItems.some(i => i.producto_id === c.id) ? "#00a86b" : "#0f172a", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
+                                onClick={() => {
+                                  if (leadItems.some(i => i.producto_id === c.id)) {
+                                    setLeadItems((prev) => prev.filter(i => i.producto_id !== c.id));
+                                  } else {
+                                    const plantilla = plantillas.find((p) => p.codigo === c.texto_base_key);
+                                    setLeadItems((prev) => [...prev, { producto_id: c.id, codigo: c.codigo, descripcion: `${c.servicio} — ${c.equipo}`.trim().replace(/\s*—\s*$/, ""), descripcion_larga: plantilla?.descripcion_larga ?? "", tipo_servicio: c.texto_base_key, precio_unitario: c.precio_neto, cantidad: 1, descuento_pct: 0 }]);
+                                  }
+                                }}
+                              >{leadItems.some(i => i.producto_id === c.id) ? "✓ Quitar" : "+ Agregar"}</button>
+                            </td>
+                          </tr>
+                        ))}
+                        {leadCatalogResults.length === 0 && !canCreateLeadCatalogItem && (
+                          <tr><td colSpan={4} style={{ padding: 8, color: "#94a3b8" }}>Sin resultados — escribe para buscar</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {canCreateLeadCatalogItem && (
+                    <div style={{ padding: "6px 8px", borderTop: "1px solid #f1f5f9", background: "#f8fafc" }}>
+                      <button className="ghost small" onClick={handleCreateLeadCatalogItem} style={{ width: "100%" }}>
+                        <Plus size={14} />Crear &quot;{leadCatSearch.trim()}&quot; como nuevo ítem de catálogo
+                      </button>
+                    </div>
+                  )}
+                  {leadItems.length > 0 && (
+                    <p style={{ padding: "6px 10px", fontSize: 12, color: "#00a86b", fontWeight: 600, borderTop: "1px solid #e2e8f0", margin: 0 }}>
+                      {leadItems.length} ítem{leadItems.length > 1 ? "s" : ""} seleccionado{leadItems.length > 1 ? "s" : ""} — se pre-cargarán al cotizar
+                    </p>
+                  )}
                 </div>
-                <div style={{ maxHeight: 140, overflowY: "auto", fontSize: 12 }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ background: "#f8fafc" }}>
-                        <th style={{ padding: "3px 6px", textAlign: "left", fontWeight: 600, color: "#64748b" }}>Código</th>
-                        <th style={{ padding: "3px 6px", textAlign: "left", fontWeight: 600, color: "#64748b" }}>Equipo / Servicio</th>
-                        <th style={{ padding: "3px 6px", textAlign: "right", fontWeight: 600, color: "#64748b" }}>Precio</th>
-                        <th style={{ padding: "3px 6px" }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leadCatalogResults.slice(0, 40).map((c) => (
-                        <tr key={c.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                          <td style={{ padding: "3px 6px", color: "#64748b" }}>{c.codigo}</td>
-                          <td style={{ padding: "3px 6px" }}>{c.equipo || c.servicio}</td>
-                          <td style={{ padding: "3px 6px", textAlign: "right" }}>{money(c.precio_neto)}</td>
-                          <td style={{ padding: "3px 6px" }}>
-                            <button
-                              style={{ padding: "2px 8px", fontSize: 11, background: leadItems.some(i => i.producto_id === c.id) ? "#00a86b" : "#0f172a", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}
-                              onClick={() => {
-                                if (leadItems.some(i => i.producto_id === c.id)) {
-                                  setLeadItems((prev) => prev.filter(i => i.producto_id !== c.id));
-                                } else {
-                                  const plantilla = plantillas.find((p) => p.codigo === c.texto_base_key);
-                                  setLeadItems((prev) => [...prev, { producto_id: c.id, codigo: c.codigo, descripcion: `${c.servicio} — ${c.equipo}`.trim().replace(/\s*—\s*$/, ""), descripcion_larga: plantilla?.descripcion_larga ?? "", tipo_servicio: c.texto_base_key, precio_unitario: c.precio_neto, cantidad: 1, descuento_pct: 0 }]);
-                                }
-                              }}
-                            >{leadItems.some(i => i.producto_id === c.id) ? "✓ Agregado" : "+ Agregar"}</button>
-                          </td>
-                        </tr>
-                      ))}
-                      {leadCatalogResults.length === 0 && (
-                        <tr><td colSpan={4} style={{ padding: 8, color: "#94a3b8" }}>Sin resultados para esta búsqueda</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                {canCreateLeadCatalogItem && (
-                  <button className="ghost small" onClick={handleCreateLeadCatalogItem} style={{ marginTop: 8 }}>
-                    <Plus size={14} />Crear producto &quot;{leadCatSearch.trim()}&quot;
-                  </button>
-                )}
-                {leadItems.length > 0 && (
-                  <p style={{ marginTop: 8, fontSize: 12, color: "#00a86b", fontWeight: 600 }}>
-                    {leadItems.length} servicio{leadItems.length > 1 ? "s" : ""} seleccionado{leadItems.length > 1 ? "s" : ""} — se pre-cargarán al cotizar
-                  </p>
-                )}
-              </div>
+              )}
             </>
           )}
           {kind === "cliente" && (

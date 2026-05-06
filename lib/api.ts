@@ -161,6 +161,7 @@ export interface DashboardStats {
 // --- Form types ---
 
 export type LeadForm = {
+  rut?: string;
   nombre: string;
   empresa: string;
   tel: string;
@@ -346,6 +347,7 @@ export async function createLead(form: LeadForm): Promise<Lead | null> {
     estado: "nuevo",
     servicio_interes: form.servicio,
     notas: form.equipo,
+    rut: form.rut,
   });
   return r?.data ? mapLead(r.data) : null;
 }
