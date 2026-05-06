@@ -12,7 +12,6 @@ import {
   Eye,
   FileArchive,
   FileText,
-  Filter,
   LayoutDashboard,
   Lock,
   Mail,
@@ -229,6 +228,8 @@ export default function CRMPrototype() {
   const [editingProducto, setEditingProducto] = useState<Producto | null>(null);
   const [editingCatalogo, setEditingCatalogo] = useState<CatalogoItem | null>(null);
   const [leadView, setLeadView] = useState<"iconos" | "lista" | "detalle">("iconos");
+  const [leadPreItems, setLeadPreItems] = useState<Record<string, CotizacionItemForm[]>>({});
+  const [clientePrefill, setClientePrefill] = useState<Partial<ClienteForm> | null>(null);
   const [toast, setToast] = useState("");
   const [catalogo, setCatalogo] = useState<CatalogoItem[]>([]);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
@@ -299,6 +300,7 @@ export default function CRMPrototype() {
     setEditingLead(null);
     setEditingCliente(null);
     setEditingProducto(null);
+    setClientePrefill(null);
   }
 
   // --- Lead actions ---
@@ -332,12 +334,27 @@ export default function CRMPrototype() {
     goTo("cotizaciones");
   }
 
+  function handleCrearClienteDesdeLead(lead: Lead) {
+    setClientePrefill({
+      nombre: lead.empresa,
+      contacto: lead.nombre,
+      tel: lead.tel,
+      correo: lead.email,
+      rubro: "Médico",
+      estado: "activo",
+      rut: "", direccion: "", ciudad: "", comuna: "",
+    });
+    setModal("cliente");
+  }
+
   function handleCotizarLead(lead: Lead) {
     const match = clientes.find((c) =>
       c.nombre.toLowerCase().includes(lead.empresa.toLowerCase()) ||
       lead.empresa.toLowerCase().includes(c.nombre.toLowerCase())
     );
     if (match) setCotizClienteId(match.id);
+    const preItems = leadPreItems[lead.id];
+    if (preItems && preItems.length > 0) setCotizItems(preItems);
     setCotizNotas(lead.equipo ? `Equipo referenciado: ${lead.equipo}.` : "");
     goTo("cotizaciones");
   }
@@ -577,15 +594,78 @@ export default function CRMPrototype() {
   }
 
   function handlePrintQuote() {
-    const el = document.getElementById("quote-preview-content");
-    if (!el) return;
-    const win = window.open("", "_blank", "width=900,height=700");
+    if (cotizItems.length === 0) { notify("Agrega al menos un ítem antes de descargar"); return; }
+    const clienteObj = clientes.find((c) => c.id === cotizClienteId);
+    const fechaStr = new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
+    const subtotal = cotizItems.reduce((s, it) => s + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100)), 0);
+    const iva = Math.round(subtotal * 0.19);
+    const total = subtotal + iva;
+    const rowsHtml = cotizItems.map((it, i) => {
+      const sub = Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100));
+      const disc = it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : "";
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${it.descripcion}${disc}</td>
+        <td>${it.cantidad}</td>
+        <td>${money(it.precio_unitario)}</td>
+        <td><strong>${money(sub)}</strong></td>
+      </tr>
+      ${it.descripcion_larga ? `<tr><td></td><td colspan="4" style="color:#64748b;font-size:12px;white-space:pre-line;padding:4px 12px 12px">${it.descripcion_larga}</td></tr>` : ""}`;
+    }).join("");
+    const win = window.open("", "_blank", "width=920,height=750");
     if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización</title>
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización BORRADOR</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:system-ui,sans-serif;font-size:14px;color:#1e293b;padding:32px}
-    </style></head><body>${el.innerHTML}</body></html>`);
+      body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
+      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0f172a}
+      header img{height:40px}
+      header .right{text-align:right}
+      header .right strong{display:block;font-size:20px;color:#0f172a}
+      h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
+      .client-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-bottom:16px}
+      .client-grid dt{color:#64748b;font-size:12px}
+      .client-grid dd{font-size:13px;font-weight:500}
+      table{width:100%;border-collapse:collapse;margin-bottom:20px}
+      thead th{background:#0f172a;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
+      td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+      .totals{width:320px;margin-left:auto;margin-bottom:16px}
+      .totals tr td{padding:5px 12px}
+      .totals tr:last-child{font-weight:700;font-size:15px;border-top:2px solid #0f172a}
+      .conditions{font-size:12px;color:#475569;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:16px}
+      .conditions strong{display:block;margin-bottom:4px}
+      footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
+      .draft-badge{display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
+    </style></head><body>
+    <header>
+      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
+      <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><span>${fechaStr}</span><br/><span style="color:#64748b">biomeditech.cl</span></div>
+    </header>
+    <h3>Datos del cliente</h3>
+    <dl class="client-grid">
+      <dt>Empresa</dt><dd>${clienteObj?.nombre ?? "—"}</dd>
+      <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
+      <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
+      <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
+      <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
+    </dl>
+    <h3>Detalle del servicio</h3>
+    <table>
+      <thead><tr><th>#</th><th>Descripción</th><th>Cant.</th><th>P. Unitario</th><th>Subtotal</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <table class="totals">
+      <tr><td>Neto</td><td>${money(subtotal)} CLP</td></tr>
+      <tr><td>IVA (19%)</td><td>${money(iva)} CLP</td></tr>
+      <tr><td>Total</td><td>${money(total)} CLP</td></tr>
+    </table>
+    <div class="conditions">
+      <strong>Condiciones</strong>
+      Forma de pago: ${cotizFormaPago} · Validez: 30 días · Diagnóstico incluido en servicio aceptado
+    </div>
+    ${cotizNotas ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${cotizNotas}</em></p>` : ""}
+    <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 30 días desde emisión</footer>
+    </body></html>`);
     win.document.close();
     win.focus();
     win.print();
@@ -714,6 +794,7 @@ export default function CRMPrototype() {
                       </dl>
                       <div className="card-actions">
                         <button className="primary small" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} />Cotizar</button>
+                        <button className="ghost small" onClick={() => handleCrearClienteDesdeLead(lead)}><UserPlus size={15} />Cliente</button>
                         <button className="ghost small" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} />{lead.estado === "gestionado" ? "Desmarcar" : "Gestionar"}</button>
                         <button className="ghost small card-icon-btn" aria-label="Editar" onClick={() => handleEditLead(lead)}><Edit3 size={14} /></button>
                         <button className="ghost small card-icon-btn danger" aria-label="Eliminar" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={14} /></button>
@@ -741,6 +822,7 @@ export default function CRMPrototype() {
                           <td>
                             <div className="row-actions">
                               <button aria-label="Cotizar" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} /></button>
+                              <button aria-label="Crear cliente" onClick={() => handleCrearClienteDesdeLead(lead)}><UserPlus size={15} /></button>
                               <button aria-label="Gestionar" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} /></button>
                               <button aria-label="Editar" onClick={() => handleEditLead(lead)}><Edit3 size={15} /></button>
                               <button aria-label="Eliminar" className="danger" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={15} /></button>
@@ -774,6 +856,7 @@ export default function CRMPrototype() {
                         </div>
                         <div className="card-actions" style={{ flexShrink: 0 }}>
                           <button className="primary small" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} />Cotizar</button>
+                          <button className="ghost small" onClick={() => handleCrearClienteDesdeLead(lead)}><UserPlus size={15} />Cliente</button>
                           <button className="ghost small" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} />{lead.estado === "gestionado" ? "Desmarcar" : "Gestionar"}</button>
                           <button className="ghost small card-icon-btn" aria-label="Editar" onClick={() => handleEditLead(lead)}><Edit3 size={14} /></button>
                           <button className="ghost small card-icon-btn danger" aria-label="Eliminar" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={14} /></button>
@@ -928,9 +1011,14 @@ export default function CRMPrototype() {
         notify={notify}
         goTo={goTo}
         clientes={clientes}
+        catalogo={catalogo}
+        plantillas={plantillas}
         editingLead={editingLead}
         editingCliente={editingCliente}
         editingProducto={editingProducto}
+        clientePrefill={clientePrefill}
+        leadPreItems={leadPreItems}
+        setLeadPreItems={setLeadPreItems}
         onSaveLead={handleSaveLead}
         onSaveCliente={handleSaveCliente}
         onSaveProducto={handleSaveProducto}
@@ -1069,7 +1157,6 @@ function DataModule({ children, search, setSearch, searchPlaceholder, onAdd, hid
             <Search size={17} />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={searchPlaceholder} />
           </label>
-          <button className="ghost"><Filter size={16} />Filtros</button>
           <button className="primary" onClick={onAdd}><Plus size={16} />Agregar</button>
         </div>
       )}
@@ -1402,9 +1489,19 @@ function CatalogoModule({
     return true;
   });
 
+  function nextCodeForCat(cat: string): string {
+    const nums = catalogo
+      .filter((c) => c.categoria === cat && /^[A-Z]+-\d+$/.test(c.codigo))
+      .map((c) => parseInt(c.codigo.split("-")[1], 10))
+      .filter((n) => !isNaN(n));
+    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+    return `${cat}-${String(next).padStart(3, "0")}`;
+  }
+
   function openAdd() {
+    const defaultCat = "MP";
     setEditingCat(null);
-    setCatForm(CATALOGO_FORM_INIT);
+    setCatForm({ ...CATALOGO_FORM_INIT, codigo: nextCodeForCat(defaultCat) });
     setCatModal(true);
   }
 
@@ -1464,13 +1561,16 @@ function CatalogoModule({
               <button onClick={() => setCatModal(false)} aria-label="Cerrar"><X size={17} /></button>
             </div>
             <div className="modal-grid">
-              <label>Código<input value={catForm.codigo} onChange={(e) => setCatForm((f) => ({ ...f, codigo: e.target.value }))} placeholder="MP-001" maxLength={30} /></label>
               <label>
                 Categoría
-                <select value={catForm.categoria} onChange={(e) => setCatForm((f) => ({ ...f, categoria: e.target.value }))}>
+                <select value={catForm.categoria} onChange={(e) => {
+                  const newCat = e.target.value;
+                  setCatForm((f) => ({ ...f, categoria: newCat, codigo: editingCat ? f.codigo : nextCodeForCat(newCat) }));
+                }}>
                   {Object.entries(catLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </label>
+              <label>Código<input value={catForm.codigo} onChange={(e) => setCatForm((f) => ({ ...f, codigo: e.target.value }))} placeholder="MP-001" maxLength={30} /></label>
               <label>Servicio<input value={catForm.servicio} onChange={(e) => setCatForm((f) => ({ ...f, servicio: e.target.value }))} placeholder="Mantención preventiva" maxLength={120} /></label>
               <label>Equipo<input value={catForm.equipo} onChange={(e) => setCatForm((f) => ({ ...f, equipo: e.target.value }))} placeholder="Monitor de signos vitales" maxLength={120} /></label>
               <label>Unidad<input value={catForm.unidad} onChange={(e) => setCatForm((f) => ({ ...f, unidad: e.target.value }))} placeholder="Servicio" maxLength={40} /></label>
@@ -1637,29 +1737,25 @@ function Protocols() {
 }
 
 function Modal({
-  kind,
-  close,
-  notify,
-  goTo,
-  clientes,
-  editingLead,
-  editingCliente,
-  editingProducto,
-  onSaveLead,
-  onSaveCliente,
-  onSaveProducto,
-  onUpdateLead,
-  onUpdateCliente,
-  onUpdateProducto,
+  kind, close, notify, goTo, clientes, catalogo, plantillas,
+  editingLead, editingCliente, editingProducto,
+  clientePrefill, leadPreItems, setLeadPreItems,
+  onSaveLead, onSaveCliente, onSaveProducto,
+  onUpdateLead, onUpdateCliente, onUpdateProducto,
 }: {
   kind: "lead" | "cliente" | "producto" | "cotizacion" | null;
   close: () => void;
   notify: (message: string) => void;
   goTo: (id: ModuleId) => void;
   clientes: Cliente[];
+  catalogo: CatalogoItem[];
+  plantillas: Plantilla[];
   editingLead: Lead | null;
   editingCliente: Cliente | null;
   editingProducto: Producto | null;
+  clientePrefill: Partial<ClienteForm> | null;
+  leadPreItems: Record<string, CotizacionItemForm[]>;
+  setLeadPreItems: React.Dispatch<React.SetStateAction<Record<string, CotizacionItemForm[]>>>;
   onSaveLead: (form: LeadForm) => void;
   onSaveCliente: (form: ClienteForm) => void;
   onSaveProducto: (form: ProductoForm) => void;
@@ -1670,20 +1766,29 @@ function Modal({
   const [leadForm, setLeadForm] = useState<LeadForm>(LEAD_FORM_INIT);
   const [clienteForm, setClienteForm] = useState<ClienteForm>(CLIENTE_FORM_INIT);
   const [productoForm, setProductoForm] = useState<ProductoForm>(PRODUCTO_FORM_INIT);
+  const [leadCatFilter, setLeadCatFilter] = useState("");
+  const [leadCatSearch, setLeadCatSearch] = useState("");
+  const [leadItems, setLeadItems] = useState<CotizacionItemForm[]>([]);
+
+  const leadId = editingLead?.id ?? "__new__";
 
   useEffect(() => {
     if (kind === "lead" && editingLead) {
       setLeadForm({ nombre: editingLead.nombre, empresa: editingLead.empresa, tel: editingLead.tel, email: editingLead.email, canal: editingLead.canal, servicio: editingLead.servicio, equipo: editingLead.equipo });
+      setLeadItems(leadPreItems[editingLead.id] ?? []);
     } else if (kind === "cliente" && editingCliente) {
       setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, tel: editingCliente.telefono || "+56 ", correo: editingCliente.correo, rubro: editingCliente.rubro, estado: editingCliente.estado || "activo", direccion: editingCliente.direccion || "", ciudad: editingCliente.ciudad || "", comuna: editingCliente.comuna || "" });
+    } else if (kind === "cliente" && clientePrefill) {
+      setClienteForm({ ...CLIENTE_FORM_INIT, ...clientePrefill });
     } else if (kind === "producto" && editingProducto) {
       setProductoForm({ nombre: editingProducto.nombre, cat: editingProducto.cat, marca: "", diag: String(editingProducto.diag), rep: String(editingProducto.rep), mant: String(editingProducto.mant), inst: String(editingProducto.inst) });
     } else {
       setLeadForm(LEAD_FORM_INIT);
+      setLeadItems([]);
       setClienteForm(CLIENTE_FORM_INIT);
       setProductoForm(PRODUCTO_FORM_INIT);
     }
-  }, [kind, editingLead, editingCliente, editingProducto]);
+  }, [kind, editingLead, editingCliente, editingProducto, clientePrefill]);
 
   if (!kind) return null;
 
@@ -1703,6 +1808,10 @@ function Modal({
     if (kind === "lead") {
       if (!leadForm.nombre.trim()) { notify("El nombre es requerido"); return; }
       if (leadForm.email && !isValidEmail(leadForm.email)) { notify("El correo no tiene un formato válido"); return; }
+      if (leadItems.length > 0) {
+        const key = editingLead?.id ?? `__pending_${Date.now()}`;
+        setLeadPreItems((prev) => ({ ...prev, [key]: leadItems }));
+      }
       editingLead ? onUpdateLead(editingLead.id, leadForm) : onSaveLead(leadForm);
     } else if (kind === "cliente") {
       if (!clienteForm.nombre.trim()) { notify("El nombre de la empresa es requerido"); return; }
@@ -1748,6 +1857,51 @@ function Modal({
                 </select>
               </label>
               <label className="wide">Equipo / Producto<input value={leadForm.equipo} onChange={(e) => setLeadForm((f) => ({ ...f, equipo: e.target.value }))} placeholder="Ej: Monitor de signos vitales" maxLength={200} /></label>
+              <div className="wide" style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12, marginTop: 4 }}>
+                <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#0f2340" }}>Servicios a cotizar (opcional)</p>
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <select style={{ flex: "0 0 150px", fontSize: 12 }} value={leadCatFilter} onChange={(e) => setLeadCatFilter(e.target.value)}>
+                    <option value="">Todas las categorías</option>
+                    {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                  <input placeholder="Buscar equipo o código..." value={leadCatSearch} onChange={(e) => setLeadCatSearch(e.target.value)} style={{ flex: 1, fontSize: 12 }} />
+                </div>
+                <div style={{ maxHeight: 140, overflowY: "auto", fontSize: 12 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <tbody>
+                      {catalogo.filter((c) => {
+                        if (leadCatFilter && c.categoria !== leadCatFilter) return false;
+                        if (leadCatSearch) { const q = leadCatSearch.toLowerCase(); return c.codigo.toLowerCase().includes(q) || c.equipo.toLowerCase().includes(q) || c.servicio.toLowerCase().includes(q); }
+                        return true;
+                      }).slice(0, 40).map((c) => (
+                        <tr key={c.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "3px 6px", color: "#64748b" }}>{c.codigo}</td>
+                          <td style={{ padding: "3px 6px" }}>{c.equipo || c.servicio}</td>
+                          <td style={{ padding: "3px 6px", textAlign: "right" }}>{money(c.precio_neto)}</td>
+                          <td style={{ padding: "3px 6px" }}>
+                            <button
+                              style={{ padding: "2px 8px", fontSize: 11, background: leadItems.some(i => i.producto_id === c.id) ? "#00a86b" : "#0f172a", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}
+                              onClick={() => {
+                                if (leadItems.some(i => i.producto_id === c.id)) {
+                                  setLeadItems((prev) => prev.filter(i => i.producto_id !== c.id));
+                                } else {
+                                  const plantilla = plantillas.find((p) => p.codigo === c.texto_base_key);
+                                  setLeadItems((prev) => [...prev, { producto_id: c.id, codigo: c.codigo, descripcion: `${c.servicio} — ${c.equipo}`.trim().replace(/\s*—\s*$/, ""), descripcion_larga: plantilla?.descripcion_larga ?? "", tipo_servicio: c.texto_base_key, precio_unitario: c.precio_neto, cantidad: 1, descuento_pct: 0 }]);
+                                }
+                              }}
+                            >{leadItems.some(i => i.producto_id === c.id) ? "✓ Agregado" : "+ Agregar"}</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {leadItems.length > 0 && (
+                  <p style={{ marginTop: 8, fontSize: 12, color: "#00a86b", fontWeight: 600 }}>
+                    {leadItems.length} servicio{leadItems.length > 1 ? "s" : ""} seleccionado{leadItems.length > 1 ? "s" : ""} — se pre-cargarán al cotizar
+                  </p>
+                )}
+              </div>
             </>
           )}
           {kind === "cliente" && (

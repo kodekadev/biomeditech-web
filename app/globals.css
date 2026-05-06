@@ -841,9 +841,15 @@ td small {
 
 .quote-layout {
   display: grid;
-  grid-template-columns: minmax(460px, 520px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 480px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+  min-width: 0;
+}
+
+.quote-layout > * {
+  min-width: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 1100px) {
@@ -856,6 +862,11 @@ td small {
 .modal-grid {
   display: grid;
   gap: 13px;
+  min-width: 0;
+}
+
+.form-stack {
+  overflow-x: hidden;
 }
 
 .form-stack label,
@@ -1136,9 +1147,11 @@ textarea:focus {
   position: fixed;
   inset: 0;
   z-index: 40;
-  display: grid;
-  place-items: center;
-  padding: 22px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 22px;
+  overflow-y: auto;
   background: rgba(15, 35, 64, 0.48);
   backdrop-filter: blur(3px);
 }
@@ -1147,6 +1160,8 @@ textarea:focus {
   width: min(100%, 620px);
   border-radius: 12px;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
   background: #fff;
   box-shadow: 0 18px 60px rgba(15, 35, 64, 0.24);
 }
@@ -1178,6 +1193,11 @@ textarea:focus {
 
 .modal-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 1;
+}
+
+.modal-actions {
+  margin-top: 18px;
 }
 
 .modal-grid .wide {
