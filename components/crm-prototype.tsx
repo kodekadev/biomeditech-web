@@ -1067,33 +1067,32 @@ export default function CRMPrototype() {
                     onDescargarPDF={handlePrintQuote}
                   />
                 </div>
-                <ProcessTimeline />
+                {noGestionados.length > 0 && (
+                  <div className="panel">
+                    <div className="panel-head">
+                      <div className="panel-title"><Activity size={18} />Leads por cotizar</div>
+                      <span className="tag amber">{noGestionados.length} pendiente{noGestionados.length !== 1 ? "s" : ""}</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 4 }}>
+                      {noGestionados.slice(0, 6).map((lead) => (
+                        <div key={lead.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8fafc", borderRadius: 6, gap: 12 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: "#0f2340", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.empresa || lead.nombre}</div>
+                            <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {serviceLabel(lead.servicio)}{lead.equipo ? ` · ${lead.equipo}` : ""}
+                            </div>
+                          </div>
+                          <button className="primary small" style={{ flexShrink: 0 }} onClick={() => handleCotizarLead(lead)}>
+                            <ClipboardList size={13} />Cotizar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="stack">
-                {noGestionados.length > 0 && (
-                <div className="panel">
-                  <div className="panel-head">
-                    <div className="panel-title"><Activity size={18} />Leads por cotizar</div>
-                    <span className="tag amber">{noGestionados.length} pendiente{noGestionados.length !== 1 ? "s" : ""}</span>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 4 }}>
-                    {noGestionados.slice(0, 6).map((lead) => (
-                      <div key={lead.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8fafc", borderRadius: 6, gap: 12 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: "#0f2340", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.empresa || lead.nombre}</div>
-                          <div style={{ fontSize: 12, color: "#64748b" }}>
-                            {serviceLabel(lead.servicio)}{lead.equipo ? ` · ${lead.equipo}` : ""}
-                          </div>
-                        </div>
-                        <button className="primary small" style={{ flexShrink: 0 }} onClick={() => handleCotizarLead(lead)}>
-                          <ClipboardList size={13} />Cotizar
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div className="preview-label-row">
                   <span className="preview-label">Vista previa</span>
                 </div>
@@ -1416,24 +1415,30 @@ function CotizadorForm({
           <input placeholder="Buscar equipo o código..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
         </div>
         <div style={{ maxHeight: 180, overflowY: "auto", fontSize: 12 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: 70 }} />
+              <col />
+              <col style={{ width: 76 }} />
+              <col style={{ width: 76 }} />
+            </colgroup>
             <thead>
               <tr style={{ background: "#f8fafc" }}>
                 <th style={{ padding: "4px 8px", textAlign: "left" }}>Código</th>
                 <th style={{ padding: "4px 8px", textAlign: "left" }}>Descripción</th>
-                <th style={{ padding: "4px 8px", textAlign: "right" }}>Precio neto</th>
+                <th style={{ padding: "4px 8px", textAlign: "right" }}>Precio</th>
                 <th style={{ padding: "4px 8px" }} />
               </tr>
             </thead>
             <tbody>
               {filtered.slice(0, 50).map((c) => (
                 <tr key={c.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "4px 8px", color: "#64748b" }}>{c.codigo}</td>
-                  <td style={{ padding: "4px 8px" }}>{c.equipo || c.servicio}</td>
-                  <td style={{ padding: "4px 8px", textAlign: "right" }}>{money(c.precio_neto)}</td>
-                  <td style={{ padding: "4px 8px" }}>
+                  <td style={{ padding: "4px 8px", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.codigo}</td>
+                  <td style={{ padding: "4px 8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={c.equipo || c.servicio}>{c.equipo || c.servicio}</td>
+                  <td style={{ padding: "4px 8px", textAlign: "right", whiteSpace: "nowrap" }}>{money(c.precio_neto)}</td>
+                  <td style={{ padding: "4px 8px", textAlign: "right" }}>
                     <button
-                      style={{ padding: "2px 8px", fontSize: 11, background: "#0f172a", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}
+                      style={{ padding: "2px 8px", fontSize: 11, background: "#0f172a", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
                       onClick={() => addItem(c)}
                     >+ Agregar</button>
                   </td>
@@ -1473,14 +1478,14 @@ function CotizadorForm({
 
       <label>Notas / Observaciones<textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} maxLength={500} /></label>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-        <button className="ghost" style={{ flex: "1 1 80px" }} onClick={() => setItems([])}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
+        <button className="ghost" onClick={() => setItems([])}>
           <X size={15} />Limpiar
         </button>
-        <button className="ghost" style={{ flex: "2 1 120px" }} onClick={onDescargarPDF} disabled={items.length === 0}>
-          <Printer size={16} />Descargar PDF
+        <button className="ghost" onClick={onDescargarPDF} disabled={items.length === 0}>
+          <Printer size={16} />PDF
         </button>
-        <button className="primary" style={{ flex: "2 1 140px" }} onClick={onEmitir} disabled={!clienteId || items.length === 0}>
+        <button className="primary" style={{ gridColumn: "1 / -1" }} onClick={onEmitir} disabled={!clienteId || items.length === 0}>
           <Send size={16} />Emitir cotización
         </button>
       </div>
@@ -1488,29 +1493,6 @@ function CotizadorForm({
   );
 }
 
-function ProcessTimeline() {
-  return (
-    <div className="panel">
-      <div className="panel-title"><Activity size={18} />Estado del proceso</div>
-      <div className="timeline">
-        <TimelineItem state="done" title="Lead recibido" detail="Automático vía WhatsApp o landing" />
-        <TimelineItem state="done" title="Cliente registrado" detail="Base de datos actualizada" />
-        <TimelineItem state="current" title="Cotización en borrador" detail="Producto y servicio seleccionados" />
-        <TimelineItem state="pending" title="Envío por correo" detail="Pendiente" />
-        <TimelineItem state="pending" title="Aprobación cliente" detail="Seguimiento automático" />
-      </div>
-    </div>
-  );
-}
-
-function TimelineItem({ state, title, detail }: { state: string; title: string; detail: string }) {
-  return (
-    <div className="timeline-item">
-      <span className={state} />
-      <div><strong>{title}</strong><small>{detail}</small></div>
-    </div>
-  );
-}
 
 function CotizadorPreview({
   clientes, clienteId, items, notas, formaPago, fecha,
