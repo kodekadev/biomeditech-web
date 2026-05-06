@@ -1591,6 +1591,7 @@ function CatalogoModule({
   const [catForm, setCatForm] = useState<CatalogoItemForm>(CATALOGO_FORM_INIT);
   const [saving, setSaving] = useState(false);
   const [catPrices, setCatPrices] = useState<Record<string, string>>({});
+  const [catDropOpen, setCatDropOpen] = useState(false);
 
   const catLabels: Record<string, string> = {
     VS: "Visita técnica", MP: "Mant. preventiva", MC: "Mant. correctiva",
@@ -1619,12 +1620,14 @@ function CatalogoModule({
     setEditingCat(null);
     setCatForm({ ...CATALOGO_FORM_INIT, categoria: "", codigo: "" });
     setCatPrices({});
+    setCatDropOpen(false);
     setCatModal(true);
   }
 
   function openEdit(item: CatalogoItem) {
     setEditingCat(item);
     setCatForm({ codigo: item.codigo, categoria: item.categoria, servicio: item.servicio, equipo: item.equipo, unidad: item.unidad, precio_neto: String(item.precio_neto), texto_base_key: item.texto_base_key, descripcion_larga: "" });
+    setCatDropOpen(false);
     setCatModal(true);
   }
 
@@ -1704,32 +1707,49 @@ function CatalogoModule({
                   <label>Unidad<input value={catForm.unidad} onChange={(e) => setCatForm((f) => ({ ...f, unidad: e.target.value }))} placeholder="Servicio" maxLength={40} /></label>
                 </>
               ) : (
-                <label className="wide">
-                  Categorías — selecciona una o más *
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6 }}>
-                    {Object.entries(catLabels).map(([k, v]) => (
-                      <label key={k} style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 500, fontSize: 12, cursor: "pointer" }}>
-                        <input
-                          type="checkbox"
-                          checked={k in catPrices}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setCatPrices((prev) => ({ ...prev, [k]: "" }));
-                            } else {
-                              setCatPrices((prev) => { const n = { ...prev }; delete n[k]; return n; });
-                            }
-                          }}
-                          style={{ minHeight: 0, height: 15, width: 15, padding: 0, margin: 0 }}
-                        />
-                        {k} — {v}
-                      </label>
-                    ))}
+                <div className="wide" style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: "var(--slate)" }}>Servicios *</span>
+                  <div style={{ position: "relative" }}>
+                    <button
+                      type="button"
+                      onClick={() => setCatDropOpen((v) => !v)}
+                      style={{ width: "100%", minHeight: 40, padding: "0 12px", border: "1px solid var(--border)", borderRadius: 8, background: "#fff", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, cursor: "pointer", color: "var(--ink)" }}
+                    >
+                      <span style={{ color: Object.keys(catPrices).length === 0 ? "#94a3b8" : "var(--ink)" }}>
+                        {Object.keys(catPrices).length === 0 ? "Seleccionar servicios..." : Object.keys(catPrices).join(", ")}
+                      </span>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+                        <path d={catDropOpen ? "M2 8L6 4L10 8" : "M2 4L6 8L10 4"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    {catDropOpen && (
+                      <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 20, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 8px 24px rgba(15,35,64,0.12)", padding: "6px 0" }}>
+                        {Object.entries(catLabels).map(([k, v]) => (
+                          <label key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", cursor: "pointer", fontSize: 13, userSelect: "none" }}>
+                            <input
+                              type="checkbox"
+                              checked={k in catPrices}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setCatPrices((prev) => ({ ...prev, [k]: "" }));
+                                } else {
+                                  setCatPrices((prev) => { const n = { ...prev }; delete n[k]; return n; });
+                                }
+                              }}
+                              style={{ minHeight: 0, height: 15, width: 15, padding: 0, margin: 0, flexShrink: 0 }}
+                            />
+                            <span style={{ fontWeight: 700, color: "var(--navy)", minWidth: 28 }}>{k}</span>
+                            <span style={{ color: "var(--slate)" }}>{v}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </label>
+                </div>
               )}
               <label className="wide">Equipo / descripción<input value={catForm.equipo} onChange={(e) => setCatForm((f) => ({ ...f, equipo: e.target.value }))} placeholder="Monitor de signos vitales" maxLength={120} /></label>
               {!editingCat && (
-                <label>Unidad <span style={{ fontWeight: 400, color: "#94a3b8" }}>(aplica a todas)</span>
+                <label>Unidad <span style={{ fontWeight: 400, color: "#94a3b8" }}>(aplica a todos)</span>
                   <input value={catForm.unidad} onChange={(e) => setCatForm((f) => ({ ...f, unidad: e.target.value }))} placeholder="Servicio" maxLength={40} />
                 </label>
               )}
