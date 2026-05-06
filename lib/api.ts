@@ -81,6 +81,7 @@ export interface Cotizacion {
   monto: number;
   estado: string;
   fecha: string;
+  pdfUrl?: string;
 }
 
 export interface CotizacionDetalle {
@@ -96,6 +97,7 @@ export interface CotizacionDetalle {
   validez_dias: number;
   notas_cliente: string;
   emitida_en: string;
+  pdf_url?: string;
   items: CotizacionItem[];
 }
 
@@ -295,6 +297,7 @@ function mapCotizacion(value: unknown): Cotizacion {
     monto: num((raw.total_con_iva ?? raw.subtotal_neto) as unknown),
     estado: estadoLabel,
     fecha: raw.creado_en ? str(raw.creado_en).slice(0, 10) : "",
+    pdfUrl: raw.pdf_url ? str(raw.pdf_url) : undefined,
   };
 }
 
@@ -573,6 +576,7 @@ export async function fetchCotizacionDetalle(id: string): Promise<CotizacionDeta
     validez_dias: num(raw.validez_dias) || 30,
     notas_cliente: str(raw.notas_cliente),
     emitida_en: str(raw.emitida_en),
+    pdf_url: raw.pdf_url ? str(raw.pdf_url) : undefined,
     items,
   };
 }
@@ -623,6 +627,7 @@ export async function createCotizacionMulti(form: CotizacionForm): Promise<Cotiz
     validez_dias: num(raw.validez_dias) || 30,
     notas_cliente: str(raw.notas_cliente),
     emitida_en: str(raw.emitida_en),
+    pdf_url: raw.pdf_url ? str(raw.pdf_url) : undefined,
     items,
   };
 }

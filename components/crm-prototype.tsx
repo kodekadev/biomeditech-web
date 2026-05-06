@@ -505,6 +505,7 @@ export default function CRMPrototype() {
       monto: total,
       estado: "Pendiente",
       fecha: new Date().toISOString().slice(0, 10),
+      pdfUrl: result?.pdf_url ?? undefined,
     };
     setCotizaciones((prev) => [cot, ...prev]);
     api.logActivity(
@@ -1694,10 +1695,10 @@ function HistoryTable({ cotizaciones, clientes }: { cotizaciones: Cotizacion[]; 
         )}
       </div>
       <table>
-        <thead><tr><th>N° Cotización</th><th>Cliente</th><th>Monto total</th><th>Estado</th><th>Fecha</th></tr></thead>
+        <thead><tr><th>N° Cotización</th><th>Cliente</th><th>Monto total</th><th>Estado</th><th>Fecha</th><th>PDF</th></tr></thead>
         <tbody>
           {visible.length === 0 && (
-            <tr><td colSpan={5} style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>Sin resultados</td></tr>
+            <tr><td colSpan={6} style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>Sin resultados</td></tr>
           )}
           {visible.map((cot) => (
             <tr key={cot.id}>
@@ -1710,6 +1711,14 @@ function HistoryTable({ cotizaciones, clientes }: { cotizaciones: Cotizacion[]; 
                 </span>
               </td>
               <td style={{ color: "#64748b", fontSize: 12 }}>{cot.fecha}</td>
+              <td>
+                {cot.pdfUrl
+                  ? <a href={cot.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0f2340", fontWeight: 600, textDecoration: "none" }}>
+                      <FileText size={13} />Ver PDF
+                    </a>
+                  : <span style={{ color: "#cbd5e0", fontSize: 12 }}>—</span>
+                }
+              </td>
             </tr>
           ))}
         </tbody>
