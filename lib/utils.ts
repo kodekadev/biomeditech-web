@@ -38,6 +38,13 @@ export function validateRut(rut: string): boolean {
   return dv === expected;
 }
 
+/** Validates a Chilean phone number. Accepts +56 prefix or raw. At least 9 digits required. */
+export function isValidPhone(phone: string): boolean {
+  const digits = phone.replace(/\D/g, "");
+  // Chilean mobile: 9 digits without prefix, or 11 with 56 country code
+  return digits.length >= 9 && digits.length <= 12;
+}
+
 export function isActivo(estado: string): boolean {
   return estado.toLowerCase() === "activo" || estado.toLowerCase() === "active";
 }

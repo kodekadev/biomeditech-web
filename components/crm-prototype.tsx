@@ -32,7 +32,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as api from "@/lib/api";
 import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, CatalogoItemForm, Plantilla, CotizacionItemForm } from "@/lib/api";
-import { money, formatRut, normalizeRut, isValidEmail, validateRut, isActivo, fmtActivityDate } from "@/lib/utils";
+import { money, formatRut, normalizeRut, isValidEmail, validateRut, isValidPhone, isActivo, fmtActivityDate } from "@/lib/utils";
 
 type ModuleId = "dashboard" | "leads" | "clientes" | "productos" | "cotizaciones" | "protocolos";
 type LeadStatus = "gestionado" | "no-gestionado";
@@ -949,6 +949,7 @@ export default function CRMPrototype() {
                       <tr>
                         <SortTh label="Nombre" sortKey="nombre" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
                         <SortTh label="Empresa" sortKey="empresa" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                        <SortTh label="RUT" sortKey="rut" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
                         <th>Canal</th>
                         <SortTh label="Servicio" sortKey="servicio" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
                         <SortTh label="Estado" sortKey="estado" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
@@ -960,6 +961,7 @@ export default function CRMPrototype() {
                         <tr key={lead.id}>
                           <td><strong>{lead.nombre}</strong></td>
                           <td>{lead.empresa}</td>
+                          <td className="mono" style={{ fontSize: 12 }}>{lead.rut || "—"}</td>
                           <td><span className={`tag ${lead.canal === "wsp" ? "green" : "navy"}`}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span></td>
                           <td>{serviceLabel(lead.servicio)}</td>
                           <td><span className={`tag ${lead.estado === "gestionado" ? "green" : "amber"}`}>{lead.estado === "gestionado" ? "Gestionado" : "Sin gestionar"}</span></td>
@@ -1696,6 +1698,8 @@ function CatalogoModule({
   const [saving, setSaving] = useState(false);
   const [catPrices, setCatPrices] = useState<Record<string, string>>({});
   const [catDropOpen, setCatDropOpen] = useState(false);
+  const [catSort, setCatSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "codigo", dir: "asc" });
+  const [prodSort, setProdSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "nombre", dir: "asc" });
 
   const catLabels: Record<string, string> = {
     VS: "Visita técnica", MP: "Mant. preventiva", MC: "Mant. correctiva",
@@ -1710,6 +1714,25 @@ function CatalogoModule({
     }
     return true;
   });
+
+  const sortedCat = useMemo(() => [...filteredCat].sort((a, b) => {
+    if (catSort.key === "precio_neto") return catSort.dir === "asc" ? a.precio_neto - b.precio_neto : b.precio_neto - a.precio_neto;
+    const av = String((a as unknown as Record<string, unknown>)[catSort.key] ?? "").toLowerCase();
+    const bv = String((b as unknown as Record<string, unknown>)[catSort.key] ?? "").toLowerCase();
+    return catSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+  }), [filteredCat, catSort]);
+
+  const sortedProducts = useMemo(() => [...filteredProducts].sort((a, b) => {
+    const numKeys = ["diag", "rep", "mant", "inst"];
+    if (numKeys.includes(prodSort.key)) {
+      const av = Number((a as unknown as Record<string, unknown>)[prodSort.key] ?? 0);
+      const bv = Number((b as unknown as Record<string, unknown>)[prodSort.key] ?? 0);
+      return prodSort.dir === "asc" ? av - bv : bv - av;
+    }
+    const av = String((a as unknown as Record<string, unknown>)[prodSort.key] ?? "").toLowerCase();
+    const bv = String((b as unknown as Record<string, unknown>)[prodSort.key] ?? "").toLowerCase();
+    return prodSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+  }), [filteredProducts, prodSort]);
 
   function nextCodeForCat(cat: string): string {
     const nums = catalogo
@@ -1884,10 +1907,17 @@ function CatalogoModule({
           </div>
           <table>
             <thead>
-              <tr><th>Código</th><th>Categoría</th><th>Equipo / Servicio</th><th>Unidad</th><th>Precio neto</th><th>Plantilla texto</th><th>Acciones</th></tr>
+              <tr>
+                <SortTh label="Código" sortKey="codigo" current={catSort} onSort={(k) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                <SortTh label="Categoría" sortKey="categoria" current={catSort} onSort={(k) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                <SortTh label="Equipo / Servicio" sortKey="equipo" current={catSort} onSort={(k) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                <th>Unidad</th>
+                <SortTh label="Precio neto" sortKey="precio_neto" current={catSort} onSort={(k) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                <th>Plantilla texto</th><th>Acciones</th>
+              </tr>
             </thead>
             <tbody>
-              {filteredCat.slice(0, 100).map((c) => (
+              {sortedCat.slice(0, 100).map((c) => (
                 <tr key={c.id}>
                   <td className="mono" style={{ fontSize: 12 }}>{c.codigo}</td>
                   <td><span className="tag navy">{catLabels[c.categoria] ?? c.categoria}</span></td>
@@ -1905,7 +1935,7 @@ function CatalogoModule({
               ))}
             </tbody>
           </table>
-          {filteredCat.length > 100 && <p style={{ padding: "8px 16px", fontSize: 12, color: "#94a3b8" }}>Mostrando 100 de {filteredCat.length} ítems. Usa el buscador para filtrar.</p>}
+          {sortedCat.length > 100 && <p style={{ padding: "8px 16px", fontSize: 12, color: "#94a3b8" }}>Mostrando 100 de {sortedCat.length} ítems. Usa el buscador para filtrar.</p>}
         </div>
       )}
 
@@ -1920,10 +1950,19 @@ function CatalogoModule({
         >
           <table>
             <thead>
-              <tr><th>ID</th><th>Producto</th><th>Categoría</th><th>Diagnóstico</th><th>Reparación</th><th>Mantención</th><th>Instalación</th><th>Acciones</th></tr>
+              <tr>
+                <th>ID</th>
+                <SortTh label="Producto" sortKey="nombre" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                <SortTh label="Categoría" sortKey="cat" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                <SortTh label="Diagnóstico" sortKey="diag" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                <SortTh label="Reparación" sortKey="rep" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                <SortTh label="Mantención" sortKey="mant" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                <SortTh label="Instalación" sortKey="inst" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                <th>Acciones</th>
+              </tr>
             </thead>
             <tbody>
-              {filteredProducts.map((product) => (
+              {sortedProducts.map((product) => (
                 <tr key={product.id}>
                   <td className="mono">{product.id}</td>
                   <td><strong>{product.nombre}</strong></td>
@@ -2150,17 +2189,26 @@ function Modal({
 
   function handleSave() {
     if (kind === "lead") {
-      if (!leadForm.nombre.trim()) { notify("El nombre es requerido"); return; }
+      if (!leadForm.nombre.trim()) { notify("El nombre del contacto es requerido"); return; }
+      if (!leadForm.empresa.trim()) { notify("La empresa es requerida"); return; }
+      if (!leadForm.rut?.trim()) { notify("El RUT es requerido"); return; }
+      if (!validateRut(leadForm.rut)) { notify("El RUT ingresado no es válido. Verifica el dígito verificador."); return; }
+      if (leadForm.tel && leadForm.tel.replace(/\D/g, "").length > 0 && !isValidPhone(leadForm.tel)) { notify("El teléfono no tiene un formato válido (ej: +56 9 1234 5678)"); return; }
       if (leadForm.email && !isValidEmail(leadForm.email)) { notify("El correo no tiene un formato válido"); return; }
-      if (leadForm.rut && !validateRut(leadForm.rut)) { notify("El RUT ingresado no es válido. Verifica el dígito verificador."); return; }
       editingLead ? onUpdateLead(editingLead.id, leadForm, leadItems) : onSaveLead(leadForm, leadItems);
     } else if (kind === "cliente") {
+      if (!clienteForm.rut?.trim()) { notify("El RUT de la empresa es requerido"); return; }
+      if (!validateRut(clienteForm.rut)) { notify("El RUT del cliente no es válido. Verifica el dígito verificador."); return; }
       if (!clienteForm.nombre.trim()) { notify("El nombre de la empresa es requerido"); return; }
-      if (clienteForm.correo && !isValidEmail(clienteForm.correo)) { notify("El correo no tiene un formato válido"); return; }
-      if (clienteForm.rut && !validateRut(clienteForm.rut)) { notify("El RUT del cliente no es válido. Verifica el dígito verificador."); return; }
+      if (!clienteForm.contacto.trim()) { notify("El nombre del contacto es requerido"); return; }
+      if (!clienteForm.tel.trim() || clienteForm.tel.trim() === "+56") { notify("El teléfono es requerido"); return; }
+      if (!isValidPhone(clienteForm.tel)) { notify("El teléfono no tiene un formato válido (ej: +56 9 1234 5678)"); return; }
+      if (!clienteForm.correo.trim()) { notify("El correo es requerido"); return; }
+      if (!isValidEmail(clienteForm.correo)) { notify("El correo no tiene un formato válido"); return; }
       editingCliente ? onUpdateCliente(editingCliente.id, clienteForm) : onSaveCliente(clienteForm);
     } else if (kind === "producto") {
       if (!productoForm.nombre.trim()) { notify("El nombre del producto es requerido"); return; }
+      if ([productoForm.diag, productoForm.rep, productoForm.mant, productoForm.inst].some((v) => Number(v) < 0)) { notify("Los precios no pueden ser negativos"); return; }
       editingProducto ? onUpdateProducto(editingProducto.id, productoForm) : onSaveProducto(productoForm);
     } else if (kind === "cotizacion") {
       close();
@@ -2207,13 +2255,45 @@ function Modal({
         <div className="modal-grid">
           {kind === "lead" && (
             <>
-              <label>RUT empresa / cliente
-                <input value={leadForm.rut ?? ""} onChange={(e) => setLeadForm((f) => ({ ...f, rut: formatRut(e.target.value) }))} placeholder="76.XXX.XXX-X" maxLength={15} />
+              <label>RUT empresa / cliente *
+                <input
+                  value={leadForm.rut ?? ""}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, rut: formatRut(e.target.value) }))}
+                  placeholder="76.XXX.XXX-X"
+                  maxLength={15}
+                  style={{ borderColor: leadForm.rut && !validateRut(leadForm.rut) ? "#ef4444" : undefined }}
+                />
+                {leadForm.rut && !validateRut(leadForm.rut) && (
+                  <span className="field-error">RUT inválido — verifica el dígito verificador</span>
+                )}
               </label>
-              <label>Empresa<input value={leadForm.empresa} onChange={(e) => setLeadForm((f) => ({ ...f, empresa: e.target.value }))} placeholder="Ej: Clínica Santiago" maxLength={100} /></label>
-              <label>Nombre contacto<input value={leadForm.nombre} onChange={(e) => setLeadForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: María González" maxLength={100} /></label>
-              <label>Teléfono<input value={leadForm.tel} onChange={(e) => setLeadForm((f) => ({ ...f, tel: e.target.value }))} placeholder="+56 9 XXXX XXXX" maxLength={20} /></label>
-              <label>Correo<input type="email" value={leadForm.email} onChange={(e) => setLeadForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@empresa.cl" maxLength={100} /></label>
+              <label>Empresa *<input value={leadForm.empresa} onChange={(e) => setLeadForm((f) => ({ ...f, empresa: e.target.value }))} placeholder="Ej: Clínica Santiago" maxLength={100} /></label>
+              <label>Nombre contacto *<input value={leadForm.nombre} onChange={(e) => setLeadForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: María González" maxLength={100} /></label>
+              <label>Teléfono
+                <input
+                  value={leadForm.tel}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, tel: e.target.value }))}
+                  placeholder="+56 9 XXXX XXXX"
+                  maxLength={20}
+                  style={{ borderColor: leadForm.tel && leadForm.tel.replace(/\D/g, "").length > 0 && !isValidPhone(leadForm.tel) ? "#ef4444" : undefined }}
+                />
+                {leadForm.tel && leadForm.tel.replace(/\D/g, "").length > 0 && !isValidPhone(leadForm.tel) && (
+                  <span className="field-error">Teléfono inválido (ej: +56 9 1234 5678)</span>
+                )}
+              </label>
+              <label>Correo
+                <input
+                  type="email"
+                  value={leadForm.email}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="correo@empresa.cl"
+                  maxLength={100}
+                  style={{ borderColor: leadForm.email && !isValidEmail(leadForm.email) ? "#ef4444" : undefined }}
+                />
+                {leadForm.email && !isValidEmail(leadForm.email) && (
+                  <span className="field-error">Correo inválido (ej: usuario@empresa.cl)</span>
+                )}
+              </label>
               <label>
                 Canal
                 <select value={leadForm.canal} onChange={(e) => setLeadForm((f) => ({ ...f, canal: e.target.value }))}>
@@ -2294,7 +2374,7 @@ function Modal({
           )}
           {kind === "cliente" && (
             <>
-              <label>RUT empresa
+              <label>RUT empresa *
                 <input
                   value={clienteForm.rut}
                   onChange={(e) => setClienteForm((f) => ({ ...f, rut: formatRut(e.target.value) }))}
@@ -2306,10 +2386,33 @@ function Modal({
                   <span className="field-error">RUT inválido — verifica el dígito verificador</span>
                 )}
               </label>
-              <label>Nombre empresa<input value={clienteForm.nombre} onChange={(e) => setClienteForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Clínica Las Condes" maxLength={100} /></label>
-              <label>Contacto<input value={clienteForm.contacto} onChange={(e) => setClienteForm((f) => ({ ...f, contacto: e.target.value }))} placeholder="Nombre del contacto" maxLength={100} /></label>
-              <label>Teléfono<input value={clienteForm.tel} onChange={(e) => setClienteForm((f) => ({ ...f, tel: e.target.value }))} placeholder="+56 9 XXXX XXXX" maxLength={20} /></label>
-              <label>Correo<input type="email" value={clienteForm.correo} onChange={(e) => setClienteForm((f) => ({ ...f, correo: e.target.value }))} placeholder="contacto@empresa.cl" maxLength={100} /></label>
+              <label>Nombre empresa *<input value={clienteForm.nombre} onChange={(e) => setClienteForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Clínica Las Condes" maxLength={100} /></label>
+              <label>Contacto *<input value={clienteForm.contacto} onChange={(e) => setClienteForm((f) => ({ ...f, contacto: e.target.value }))} placeholder="Nombre del contacto" maxLength={100} /></label>
+              <label>Teléfono *
+                <input
+                  value={clienteForm.tel}
+                  onChange={(e) => setClienteForm((f) => ({ ...f, tel: e.target.value }))}
+                  placeholder="+56 9 XXXX XXXX"
+                  maxLength={20}
+                  style={{ borderColor: clienteForm.tel && clienteForm.tel.trim() !== "+56" && clienteForm.tel.replace(/\D/g, "").length > 0 && !isValidPhone(clienteForm.tel) ? "#ef4444" : undefined }}
+                />
+                {clienteForm.tel && clienteForm.tel.trim() !== "+56" && clienteForm.tel.replace(/\D/g, "").length > 0 && !isValidPhone(clienteForm.tel) && (
+                  <span className="field-error">Teléfono inválido (ej: +56 9 1234 5678)</span>
+                )}
+              </label>
+              <label>Correo *
+                <input
+                  type="email"
+                  value={clienteForm.correo}
+                  onChange={(e) => setClienteForm((f) => ({ ...f, correo: e.target.value }))}
+                  placeholder="contacto@empresa.cl"
+                  maxLength={100}
+                  style={{ borderColor: clienteForm.correo && !isValidEmail(clienteForm.correo) ? "#ef4444" : undefined }}
+                />
+                {clienteForm.correo && !isValidEmail(clienteForm.correo) && (
+                  <span className="field-error">Correo inválido (ej: usuario@empresa.cl)</span>
+                )}
+              </label>
               <label>
                 Rubro
                 <select value={clienteForm.rubro} onChange={(e) => setClienteForm((f) => ({ ...f, rubro: e.target.value }))}>
@@ -2346,10 +2449,10 @@ function Modal({
                 </select>
               </label>
               <label>Marca / Modelo<input value={productoForm.marca} onChange={(e) => setProductoForm((f) => ({ ...f, marca: e.target.value }))} placeholder="Philips MP5" maxLength={100} /></label>
-              <label>Precio diagnóstico<input type="number" value={productoForm.diag} onChange={(e) => setProductoForm((f) => ({ ...f, diag: e.target.value }))} placeholder="0" /></label>
-              <label>Precio reparación<input type="number" value={productoForm.rep} onChange={(e) => setProductoForm((f) => ({ ...f, rep: e.target.value }))} placeholder="0" /></label>
-              <label>Precio mantención<input type="number" value={productoForm.mant} onChange={(e) => setProductoForm((f) => ({ ...f, mant: e.target.value }))} placeholder="0" /></label>
-              <label>Precio instalación<input type="number" value={productoForm.inst} onChange={(e) => setProductoForm((f) => ({ ...f, inst: e.target.value }))} placeholder="0" /></label>
+              <label>Precio diagnóstico<input type="number" min={0} value={productoForm.diag} onChange={(e) => setProductoForm((f) => ({ ...f, diag: e.target.value }))} placeholder="0" /></label>
+              <label>Precio reparación<input type="number" min={0} value={productoForm.rep} onChange={(e) => setProductoForm((f) => ({ ...f, rep: e.target.value }))} placeholder="0" /></label>
+              <label>Precio mantención<input type="number" min={0} value={productoForm.mant} onChange={(e) => setProductoForm((f) => ({ ...f, mant: e.target.value }))} placeholder="0" /></label>
+              <label>Precio instalación<input type="number" min={0} value={productoForm.inst} onChange={(e) => setProductoForm((f) => ({ ...f, inst: e.target.value }))} placeholder="0" /></label>
             </>
           )}
           {kind === "cotizacion" && (

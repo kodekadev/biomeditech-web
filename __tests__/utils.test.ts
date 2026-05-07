@@ -4,6 +4,7 @@ import {
   normalizeRut,
   isValidEmail,
   validateRut,
+  isValidPhone,
   isActivo,
   incrementNro,
 } from "../lib/utils";
@@ -96,6 +97,22 @@ describe("validateRut()", () => {
 
   test("rechaza RUT corto con DV incorrecto", () => {
     expect(validateRut("1-2")).toBe(false); // DV correcto sería 9
+  });
+});
+
+// ── isValidPhone ────────────────────────────────────────────────────────────
+describe("isValidPhone()", () => {
+  test("acepta teléfonos chilenos válidos", () => {
+    expect(isValidPhone("+56 9 1234 5678")).toBe(true);
+    expect(isValidPhone("+56912345678")).toBe(true);
+    expect(isValidPhone("912345678")).toBe(true);
+    expect(isValidPhone("56912345678")).toBe(true);
+  });
+  test("rechaza números muy cortos o muy largos", () => {
+    expect(isValidPhone("12345")).toBe(false);
+    expect(isValidPhone("+56 9")).toBe(false);
+    expect(isValidPhone("")).toBe(false);
+    expect(isValidPhone("1234567890123")).toBe(false);
   });
 });
 
