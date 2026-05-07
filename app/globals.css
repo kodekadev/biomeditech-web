@@ -61,6 +61,7 @@ body {
 .login-form input:focus { border-color: var(--bio-green); box-shadow: 0 0 0 3px var(--bio-green-soft); }
 .login-form button { margin-top: 4px; justify-content: center; }
 .login-error { color: var(--red); font-size: 13px; margin: 0; text-align: center; }
+.field-error { color: var(--red); font-size: 12px; margin-top: 2px; font-weight: 400; }
 
 /* ── Preview label row ──────────────────────────────────────── */
 .preview-label-row { display: flex; align-items: center; justify-content: space-between; }

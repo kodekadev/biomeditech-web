@@ -6,10 +6,13 @@ import {
   BriefcaseMedical,
   CalendarDays,
   Check,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
   Clock3,
   Edit3,
   Eye,
+  EyeOff,
   FileArchive,
   FileText,
   LayoutDashboard,
@@ -44,25 +47,9 @@ const NAV_ITEMS: Array<{ id: ModuleId; label: string; icon: React.ElementType; g
   { id: "protocolos", label: "Protocolos Mantención", icon: FileArchive, group: "Operaciones" },
 ];
 
-const INITIAL_LEADS: Lead[] = [
-  { id: "1", nombre: "María González", empresa: "Clínica Las Condes", tel: "+56 9 8765 4321", email: "maria@clinica.cl", canal: "wsp", estado: "no-gestionado", servicio: "Reparación", tiempo: "Hace 12 min", equipo: "Monitor de signos vitales" },
-  { id: "2", nombre: "Carlos Herrera", empresa: "Centro Dental Norte", tel: "+56 9 7654 3210", email: "carlos@dental.cl", canal: "email", estado: "no-gestionado", servicio: "Diagnóstico", tiempo: "Hace 1 hora", equipo: "Autoclave" },
-  { id: "3", nombre: "Ana Ramírez", empresa: "Lab. Providencia", tel: "+56 9 6543 2109", email: "ana@lab.cl", canal: "wsp", estado: "no-gestionado", servicio: "Mantención", tiempo: "Hace 2 horas", equipo: "Centrífuga" },
-  { id: "4", nombre: "Pedro Soto", empresa: "Clínica Estética Sur", tel: "+56 9 5432 1098", email: "pedro@estetica.cl", canal: "email", estado: "gestionado", servicio: "Instalación", tiempo: "Ayer", equipo: "Unidad dental" },
-  { id: "5", nombre: "Valentina Cruz", empresa: "Hospital Regional", tel: "+56 9 4321 0987", email: "vcruz@hospital.cl", canal: "wsp", estado: "no-gestionado", servicio: "Reparación", tiempo: "Hace 3 horas", equipo: "Ecógrafo" },
-  { id: "6", nombre: "Roberto Mora", empresa: "UnoSalud", tel: "+56 9 3210 9876", email: "rmora@unosalud.cl", canal: "email", estado: "gestionado", servicio: "Diagnóstico", tiempo: "Hace 2 días", equipo: "Autoclave" },
-  { id: "7", nombre: "Daniela Vega", empresa: "Vetlab", tel: "+56 9 2109 8765", email: "dvega@vetlab.cl", canal: "wsp", estado: "no-gestionado", servicio: "Mantención", tiempo: "Hace 4 horas", equipo: "Centrífuga" },
-  { id: "8", nombre: "Sebastián Ríos", empresa: "U. Mayor", tel: "+56 9 1098 7654", email: "srios@umayor.cl", canal: "email", estado: "gestionado", servicio: "Instalación", tiempo: "Hace 3 días", equipo: "Máquina de anestesia" },
-];
+const INITIAL_LEADS: Lead[] = [];
 
-const INITIAL_CLIENTES: Cliente[] = [
-  { id: "C-001", rut: "61.608.023-8", nombre: "Clínica Las Condes", contacto: "Felipe Morales", correo: "felipe@clc.cl", rubro: "Médico", estado: "Activo", telefono: "", direccion: "", ciudad: "", comuna: "" },
-  { id: "C-002", rut: "60.503.000-1", nombre: "Universidad de Chile", contacto: "Claudia Torres", correo: "claudia@uchile.cl", rubro: "Médico", estado: "Activo", telefono: "", direccion: "", ciudad: "", comuna: "" },
-  { id: "C-003", rut: "76.543.210-K", nombre: "Centro Médico Providencia", contacto: "Andrea Silva", correo: "andrea@cmp.cl", rubro: "Médico", estado: "Activo", telefono: "", direccion: "", ciudad: "", comuna: "" },
-  { id: "C-004", rut: "78.123.456-3", nombre: "Neovida", contacto: "Rodrigo Pinto", correo: "rodrigo@neovida.cl", rubro: "Estético", estado: "Activo", telefono: "", direccion: "", ciudad: "", comuna: "" },
-  { id: "C-005", rut: "77.654.321-5", nombre: "UnoSalud", contacto: "Patricia Muñoz", correo: "patricia@unosalud.cl", rubro: "Dental", estado: "Inactivo", telefono: "", direccion: "", ciudad: "", comuna: "" },
-  { id: "C-006", rut: "76.111.222-4", nombre: "Vetlab", contacto: "Jorge Espinoza", correo: "jorge@vetlab.cl", rubro: "Laboratorio", estado: "Activo", telefono: "", direccion: "", ciudad: "", comuna: "" },
-];
+const INITIAL_CLIENTES: Cliente[] = [];
 
 const INITIAL_PRODUCTOS: Producto[] = [
   { id: "P-001", nombre: "Monitor de Signos Vitales", cat: "Equipos médicos", diag: 45000, rep: 120000, mant: 85000, inst: 95000 },
@@ -84,11 +71,7 @@ const INITIAL_CATALOGO: CatalogoItem[] = [
   { id: "CAT-RS-001", codigo: "RS-001", categoria: "RS", servicio: "Repuesto / Insumo", equipo: "Kit de repuestos", unidad: "Unidad", precio_neto: 0, grupo: "RS", texto_base_key: "RS" },
 ];
 
-const INITIAL_COTIZACIONES: Cotizacion[] = [
-  { id: "COT-001", nro: "COT-2026-012", cliente: "U. de Chile", monto: 320000, estado: "Pendiente", fecha: "2026-05-03" },
-  { id: "COT-002", nro: "COT-2026-011", cliente: "Neovida", monto: 540000, estado: "Aprobada", fecha: "2026-05-02" },
-  { id: "COT-003", nro: "COT-2026-010", cliente: "UnoSalud", monto: 210000, estado: "En revisión", fecha: "2026-05-01" },
-];
+const INITIAL_COTIZACIONES: Cotizacion[] = [];
 
 const SERVICE_LABELS: Record<Exclude<QuoteService, "">, string> = {
   diagnostico: "Diagnóstico",
@@ -146,6 +129,23 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function validateRut(rut: string): boolean {
+  if (!rut || rut.replace(/[.\-\s]/g, "").length < 3) return true;
+  const clean = rut.replace(/[.\-\s]/g, "").toUpperCase();
+  const dv = clean.slice(-1);
+  const body = clean.slice(0, -1);
+  if (!/^\d+$/.test(body)) return false;
+  let sum = 0;
+  let mul = 2;
+  for (let i = body.length - 1; i >= 0; i--) {
+    sum += parseInt(body[i]) * mul;
+    mul = mul === 7 ? 2 : mul + 1;
+  }
+  const r = 11 - (sum % 11);
+  const expected = r === 11 ? "0" : r === 10 ? "K" : String(r);
+  return dv === expected;
+}
+
 function fmtActivityDate(raw: unknown): string {
   if (!raw) return "";
   const s = typeof raw === "object" && raw !== null && "value" in raw
@@ -165,11 +165,21 @@ const PRODUCTO_FORM_INIT: ProductoForm = { nombre: "", cat: "Equipos médicos", 
 function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const emailError = emailTouched && email.length > 0 && !isValidEmail(email)
+    ? "Ingresa un correo válido (ej: usuario@empresa.cl)"
+    : null;
+  const passwordError = emailTouched && password.length > 0 && password.length < 6
+    ? "La contraseña debe tener al menos 6 caracteres"
+    : null;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setEmailTouched(true);
     if (!email || !isValidEmail(email)) { setError("Ingresa un correo válido"); return; }
     if (!password) { setError("Ingresa tu contraseña"); return; }
     setLoading(true);
@@ -178,6 +188,7 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
     setLoading(false);
     if (!result) { setError("No se pudo conectar con el servidor"); return; }
     if ("error" in result) { setError(result.error); return; }
+    api.saveUser(result.user.email, result.user.rol);
     onLogin(result.token);
   }
 
@@ -193,21 +204,36 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setEmailTouched(true); setError(""); }}
               placeholder="correo@biomeditech.cl"
               maxLength={100}
               autoFocus
+              style={{ borderColor: emailError ? "#ef4444" : undefined }}
             />
+            {emailError && <span className="field-error">{emailError}</span>}
           </label>
-          <label>
+          <label style={{ position: "relative" }}>
             Contraseña
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              maxLength={50}
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                placeholder="••••••••"
+                maxLength={50}
+                style={{ width: "100%", paddingRight: 40, borderColor: passwordError ? "#ef4444" : undefined }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 0, display: "flex", alignItems: "center" }}
+                tabIndex={-1}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {passwordError && <span className="field-error">{passwordError}</span>}
           </label>
           {error && <p className="login-error">{error}</p>}
           <button type="submit" className="primary" disabled={loading}>
@@ -227,12 +253,15 @@ export default function CRMPrototype() {
     return false;
   });
 
+  const [currentUser] = useState(() => api.getUser());
   const [active, setActive] = useState<ModuleId>("dashboard");
   const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
   const [clientes, setClientes] = useState<Cliente[]>(INITIAL_CLIENTES);
   const [productos, setProductos] = useState<Producto[]>(INITIAL_PRODUCTOS);
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>(INITIAL_COTIZACIONES);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [leadSort, setLeadSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "tiempo", dir: "desc" });
+  const [clientSort, setClientSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "nombre", dir: "asc" });
   const [isLoading, setIsLoading] = useState(true);
   const [leadFilter, setLeadFilter] = useState<"todos" | LeadStatus>("todos");
   const [clientQuery, setClientQuery] = useState("");
@@ -296,17 +325,36 @@ export default function CRMPrototype() {
   }
 
   const noGestionados = leads.filter((l) => l.estado === "no-gestionado");
-  const visibleLeads = leadFilter === "todos" ? leads : leads.filter((l) => l.estado === leadFilter);
-  const filteredClients = clientes.filter((c) => {
-    if (!clientQuery) return true;
-    const q = clientQuery.toLowerCase();
-    const qNorm = normalizeRut(clientQuery);
-    if (clientSearchField === "rut") return normalizeRut(c.rut).includes(qNorm);
-    if (clientSearchField === "nombre") return c.nombre.toLowerCase().includes(q);
-    if (clientSearchField === "contacto") return c.contacto.toLowerCase().includes(q);
-    if (clientSearchField === "correo") return c.correo.toLowerCase().includes(q);
-    return normalizeRut(c.rut).includes(qNorm) || c.nombre.toLowerCase().includes(q) || c.contacto.toLowerCase().includes(q) || c.correo.toLowerCase().includes(q) || (c.ciudad ?? "").toLowerCase().includes(q);
-  });
+  const visibleLeads = useMemo(() => {
+    const list = leadFilter === "todos" ? leads : leads.filter((l) => l.estado === leadFilter);
+    return [...list].sort((a, b) => {
+      if (leadSort.key === "tiempo") {
+        const ai = leads.indexOf(a);
+        const bi = leads.indexOf(b);
+        return leadSort.dir === "desc" ? ai - bi : bi - ai;
+      }
+      const av = String((a as unknown as Record<string,unknown>)[leadSort.key] ?? "").toLowerCase();
+      const bv = String((b as unknown as Record<string,unknown>)[leadSort.key] ?? "").toLowerCase();
+      return leadSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+  }, [leads, leadFilter, leadSort]);
+  const filteredClients = useMemo(() => {
+    const list = clientes.filter((c) => {
+      if (!clientQuery) return true;
+      const q = clientQuery.toLowerCase();
+      const qNorm = normalizeRut(clientQuery);
+      if (clientSearchField === "rut") return normalizeRut(c.rut).includes(qNorm);
+      if (clientSearchField === "nombre") return c.nombre.toLowerCase().includes(q);
+      if (clientSearchField === "contacto") return c.contacto.toLowerCase().includes(q);
+      if (clientSearchField === "correo") return c.correo.toLowerCase().includes(q);
+      return normalizeRut(c.rut).includes(qNorm) || c.nombre.toLowerCase().includes(q) || c.contacto.toLowerCase().includes(q) || c.correo.toLowerCase().includes(q) || (c.ciudad ?? "").toLowerCase().includes(q);
+    });
+    return [...list].sort((a, b) => {
+      const av = String((a as unknown as Record<string,unknown>)[clientSort.key] ?? "").toLowerCase();
+      const bv = String((b as unknown as Record<string,unknown>)[clientSort.key] ?? "").toLowerCase();
+      return clientSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+  }, [clientes, clientQuery, clientSearchField, clientSort]);
   const filteredProducts = productos.filter((p) => JSON.stringify(p).toLowerCase().includes(productQuery.toLowerCase()));
   const activeTitle = NAV_ITEMS.find((item) => item.id === active)?.label ?? "Dashboard";
 
@@ -458,6 +506,32 @@ export default function CRMPrototype() {
       ));
     }
     setLeadPreItems((prev) => ({ ...prev, [id]: items }));
+
+    // Sync matching client if empresa or contact data changed
+    const rutNorm = normalizeRut(form.rut ?? "");
+    const matchingCliente = clientes.find((c) =>
+      (rutNorm.length > 4 && normalizeRut(c.rut) === rutNorm) ||
+      c.nombre.toLowerCase().trim() === (form.empresa || form.nombre).toLowerCase().trim()
+    );
+    if (matchingCliente) {
+      const clienteForm: import("@/lib/api").ClienteForm = {
+        rut: form.rut ?? matchingCliente.rut,
+        nombre: form.empresa || matchingCliente.nombre,
+        contacto: form.nombre || matchingCliente.contacto,
+        tel: form.tel || matchingCliente.telefono,
+        correo: form.email || matchingCliente.correo,
+        rubro: matchingCliente.rubro,
+        estado: matchingCliente.estado,
+        direccion: matchingCliente.direccion,
+        ciudad: matchingCliente.ciudad,
+        comuna: matchingCliente.comuna,
+      };
+      const updatedCliente = await api.saveCliente(matchingCliente.id, clienteForm);
+      if (updatedCliente) {
+        setClientes((prev) => prev.map((c) => c.id === matchingCliente.id ? updatedCliente : c));
+      }
+    }
+
     notify("Lead actualizado");
     closeModal();
   }
@@ -747,6 +821,12 @@ export default function CRMPrototype() {
     win.print();
   }
 
+  async function handleVerCotizacion(id: string) {
+    const det = await api.fetchCotizacionDetalle(id);
+    if (!det) { notify("No se pudo cargar el detalle de la cotización"); return; }
+    handlePrintDetalle(det);
+  }
+
   function handleLogout() {
     api.clearToken();
     setLoggedIn(false);
@@ -780,10 +860,10 @@ export default function CRMPrototype() {
         ))}
 
         <div className="sidebar-footer">
-          <div className="avatar">BM</div>
+          <div className="avatar">{currentUser ? currentUser.email.slice(0, 2).toUpperCase() : "BM"}</div>
           <div>
-            <strong>Biomeditech</strong>
-            <span>Administrador</span>
+            <strong>{currentUser ? currentUser.email.split("@")[0] : "Biomeditech"}</strong>
+            <span title={currentUser?.email}>{currentUser ? currentUser.rol : "Administrador"}</span>
           </div>
           <button className="icon-button" aria-label="Cerrar sesión" onClick={handleLogout} title="Cerrar sesión">
             <Settings size={17} />
@@ -811,7 +891,7 @@ export default function CRMPrototype() {
 
         <section className="content">
           {active === "dashboard" && (
-            <Dashboard noGestionados={noGestionados} goTo={goTo} notify={notify} stats={stats} />
+            <Dashboard noGestionados={noGestionados} goTo={goTo} notify={notify} stats={stats} cotizaciones={cotizaciones} />
           )}
 
           {active === "leads" && (
@@ -883,7 +963,14 @@ export default function CRMPrototype() {
                 <div className="table-card">
                   <table>
                     <thead>
-                      <tr><th>Nombre</th><th>Empresa</th><th>Canal</th><th>Servicio</th><th>Estado</th><th>Tiempo</th><th>Acciones</th></tr>
+                      <tr>
+                        <SortTh label="Nombre" sortKey="nombre" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                        <SortTh label="Empresa" sortKey="empresa" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                        <th>Canal</th>
+                        <SortTh label="Servicio" sortKey="servicio" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                        <SortTh label="Estado" sortKey="estado" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                        <th>Tiempo</th><th>Acciones</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {visibleLeads.map((lead) => (
@@ -965,7 +1052,14 @@ export default function CRMPrototype() {
             >
               <table>
                 <thead>
-                  <tr><th>RUT</th><th>Nombre / Empresa</th><th>Contacto</th><th>Teléfono</th><th>Ciudad</th><th>Estado</th><th>Acciones</th></tr>
+                  <tr>
+                    <SortTh label="RUT" sortKey="rut" current={clientSort} onSort={(k) => setClientSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                    <SortTh label="Nombre / Empresa" sortKey="nombre" current={clientSort} onSort={(k) => setClientSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                    <SortTh label="Contacto" sortKey="contacto" current={clientSort} onSort={(k) => setClientSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                    <th>Teléfono</th><th>Ciudad</th>
+                    <SortTh label="Estado" sortKey="estado" current={clientSort} onSort={(k) => setClientSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
+                    <th>Acciones</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {filteredClients.map((client) => (
@@ -1104,7 +1198,7 @@ export default function CRMPrototype() {
                   formaPago={cotizFormaPago}
                   fecha={fecha}
                 />
-                <HistoryTable cotizaciones={cotizaciones} clientes={clientes} />
+                <HistoryTable cotizaciones={cotizaciones} clientes={clientes} onVerCotizacion={handleVerCotizacion} />
               </div>
             </section>
           )}
@@ -1149,26 +1243,30 @@ function Dashboard({
   goTo,
   notify,
   stats,
+  cotizaciones,
 }: {
   noGestionados: Lead[];
   goTo: (id: ModuleId) => void;
   notify: (message: string) => void;
   stats: DashboardStats | null;
+  cotizaciones: Cotizacion[];
 }) {
-  const leadsValue = stats ? String(stats.leadsPendientes) : "18";
-  const clientesValue = stats ? String(stats.clientesActivos) : "47";
-  const cotizacionesValue = stats ? String(stats.cotizacionesAbiertas) : "12";
-  const ventasValue = stats
-    ? `$${(stats.ventasAprobadas / 1000000).toFixed(1).replace(".", ",")}M`
-    : "$4,2M";
+  const leadsValue = stats ? String(stats.leadsPendientes) : String(noGestionados.length);
+  const clientesValue = stats ? String(stats.clientesActivos) : "—";
+  const totalCotizaciones = cotizaciones.length;
+  const totalMonto = cotizaciones.reduce((s, c) => s + (c.monto || 0), 0);
+  const cotizacionesValue = totalCotizaciones > 0 ? String(totalCotizaciones) : (stats ? String(stats.cotizacionesAbiertas) : "—");
+  const montoStr = totalMonto > 0
+    ? `$${(totalMonto / 1000000).toFixed(1).replace(".", ",")}M`
+    : (stats ? `$${(stats.ventasAprobadas / 1000000).toFixed(1).replace(".", ",")}M` : "—");
 
   return (
     <section className="stack">
       <div className="kpi-row">
         <Kpi icon={Activity} label="Leads pendientes" value={leadsValue} delta="Sin gestionar" tone="amber" />
         <Kpi icon={BriefcaseMedical} label="Clientes activos" value={clientesValue} delta="En base de datos" tone="green" />
-        <Kpi icon={ClipboardList} label="Cotizaciones abiertas" value={cotizacionesValue} delta="Emitidas / en revisión" tone="amber" />
-        <Kpi icon={FileText} label="Ventas aprobadas" value={ventasValue} delta="CLP acumulado" tone="green" />
+        <Kpi icon={ClipboardList} label="Total cotizaciones" value={cotizacionesValue} delta={totalMonto > 0 ? `$${totalMonto.toLocaleString("es-CL")} CLP emitidos` : "Emitidas / en revisión"} tone="amber" />
+        <Kpi icon={FileText} label="Monto total" value={montoStr} delta="CLP acumulado" tone="green" />
       </div>
 
       <div className="flow-strip">
@@ -1273,6 +1371,28 @@ function DataModule({ children, search, setSearch, searchPlaceholder, onAdd, hid
       )}
       <div className="table-card">{children}</div>
     </section>
+  );
+}
+
+function SortTh({ label, sortKey, current, onSort }: {
+  label: string;
+  sortKey: string;
+  current: { key: string; dir: "asc" | "desc" };
+  onSort: (key: string) => void;
+}) {
+  const active = current.key === sortKey;
+  return (
+    <th
+      style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
+      onClick={() => onSort(sortKey)}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        {label}
+        {active
+          ? (current.dir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />)
+          : <ChevronDown size={12} style={{ opacity: 0.25 }} />}
+      </span>
+    </th>
   );
 }
 
@@ -1845,19 +1965,42 @@ function CatalogoModule({
   );
 }
 
-function HistoryTable({ cotizaciones, clientes }: { cotizaciones: Cotizacion[]; clientes: Cliente[] }) {
+function HistoryTable({ cotizaciones, clientes, onVerCotizacion }: {
+  cotizaciones: Cotizacion[];
+  clientes: Cliente[];
+  onVerCotizacion: (id: string) => void;
+}) {
   const [clienteFilter, setClienteFilter] = useState("");
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "fecha", dir: "desc" });
 
   function getClienteName(clienteId: string) {
     const found = clientes.find((c) => c.id === clienteId || c.nombre === clienteId);
     return found?.nombre ?? clienteId;
   }
 
-  const visible = cotizaciones.filter((cot) => {
-    if (!clienteFilter) return true;
-    const nombre = getClienteName(cot.cliente).toLowerCase();
-    return nombre.includes(clienteFilter.toLowerCase());
-  }).slice(0, 15);
+  function toggleSort(key: string) {
+    setSort((s) => ({ key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc" }));
+  }
+
+  const visible = useMemo(() => {
+    const list = cotizaciones.filter((cot) => {
+      if (!clienteFilter) return true;
+      return getClienteName(cot.cliente).toLowerCase().includes(clienteFilter.toLowerCase());
+    });
+    return [...list].sort((a, b) => {
+      if (sort.key === "monto") {
+        return sort.dir === "asc" ? a.monto - b.monto : b.monto - a.monto;
+      }
+      if (sort.key === "cliente") {
+        const av = getClienteName(a.cliente).toLowerCase();
+        const bv = getClienteName(b.cliente).toLowerCase();
+        return sort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+      }
+      const av = String((a as unknown as Record<string,unknown>)[sort.key] ?? "").toLowerCase();
+      const bv = String((b as unknown as Record<string,unknown>)[sort.key] ?? "").toLowerCase();
+      return sort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    }).slice(0, 20);
+  }, [cotizaciones, clienteFilter, sort, clientes]);
 
   return (
     <div className="panel table-card compact">
@@ -1877,7 +2020,16 @@ function HistoryTable({ cotizaciones, clientes }: { cotizaciones: Cotizacion[]; 
         )}
       </div>
       <table>
-        <thead><tr><th>N° Cotización</th><th>Cliente</th><th>Monto total</th><th>Estado</th><th>Fecha</th><th>PDF</th></tr></thead>
+        <thead>
+          <tr>
+            <SortTh label="N° Cotización" sortKey="nro" current={sort} onSort={toggleSort} />
+            <SortTh label="Cliente" sortKey="cliente" current={sort} onSort={toggleSort} />
+            <SortTh label="Monto total" sortKey="monto" current={sort} onSort={toggleSort} />
+            <SortTh label="Estado" sortKey="estado" current={sort} onSort={toggleSort} />
+            <SortTh label="Fecha" sortKey="fecha" current={sort} onSort={toggleSort} />
+            <th>Ver</th>
+          </tr>
+        </thead>
         <tbody>
           {visible.length === 0 && (
             <tr><td colSpan={6} style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>Sin resultados</td></tr>
@@ -1896,9 +2048,13 @@ function HistoryTable({ cotizaciones, clientes }: { cotizaciones: Cotizacion[]; 
               <td>
                 {cot.pdfUrl
                   ? <a href={cot.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0f2340", fontWeight: 600, textDecoration: "none" }}>
-                      <FileText size={13} />Ver PDF
+                      <FileText size={13} />PDF
                     </a>
-                  : <span style={{ color: "#cbd5e0", fontSize: 12 }}>—</span>
+                  : cot.id
+                    ? <button onClick={() => onVerCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0f2340", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        <Eye size={13} />Ver
+                      </button>
+                    : <span style={{ color: "#cbd5e0", fontSize: 12 }}>—</span>
                 }
               </td>
             </tr>
@@ -1978,7 +2134,7 @@ function Modal({
 
   useEffect(() => {
     if (kind === "lead" && editingLead) {
-      setLeadForm({ rut: "", nombre: editingLead.nombre, empresa: editingLead.empresa, tel: editingLead.tel, email: editingLead.email, canal: editingLead.canal, servicio: editingLead.servicio, equipo: editingLead.equipo });
+      setLeadForm({ rut: editingLead.rut ?? "", nombre: editingLead.nombre, empresa: editingLead.empresa, tel: editingLead.tel, email: editingLead.email, canal: editingLead.canal, servicio: editingLead.servicio, equipo: editingLead.equipo });
       setLeadItems(leadPreItems[editingLead.id] ?? []);
     } else if (kind === "cliente" && editingCliente) {
       setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, tel: editingCliente.telefono || "+56 ", correo: editingCliente.correo, rubro: editingCliente.rubro, estado: editingCliente.estado || "activo", direccion: editingCliente.direccion || "", ciudad: editingCliente.ciudad || "", comuna: editingCliente.comuna || "" });
@@ -2012,6 +2168,7 @@ function Modal({
     if (kind === "lead") {
       if (!leadForm.nombre.trim()) { notify("El nombre es requerido"); return; }
       if (leadForm.email && !isValidEmail(leadForm.email)) { notify("El correo no tiene un formato válido"); return; }
+      if (leadForm.rut && !validateRut(leadForm.rut)) { notify("El RUT ingresado no es válido. Verifica el dígito verificador."); return; }
       editingLead ? onUpdateLead(editingLead.id, leadForm, leadItems) : onSaveLead(leadForm, leadItems);
     } else if (kind === "cliente") {
       if (!clienteForm.nombre.trim()) { notify("El nombre de la empresa es requerido"); return; }

@@ -15,6 +15,22 @@ export function saveToken(token: string): void {
 export function clearToken(): void {
   localStorage.removeItem("crm_token");
   localStorage.removeItem("crm_session");
+  localStorage.removeItem("crm_user_email");
+  localStorage.removeItem("crm_user_rol");
+}
+
+export function saveUser(email: string, rol: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("crm_user_email", email);
+    localStorage.setItem("crm_user_rol", rol);
+  }
+}
+
+export function getUser(): { email: string; rol: string } | null {
+  if (typeof window === "undefined") return null;
+  const email = localStorage.getItem("crm_user_email");
+  if (!email) return null;
+  return { email, rol: localStorage.getItem("crm_user_rol") ?? "usuario" };
 }
 
 function authHeaders(): HeadersInit {
@@ -39,6 +55,7 @@ export async function login(email: string, password: string): Promise<{ token: s
 
 export interface Lead {
   id: string;
+  rut?: string;
   nombre: string;
   empresa: string;
   tel: string;
@@ -48,6 +65,7 @@ export interface Lead {
   servicio: string;
   tiempo: string;
   equipo: string;
+  creado_por?: string;
 }
 
 export interface Cliente {
@@ -244,6 +262,7 @@ function mapLead(value: unknown): Lead {
   const estado = str(raw.estado);
   return {
     id: str(raw.id),
+    rut: str(raw.rut) || undefined,
     nombre: str(raw.nombre),
     empresa: str(raw.empresa),
     tel: str(raw.telefono),
@@ -338,6 +357,7 @@ export async function fetchLeads(): Promise<Lead[]> {
 }
 
 export async function createLead(form: LeadForm): Promise<Lead | null> {
+  const creado_por = typeof window !== "undefined" ? localStorage.getItem("crm_user_email") ?? undefined : undefined;
   const r = await apiMutate<{ data: unknown }>("POST", "/api/leads", {
     nombre: form.nombre,
     empresa: form.empresa,
@@ -348,6 +368,7 @@ export async function createLead(form: LeadForm): Promise<Lead | null> {
     servicio_interes: form.servicio,
     notas: form.equipo,
     rut: form.rut,
+    creado_por,
   });
   return r?.data ? mapLead(r.data) : null;
 }
