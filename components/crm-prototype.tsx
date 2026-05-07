@@ -291,11 +291,8 @@ export default function CRMPrototype() {
     return () => { cancelled = true; };
   }, [loggedIn]);
 
-  if (!loggedIn) {
-    return <LoginScreen onLogin={(token) => { api.saveToken(token); setLoggedIn(true); }} />;
-  }
-
-  const noGestionados = leads.filter((l) => l.estado === "no-gestionado");
+  // All hooks must be called before any conditional return
+  const noGestionados = useMemo(() => leads.filter((l) => l.estado === "no-gestionado"), [leads]);
   const visibleLeads = useMemo(() => {
     const list = leadFilter === "todos" ? leads : leads.filter((l) => l.estado === leadFilter);
     return [...list].sort((a, b) => {
@@ -311,7 +308,6 @@ export default function CRMPrototype() {
   }, [leads, leadFilter, leadSort]);
   const debouncedClientQuery = useDebounce(clientQuery, 250);
   const debouncedProductQuery = useDebounce(productQuery, 250);
-
   const filteredClients = useMemo(() => {
     const list = clientes.filter((c) => {
       if (!debouncedClientQuery) return true;
@@ -333,6 +329,10 @@ export default function CRMPrototype() {
     productos.filter((p) => JSON.stringify(p).toLowerCase().includes(debouncedProductQuery.toLowerCase())),
     [productos, debouncedProductQuery]);
   const activeTitle = NAV_ITEMS.find((item) => item.id === active)?.label ?? "Dashboard";
+
+  if (!loggedIn) {
+    return <LoginScreen onLogin={(token) => { api.saveToken(token); setLoggedIn(true); }} />;
+  }
 
   function notify(message: string) {
     setToast(message);
