@@ -635,9 +635,23 @@ export default function CRMPrototype() {
         <td>${it.cantidad}</td>
         <td>${money(it.precio_unitario)}</td>
         <td><strong>${money(it.subtotal)}</strong></td>
-      </tr>
-      ${it.descripcion_larga ? `<tr><td></td><td colspan="4" style="color:#64748b;font-size:12px;white-space:pre-line;padding:4px 12px 12px">${it.descripcion_larga}</td></tr>` : ""}`;
+      </tr>`;
     }).join("");
+    const glossaryEntries: { label: string; desc: string }[] = [];
+    const seenGloss = new Set<string>();
+    det.items.forEach((it) => {
+      const key = it.tipo_servicio || it.descripcion_larga;
+      if (it.descripcion_larga && key && !seenGloss.has(key)) {
+        seenGloss.add(key);
+        glossaryEntries.push({ label: it.tipo_servicio || it.descripcion.split("—")[0].trim(), desc: it.descripcion_larga });
+      }
+    });
+    const glossaryHtml = glossaryEntries.length > 0
+      ? `<div class="glossary">
+          <h3 style="page-break-before:always">Descripción de servicios</h3>
+          ${glossaryEntries.map((e) => `<div class="gloss-item"><strong>${e.label}</strong><p>${e.desc}</p></div>`).join("")}
+        </div>`
+      : "";
     const win = window.open("", "_blank", "width=920,height=750");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización ${det.numero}</title>
@@ -666,6 +680,10 @@ export default function CRMPrototype() {
       .transfer dl{display:grid;grid-template-columns:auto 1fr;gap:2px 16px}
       .transfer dt{color:#64748b}
       .transfer dd{font-weight:500}
+      .glossary{margin-top:8px}
+      .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #007a4e}
+      .gloss-item strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:4px}
+      .gloss-item p{font-size:12px;color:#475569;white-space:pre-line;line-height:1.6}
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
     <header>
@@ -716,6 +734,7 @@ export default function CRMPrototype() {
       </dl>
     </div>
     ${det.notas_cliente ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${det.notas_cliente}</em></p>` : ""}
+    ${glossaryHtml}
     <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por ${det.validez_dias} días desde emisión</footer>
     </body></html>`);
     win.document.close();
@@ -739,9 +758,23 @@ export default function CRMPrototype() {
         <td>${it.cantidad}</td>
         <td>${money(it.precio_unitario)}</td>
         <td><strong>${money(sub)}</strong></td>
-      </tr>
-      ${it.descripcion_larga ? `<tr><td></td><td colspan="4" style="color:#64748b;font-size:12px;white-space:pre-line;padding:4px 12px 12px">${it.descripcion_larga}</td></tr>` : ""}`;
+      </tr>`;
     }).join("");
+    const glossaryEntriesDraft: { label: string; desc: string }[] = [];
+    const seenGlossDraft = new Set<string>();
+    cotizItems.forEach((it) => {
+      const key = it.tipo_servicio || it.descripcion_larga;
+      if (it.descripcion_larga && key && !seenGlossDraft.has(key)) {
+        seenGlossDraft.add(key);
+        glossaryEntriesDraft.push({ label: it.tipo_servicio || it.descripcion.split("—")[0].trim(), desc: it.descripcion_larga });
+      }
+    });
+    const glossaryHtmlDraft = glossaryEntriesDraft.length > 0
+      ? `<div class="glossary">
+          <h3 style="page-break-before:always">Descripción de servicios</h3>
+          ${glossaryEntriesDraft.map((e) => `<div class="gloss-item"><strong>${e.label}</strong><p>${e.desc}</p></div>`).join("")}
+        </div>`
+      : "";
     const win = window.open("", "_blank", "width=920,height=750");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización BORRADOR</title>
@@ -770,6 +803,10 @@ export default function CRMPrototype() {
       .transfer dl{display:grid;grid-template-columns:auto 1fr;gap:2px 16px}
       .transfer dt{color:#64748b}
       .transfer dd{font-weight:500}
+      .glossary{margin-top:8px}
+      .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #007a4e}
+      .gloss-item strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:4px}
+      .gloss-item p{font-size:12px;color:#475569;white-space:pre-line;line-height:1.6}
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
       .draft-badge{display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
     </style></head><body>
@@ -821,6 +858,7 @@ export default function CRMPrototype() {
       </dl>
     </div>
     ${cotizNotas ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${cotizNotas}</em></p>` : ""}
+    ${glossaryHtmlDraft}
     <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 30 días desde emisión</footer>
     </body></html>`);
     win.document.close();
