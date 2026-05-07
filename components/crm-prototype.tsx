@@ -29,9 +29,10 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as api from "@/lib/api";
 import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, CatalogoItemForm, Plantilla, CotizacionItemForm } from "@/lib/api";
+import { money, formatRut, normalizeRut, isValidEmail, validateRut, isActivo, fmtActivityDate } from "@/lib/utils";
 
 type ModuleId = "dashboard" | "leads" | "clientes" | "productos" | "cotizaciones" | "protocolos";
 type LeadStatus = "gestionado" | "no-gestionado";
@@ -88,10 +89,6 @@ const SERVICE_MAP: Record<string, QuoteService> = {
   instalación: "instalacion", instalacion: "instalacion",
 };
 
-function money(value: number) {
-  return value ? `$${value.toLocaleString("es-CL")}` : "—";
-}
-
 function getPrice(productId: string, service: QuoteService, productos: Producto[]) {
   const product = productos.find((item) => item.id === productId);
   if (!product) return 0;
@@ -103,62 +100,23 @@ function getPrice(productId: string, service: QuoteService, productos: Producto[
   return 0;
 }
 
-function incrementNro(nro: string): string {
-  const match = nro.match(/^(COT-\d{4}-)(\d+)$/);
-  if (!match) return nro;
-  return `${match[1]}${String(Number(match[2]) + 1).padStart(3, "0")}`;
-}
-
-function isActivo(estado: string) {
-  return estado.toLowerCase() === "activo" || estado.toLowerCase() === "active";
-}
-
-function formatRut(raw: string): string {
-  const clean = raw.replace(/[^0-9kK]/g, "").toUpperCase();
-  if (clean.length < 2) return clean;
-  const dv = clean.slice(-1);
-  const body = clean.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return `${body}-${dv}`;
-}
-
-function normalizeRut(rut: string): string {
-  return rut.replace(/[.\-\s]/g, "").toLowerCase();
-}
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function validateRut(rut: string): boolean {
-  if (!rut || rut.replace(/[.\-\s]/g, "").length < 3) return true;
-  const clean = rut.replace(/[.\-\s]/g, "").toUpperCase();
-  const dv = clean.slice(-1);
-  const body = clean.slice(0, -1);
-  if (!/^\d+$/.test(body)) return false;
-  let sum = 0;
-  let mul = 2;
-  for (let i = body.length - 1; i >= 0; i--) {
-    sum += parseInt(body[i]) * mul;
-    mul = mul === 7 ? 2 : mul + 1;
-  }
-  const r = 11 - (sum % 11);
-  const expected = r === 11 ? "0" : r === 10 ? "K" : String(r);
-  return dv === expected;
-}
-
-function fmtActivityDate(raw: unknown): string {
-  if (!raw) return "";
-  const s = typeof raw === "object" && raw !== null && "value" in raw
-    ? String((raw as { value: unknown }).value)
-    : String(raw);
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? "" : d.toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" });
-}
+// Utility functions are imported from @/lib/utils
 
 const LEAD_FORM_INIT: LeadForm = { rut: "", nombre: "", empresa: "", tel: "+56 ", email: "", canal: "wsp", servicio: "", equipo: "" };
 const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", tel: "+56 ", correo: "", rubro: "Médico", estado: "activo", direccion: "", ciudad: "", comuna: "" };
 const CATALOGO_FORM_INIT: CatalogoItemForm = { codigo: "", categoria: "MP", servicio: "", equipo: "", unidad: "Servicio", precio_neto: "", texto_base_key: "", descripcion_larga: "" };
 const PRODUCTO_FORM_INIT: ProductoForm = { nombre: "", cat: "Equipos médicos", marca: "", diag: "", rep: "", mant: "", inst: "" };
+
+// ── Hooks ─────────────────────────────────────────────────────────────────────
+
+function useDebounce<T>(value: T, ms = 300): T {
+  const [debounced, setDebounced] = useState<T>(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return debounced;
+}
 
 // ── Login ────────────────────────────────────────────────────────────────────
 
@@ -260,6 +218,7 @@ export default function CRMPrototype() {
   const [productos, setProductos] = useState<Producto[]>(INITIAL_PRODUCTOS);
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>(INITIAL_COTIZACIONES);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [leadSort, setLeadSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "tiempo", dir: "desc" });
   const [clientSort, setClientSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "nombre", dir: "asc" });
   const [isLoading, setIsLoading] = useState(true);
@@ -300,6 +259,9 @@ export default function CRMPrototype() {
 
   useEffect(() => {
     if (!loggedIn) return;
+    let cancelled = false;
+    setFetchError(null);
+    setIsLoading(true);
     Promise.all([
       api.fetchLeads(),
       api.fetchClientes(),
@@ -308,16 +270,25 @@ export default function CRMPrototype() {
       api.fetchDashboard(),
       api.fetchCatalogo(),
       api.fetchPlantillas(),
-    ]).then(([l, c, p, cot, s, cat, plt]) => {
-      if (l.length > 0) setLeads(l);
-      if (c.length > 0) setClientes(c);
-      if (p.length > 0) setProductos(p);
-      if (cot.length > 0) setCotizaciones(cot);
-      if (s) setStats(s);
-      if (cat.length > 0) setCatalogo(cat);
-      if (plt.length > 0) setPlantillas(plt);
-      setIsLoading(false);
-    });
+    ])
+      .then(([l, c, p, cot, s, cat, plt]) => {
+        if (cancelled) return;
+        if (l.length > 0) setLeads(l);
+        if (c.length > 0) setClientes(c);
+        if (p.length > 0) setProductos(p);
+        if (cot.length > 0) setCotizaciones(cot);
+        if (s) setStats(s);
+        if (cat.length > 0) setCatalogo(cat);
+        if (plt.length > 0) setPlantillas(plt);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFetchError("Error al cargar los datos. Verifica tu conexión.");
+          setIsLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
   }, [loggedIn]);
 
   if (!loggedIn) {
@@ -338,11 +309,14 @@ export default function CRMPrototype() {
       return leadSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
     });
   }, [leads, leadFilter, leadSort]);
+  const debouncedClientQuery = useDebounce(clientQuery, 250);
+  const debouncedProductQuery = useDebounce(productQuery, 250);
+
   const filteredClients = useMemo(() => {
     const list = clientes.filter((c) => {
-      if (!clientQuery) return true;
-      const q = clientQuery.toLowerCase();
-      const qNorm = normalizeRut(clientQuery);
+      if (!debouncedClientQuery) return true;
+      const q = debouncedClientQuery.toLowerCase();
+      const qNorm = normalizeRut(debouncedClientQuery);
       if (clientSearchField === "rut") return normalizeRut(c.rut).includes(qNorm);
       if (clientSearchField === "nombre") return c.nombre.toLowerCase().includes(q);
       if (clientSearchField === "contacto") return c.contacto.toLowerCase().includes(q);
@@ -354,8 +328,10 @@ export default function CRMPrototype() {
       const bv = String((b as unknown as Record<string,unknown>)[clientSort.key] ?? "").toLowerCase();
       return clientSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
     });
-  }, [clientes, clientQuery, clientSearchField, clientSort]);
-  const filteredProducts = productos.filter((p) => JSON.stringify(p).toLowerCase().includes(productQuery.toLowerCase()));
+  }, [clientes, debouncedClientQuery, clientSearchField, clientSort]);
+  const filteredProducts = useMemo(() =>
+    productos.filter((p) => JSON.stringify(p).toLowerCase().includes(debouncedProductQuery.toLowerCase())),
+    [productos, debouncedProductQuery]);
   const activeTitle = NAV_ITEMS.find((item) => item.id === active)?.label ?? "Dashboard";
 
   function notify(message: string) {
@@ -872,6 +848,13 @@ export default function CRMPrototype() {
       </aside>
 
       <main className="main">
+        {fetchError && (
+          <div style={{ background: "#fef2f2", borderBottom: "1px solid #fecaca", color: "#dc2626", padding: "10px 24px", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+            <X size={15} />
+            {fetchError}
+            <button onClick={() => setFetchError(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#dc2626", padding: 0 }}><X size={14} /></button>
+          </div>
+        )}
         <header className="topbar">
           <div>
             <h1>{activeTitle}</h1>
@@ -949,10 +932,10 @@ export default function CRMPrototype() {
                         <div><Clock3 size={14} />{lead.tiempo}</div>
                       </dl>
                       <div className="card-actions">
-                        <button className="primary small" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} />Cotizar</button>
-        <button className="ghost small" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} />{lead.estado === "gestionado" ? "Desmarcar" : "Gestionar"}</button>
-                        <button className="ghost small card-icon-btn" aria-label="Editar" onClick={() => handleEditLead(lead)}><Edit3 size={14} /></button>
-                        <button className="ghost small card-icon-btn danger" aria-label="Eliminar" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={14} /></button>
+                        <button className="primary small" title="Crear cotización para este lead" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} />Cotizar</button>
+                        <button className="ghost small" title={lead.estado === "gestionado" ? "Marcar como sin gestionar" : "Marcar como gestionado"} onClick={() => handleToggleGestionar(lead.id)}><Check size={15} />{lead.estado === "gestionado" ? "Desmarcar" : "Gestionar"}</button>
+                        <button className="ghost small card-icon-btn" aria-label="Editar" title="Editar lead" onClick={() => handleEditLead(lead)}><Edit3 size={14} /></button>
+                        <button className="ghost small card-icon-btn danger" aria-label="Eliminar" title="Eliminar lead" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={14} /></button>
                       </div>
                     </article>
                   ))}
@@ -983,10 +966,10 @@ export default function CRMPrototype() {
                           <td style={{ color: "#64748b", fontSize: 12 }}>{lead.tiempo}</td>
                           <td>
                             <div className="row-actions">
-                              <button aria-label="Cotizar" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} /></button>
-                              <button aria-label="Gestionar" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} /></button>
-                              <button aria-label="Editar" onClick={() => handleEditLead(lead)}><Edit3 size={15} /></button>
-                              <button aria-label="Eliminar" className="danger" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={15} /></button>
+                              <button aria-label="Cotizar" title="Crear cotización" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} /></button>
+                              <button aria-label="Gestionar" title="Cambiar estado de gestión" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} /></button>
+                              <button aria-label="Editar" title="Editar lead" onClick={() => handleEditLead(lead)}><Edit3 size={15} /></button>
+                              <button aria-label="Eliminar" title="Eliminar lead" className="danger" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={15} /></button>
                             </div>
                           </td>
                         </tr>
@@ -1404,12 +1387,13 @@ function RowActions({ notify, quote, onDelete, onEdit }: {
 }) {
   return (
     <div className="row-actions">
-      <button aria-label="Editar" onClick={() => onEdit ? onEdit() : notify("Modo edición abierto")}>
+      <button aria-label="Editar" title="Editar registro" onClick={() => onEdit ? onEdit() : notify("Modo edición abierto")}>
         <Edit3 size={15} />
       </button>
-      {quote ? <button aria-label="Cotizar" onClick={quote}><ClipboardList size={15} /></button> : null}
+      {quote ? <button aria-label="Cotizar" title="Crear cotización" onClick={quote}><ClipboardList size={15} /></button> : null}
       <button
         aria-label="Eliminar"
+        title="Eliminar registro"
         className="danger"
         onClick={() => onDelete ? onDelete() : notify("Registro eliminado del prototipo")}
       >
@@ -2173,6 +2157,7 @@ function Modal({
     } else if (kind === "cliente") {
       if (!clienteForm.nombre.trim()) { notify("El nombre de la empresa es requerido"); return; }
       if (clienteForm.correo && !isValidEmail(clienteForm.correo)) { notify("El correo no tiene un formato válido"); return; }
+      if (clienteForm.rut && !validateRut(clienteForm.rut)) { notify("El RUT del cliente no es válido. Verifica el dígito verificador."); return; }
       editingCliente ? onUpdateCliente(editingCliente.id, clienteForm) : onSaveCliente(clienteForm);
     } else if (kind === "producto") {
       if (!productoForm.nombre.trim()) { notify("El nombre del producto es requerido"); return; }
@@ -2315,7 +2300,11 @@ function Modal({
                   onChange={(e) => setClienteForm((f) => ({ ...f, rut: formatRut(e.target.value) }))}
                   placeholder="76.XXX.XXX-X"
                   maxLength={15}
+                  style={{ borderColor: clienteForm.rut && !validateRut(clienteForm.rut) ? "#ef4444" : undefined }}
                 />
+                {clienteForm.rut && !validateRut(clienteForm.rut) && (
+                  <span className="field-error">RUT inválido — verifica el dígito verificador</span>
+                )}
               </label>
               <label>Nombre empresa<input value={clienteForm.nombre} onChange={(e) => setClienteForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Clínica Las Condes" maxLength={100} /></label>
               <label>Contacto<input value={clienteForm.contacto} onChange={(e) => setClienteForm((f) => ({ ...f, contacto: e.target.value }))} placeholder="Nombre del contacto" maxLength={100} /></label>
