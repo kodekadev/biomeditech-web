@@ -534,6 +534,7 @@ export async function logActivity(
   descripcion: string,
   refId?: string,
   refTipo?: string,
+  creadoPor?: string,
 ): Promise<void> {
   await apiMutate("POST", "/api/actividad-dashboard", {
     tipo,
@@ -541,6 +542,7 @@ export async function logActivity(
     descripcion,
     referencia_id: refId,
     referencia_tipo: refTipo,
+    creado_por: creadoPor,
   });
 }
 

@@ -437,21 +437,22 @@ export default function CRMPrototype() {
   }
 
   async function handleSaveLead(form: LeadForm, items: CotizacionItemForm[] = []) {
-    const newLead = await api.createLead(form);
-    const lead: Lead = newLead ?? {
-      id: String(Date.now()),
-      ...form,
-      canal: form.canal as LeadChannel,
-      estado: "no-gestionado",
-      tiempo: "Justo ahora",
-    };
-    setLeads((prev) => [lead, ...prev]);
-    if (items.length > 0) {
-      setLeadPreItems((prev) => ({ ...prev, [lead.id]: items }));
-    }
-    api.logActivity("nuevo_lead", "Nuevo lead registrado", `${form.nombre} (${form.empresa}) — ${form.servicio}`, lead.id, "lead");
+    const tempId = `temp-${Date.now()}`;
+    const tempLead: Lead = { id: tempId, ...form, canal: form.canal as LeadChannel, estado: "no-gestionado", tiempo: "Justo ahora" };
+    setLeads((prev) => [tempLead, ...prev]);
+    if (items.length > 0) setLeadPreItems((prev) => ({ ...prev, [tempId]: items }));
+    closeModal();
+    notify("Lead agregado correctamente");
 
-    // Auto-create client if not yet registered (leads come with client data from Google Ads)
+    const newLead = await api.createLead(form);
+    const lead = newLead ?? tempLead;
+    if (newLead) {
+      setLeads((prev) => prev.map((l) => l.id === tempId ? newLead : l));
+      if (items.length > 0) setLeadPreItems((prev) => { const { [tempId]: v, ...rest } = prev; return { ...rest, [newLead.id]: v }; });
+    }
+    api.logActivity("nuevo_lead", "Nuevo lead registrado", `${form.nombre} (${form.empresa}) — ${form.servicio}`, lead.id, "lead", currentUser?.email);
+
+    // Auto-create client if not yet registered
     const rutNorm = normalizeRut(form.rut ?? "");
     const clienteExiste = clientes.some((c) =>
       (rutNorm.length > 4 && normalizeRut(c.rut) === rutNorm) ||
@@ -470,38 +471,22 @@ export default function CRMPrototype() {
         ciudad: "",
         comuna: "",
       };
+      const tempCId = `C-${String(Date.now())}`;
+      const tempCliente: Cliente = { id: tempCId, rut: clienteForm.rut, nombre: clienteForm.nombre, contacto: clienteForm.contacto, correo: clienteForm.correo, rubro: clienteForm.rubro, estado: clienteForm.estado, telefono: clienteForm.tel, direccion: "", ciudad: "", comuna: "" };
+      setClientes((prev) => [tempCliente, ...prev]);
       const newCliente = await api.createCliente(clienteForm);
-      const cliente: Cliente = newCliente ?? {
-        id: `C-${String(Date.now())}`,
-        rut: clienteForm.rut,
-        nombre: clienteForm.nombre,
-        contacto: clienteForm.contacto,
-        correo: clienteForm.correo,
-        rubro: clienteForm.rubro,
-        estado: clienteForm.estado,
-        telefono: clienteForm.tel,
-        direccion: "",
-        ciudad: "",
-        comuna: "",
-      };
-      setClientes((prev) => [cliente, ...prev]);
-      notify("Lead registrado y cliente creado automáticamente");
-    } else {
-      notify("Lead agregado correctamente");
+      if (newCliente) setClientes((prev) => prev.map((c) => c.id === tempCId ? newCliente : c));
     }
-    closeModal();
   }
 
   async function handleUpdateLead(id: string, form: LeadForm, items: CotizacionItemForm[] = []) {
-    const updated = await api.saveLead(id, form);
-    if (updated) {
-      setLeads((prev) => prev.map((l) => (l.id === id ? updated : l)));
-    } else {
-      setLeads((prev) => prev.map((l) =>
-        l.id === id ? { ...l, ...form, canal: form.canal as LeadChannel } : l
-      ));
-    }
+    setLeads((prev) => prev.map((l) => l.id === id ? { ...l, ...form, canal: form.canal as LeadChannel } : l));
     setLeadPreItems((prev) => ({ ...prev, [id]: items }));
+    closeModal();
+    notify("Lead actualizado");
+
+    const updated = await api.saveLead(id, form);
+    if (updated) setLeads((prev) => prev.map((l) => l.id === id ? updated : l));
 
     // Sync matching client if empresa or contact data changed
     const rutNorm = normalizeRut(form.rut ?? "");
@@ -523,13 +508,8 @@ export default function CRMPrototype() {
         comuna: matchingCliente.comuna,
       };
       const updatedCliente = await api.saveCliente(matchingCliente.id, clienteForm);
-      if (updatedCliente) {
-        setClientes((prev) => prev.map((c) => c.id === matchingCliente.id ? updatedCliente : c));
-      }
+      if (updatedCliente) setClientes((prev) => prev.map((c) => c.id === matchingCliente.id ? updatedCliente : c));
     }
-
-    notify("Lead actualizado");
-    closeModal();
   }
 
   // --- Cliente actions ---
@@ -547,37 +527,26 @@ export default function CRMPrototype() {
   }
 
   async function handleSaveCliente(form: ClienteForm) {
-    const newCliente = await api.createCliente(form);
-    const cliente: Cliente = newCliente ?? {
-      id: `C-${String(clientes.length + 1).padStart(3, "0")}`,
-      rut: form.rut,
-      nombre: form.nombre,
-      contacto: form.contacto,
-      correo: form.correo,
-      rubro: form.rubro,
-      estado: form.estado || "activo",
-      telefono: form.tel,
-      direccion: form.direccion,
-      ciudad: form.ciudad,
-      comuna: form.comuna,
-    };
-    setClientes((prev) => [cliente, ...prev]);
-    api.logActivity("nuevo_cliente", "Nuevo cliente registrado", `${form.nombre}`, cliente.id, "cliente");
-    notify("Cliente agregado correctamente");
+    const tempId = `C-temp-${Date.now()}`;
+    const tempCliente: Cliente = { id: tempId, rut: form.rut, nombre: form.nombre, contacto: form.contacto, correo: form.correo, rubro: form.rubro, estado: form.estado || "activo", telefono: form.tel, direccion: form.direccion, ciudad: form.ciudad, comuna: form.comuna };
+    setClientes((prev) => [tempCliente, ...prev]);
     closeModal();
+    notify("Cliente agregado correctamente");
+
+    const newCliente = await api.createCliente(form);
+    if (newCliente) {
+      setClientes((prev) => prev.map((c) => c.id === tempId ? newCliente : c));
+      api.logActivity("nuevo_cliente", "Nuevo cliente registrado", `${form.nombre}`, newCliente.id, "cliente", currentUser?.email);
+    }
   }
 
   async function handleUpdateCliente(id: string, form: ClienteForm) {
-    const updated = await api.saveCliente(id, form);
-    if (updated) {
-      setClientes((prev) => prev.map((c) => (c.id === id ? updated : c)));
-    } else {
-      setClientes((prev) => prev.map((c) =>
-        c.id === id ? { ...c, rut: form.rut, nombre: form.nombre, contacto: form.contacto, correo: form.correo, rubro: form.rubro, estado: form.estado, telefono: form.tel, direccion: form.direccion, ciudad: form.ciudad, comuna: form.comuna } : c
-      ));
-    }
-    notify("Cliente actualizado");
+    setClientes((prev) => prev.map((c) => c.id === id ? { ...c, rut: form.rut, nombre: form.nombre, contacto: form.contacto, correo: form.correo, rubro: form.rubro, estado: form.estado, telefono: form.tel, direccion: form.direccion, ciudad: form.ciudad, comuna: form.comuna } : c));
     closeModal();
+    notify("Cliente actualizado");
+
+    const updated = await api.saveCliente(id, form);
+    if (updated) setClientes((prev) => prev.map((c) => c.id === id ? updated : c));
   }
 
   // --- Producto actions ---
@@ -595,36 +564,23 @@ export default function CRMPrototype() {
   }
 
   async function handleSaveProducto(form: ProductoForm) {
-    const newProd = await api.createProducto(form);
-    const prod: Producto = newProd ?? {
-      id: `P-${String(productos.length + 1).padStart(3, "0")}`,
-      nombre: form.nombre,
-      cat: form.cat,
-      diag: Number(form.diag) || 0,
-      rep: Number(form.rep) || 0,
-      mant: Number(form.mant) || 0,
-      inst: Number(form.inst) || 0,
-    };
-    setProductos((prev) => [...prev, prod]);
-    notify("Producto agregado correctamente");
+    const tempId = `P-temp-${Date.now()}`;
+    const tempProd: Producto = { id: tempId, nombre: form.nombre, cat: form.cat, diag: Number(form.diag) || 0, rep: Number(form.rep) || 0, mant: Number(form.mant) || 0, inst: Number(form.inst) || 0 };
+    setProductos((prev) => [...prev, tempProd]);
     closeModal();
+    notify("Producto agregado correctamente");
+
+    const newProd = await api.createProducto(form);
+    if (newProd) setProductos((prev) => prev.map((p) => p.id === tempId ? newProd : p));
   }
 
   async function handleUpdateProducto(id: string, form: ProductoForm) {
-    const updated = await api.saveProducto(id, form);
-    if (updated) {
-      setProductos((prev) => prev.map((p) => (p.id === id ? updated : p)));
-    } else {
-      setProductos((prev) => prev.map((p) =>
-        p.id === id ? {
-          ...p, nombre: form.nombre, cat: form.cat,
-          diag: Number(form.diag) || 0, rep: Number(form.rep) || 0,
-          mant: Number(form.mant) || 0, inst: Number(form.inst) || 0,
-        } : p
-      ));
-    }
-    notify("Producto actualizado");
+    setProductos((prev) => prev.map((p) => p.id === id ? { ...p, nombre: form.nombre, cat: form.cat, diag: Number(form.diag) || 0, rep: Number(form.rep) || 0, mant: Number(form.mant) || 0, inst: Number(form.inst) || 0 } : p));
     closeModal();
+    notify("Producto actualizado");
+
+    const updated = await api.saveProducto(id, form);
+    if (updated) setProductos((prev) => prev.map((p) => p.id === id ? updated : p));
   }
 
   // --- Cotización actions ---
@@ -659,6 +615,7 @@ export default function CRMPrototype() {
       `${clienteObj?.nombre ?? cotizClienteId} — ${money(total)} CLP`,
       cot.id,
       "cotizacion",
+      currentUser?.email,
     );
     notify(`Cotización ${cot.nro} emitida`);
     setCotizItems([]);
@@ -687,36 +644,52 @@ export default function CRMPrototype() {
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
-      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0f172a}
+      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #007a4e}
       header img{height:40px}
       header .right{text-align:right}
-      header .right strong{display:block;font-size:20px;color:#0f172a}
+      header .right strong{display:block;font-size:20px;color:#007a4e}
       h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
-      .client-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-bottom:16px}
-      .client-grid dt{color:#64748b;font-size:12px}
-      .client-grid dd{font-size:13px;font-weight:500}
+      .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+      .data-block dt{color:#64748b;font-size:12px;margin-top:6px}
+      .data-block dd{font-size:13px;font-weight:500}
+      .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:6px;font-weight:700}
       table{width:100%;border-collapse:collapse;margin-bottom:20px}
-      thead th{background:#0f172a;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
+      thead th{background:#007a4e;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
       td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
       .totals{width:320px;margin-left:auto;margin-bottom:16px}
       .totals tr td{padding:5px 12px}
-      .totals tr:last-child{font-weight:700;font-size:15px;border-top:2px solid #0f172a}
-      .conditions{font-size:12px;color:#475569;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:16px}
-      .conditions strong{display:block;margin-bottom:4px}
+      .totals tr:last-child{font-weight:700;font-size:15px;border-top:2px solid #007a4e}
+      .conditions{font-size:12px;color:#475569;background:#f0faf5;padding:12px;border-radius:6px;margin-bottom:16px;border-left:3px solid #007a4e}
+      .conditions strong{display:block;margin-bottom:4px;color:#007a4e}
+      .transfer{font-size:12px;color:#1e293b;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:16px}
+      .transfer strong{display:block;margin-bottom:6px;color:#007a4e;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+      .transfer dl{display:grid;grid-template-columns:auto 1fr;gap:2px 16px}
+      .transfer dt{color:#64748b}
+      .transfer dd{font-weight:500}
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
     <header>
-      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
+      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0) sepia(1) hue-rotate(100deg) saturate(3)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
       <div class="right"><strong>${det.numero}</strong><span>${fechaStr}</span><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
-    <h3>Datos del cliente</h3>
-    <dl class="client-grid">
-      <dt>Empresa</dt><dd>${clienteObj?.nombre ?? det.cliente_id}</dd>
-      <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
-      <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
-      <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
-      <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
-    </dl>
+    <h3>Información</h3>
+    <div class="two-col">
+      <dl class="data-block">
+        <h4>Cliente</h4>
+        <dt>Empresa</dt><dd>${clienteObj?.nombre ?? det.cliente_id}</dd>
+        <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
+        <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
+        <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
+        <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
+      </dl>
+      <dl class="data-block">
+        <h4>Biomeditech SpA</h4>
+        <dt>RUT</dt><dd>76.012.345-6</dd>
+        <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
+        <dt>Teléfono</dt><dd>+56 9 9999 9999</dd>
+        <dt>Web</dt><dd>biomeditech.cl</dd>
+      </dl>
+    </div>
     <h3>Detalle del servicio</h3>
     <table>
       <thead><tr><th>#</th><th>Descripción</th><th>Cant.</th><th>P. Unitario</th><th>Subtotal</th></tr></thead>
@@ -730,6 +703,17 @@ export default function CRMPrototype() {
     <div class="conditions">
       <strong>Condiciones</strong>
       Forma de pago: ${det.forma_pago} · Validez: ${det.validez_dias} días · Diagnóstico incluido en servicio aceptado
+    </div>
+    <div class="transfer">
+      <strong>Datos de transferencia</strong>
+      <dl>
+        <dt>Banco</dt><dd>Banco de Chile</dd>
+        <dt>Tipo cuenta</dt><dd>Cuenta corriente</dd>
+        <dt>N° cuenta</dt><dd>000-00000-00</dd>
+        <dt>RUT</dt><dd>76.012.345-6</dd>
+        <dt>Nombre</dt><dd>Biomeditech SpA</dd>
+        <dt>Correo</dt><dd>contacto@biomeditech.cl</dd>
+      </dl>
     </div>
     ${det.notas_cliente ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${det.notas_cliente}</em></p>` : ""}
     <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por ${det.validez_dias} días desde emisión</footer>
@@ -764,37 +748,53 @@ export default function CRMPrototype() {
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
-      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0f172a}
+      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #007a4e}
       header img{height:40px}
       header .right{text-align:right}
-      header .right strong{display:block;font-size:20px;color:#0f172a}
+      header .right strong{display:block;font-size:20px;color:#007a4e}
       h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
-      .client-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-bottom:16px}
-      .client-grid dt{color:#64748b;font-size:12px}
-      .client-grid dd{font-size:13px;font-weight:500}
+      .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+      .data-block dt{color:#64748b;font-size:12px;margin-top:6px}
+      .data-block dd{font-size:13px;font-weight:500}
+      .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:6px;font-weight:700}
       table{width:100%;border-collapse:collapse;margin-bottom:20px}
-      thead th{background:#0f172a;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
+      thead th{background:#007a4e;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
       td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
       .totals{width:320px;margin-left:auto;margin-bottom:16px}
       .totals tr td{padding:5px 12px}
-      .totals tr:last-child{font-weight:700;font-size:15px;border-top:2px solid #0f172a}
-      .conditions{font-size:12px;color:#475569;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:16px}
-      .conditions strong{display:block;margin-bottom:4px}
+      .totals tr:last-child{font-weight:700;font-size:15px;border-top:2px solid #007a4e}
+      .conditions{font-size:12px;color:#475569;background:#f0faf5;padding:12px;border-radius:6px;margin-bottom:16px;border-left:3px solid #007a4e}
+      .conditions strong{display:block;margin-bottom:4px;color:#007a4e}
+      .transfer{font-size:12px;color:#1e293b;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:16px}
+      .transfer strong{display:block;margin-bottom:6px;color:#007a4e;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+      .transfer dl{display:grid;grid-template-columns:auto 1fr;gap:2px 16px}
+      .transfer dt{color:#64748b}
+      .transfer dd{font-weight:500}
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
       .draft-badge{display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
     </style></head><body>
     <header>
-      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
+      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0) sepia(1) hue-rotate(100deg) saturate(3)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
       <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><span>${fechaStr}</span><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
-    <h3>Datos del cliente</h3>
-    <dl class="client-grid">
-      <dt>Empresa</dt><dd>${clienteObj?.nombre ?? "—"}</dd>
-      <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
-      <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
-      <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
-      <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
-    </dl>
+    <h3>Información</h3>
+    <div class="two-col">
+      <dl class="data-block">
+        <h4>Cliente</h4>
+        <dt>Empresa</dt><dd>${clienteObj?.nombre ?? "—"}</dd>
+        <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
+        <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
+        <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
+        <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
+      </dl>
+      <dl class="data-block">
+        <h4>Biomeditech SpA</h4>
+        <dt>RUT</dt><dd>76.012.345-6</dd>
+        <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
+        <dt>Teléfono</dt><dd>+56 9 9999 9999</dd>
+        <dt>Web</dt><dd>biomeditech.cl</dd>
+      </dl>
+    </div>
     <h3>Detalle del servicio</h3>
     <table>
       <thead><tr><th>#</th><th>Descripción</th><th>Cant.</th><th>P. Unitario</th><th>Subtotal</th></tr></thead>
@@ -808,6 +808,17 @@ export default function CRMPrototype() {
     <div class="conditions">
       <strong>Condiciones</strong>
       Forma de pago: ${cotizFormaPago} · Validez: 30 días · Diagnóstico incluido en servicio aceptado
+    </div>
+    <div class="transfer">
+      <strong>Datos de transferencia</strong>
+      <dl>
+        <dt>Banco</dt><dd>Banco de Chile</dd>
+        <dt>Tipo cuenta</dt><dd>Cuenta corriente</dd>
+        <dt>N° cuenta</dt><dd>000-00000-00</dd>
+        <dt>RUT</dt><dd>76.012.345-6</dd>
+        <dt>Nombre</dt><dd>Biomeditech SpA</dd>
+        <dt>Correo</dt><dd>contacto@biomeditech.cl</dd>
+      </dl>
     </div>
     ${cotizNotas ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${cotizNotas}</em></p>` : ""}
     <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 30 días desde emisión</footer>

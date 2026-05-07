@@ -747,6 +747,12 @@ button {
   flex: 1;
 }
 
+.card-icon-btn {
+  flex: 0 0 38px !important;
+  width: 38px;
+  padding: 6px 0 !important;
+}
+
 .search-box {
   display: flex;
   width: min(100%, 430px);
