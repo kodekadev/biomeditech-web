@@ -62,14 +62,14 @@ const INITIAL_PRODUCTOS: Producto[] = [
 ];
 
 const INITIAL_CATALOGO: CatalogoItem[] = [
-  { id: "CAT-MP-001", codigo: "MP-001", categoria: "MP", servicio: "Mantencion preventiva", equipo: "Monitor multiparametro", unidad: "Servicio", precio_neto: 85000, grupo: "MP", texto_base_key: "MP" },
-  { id: "CAT-MP-002", codigo: "MP-002", categoria: "MP", servicio: "Mantencion preventiva", equipo: "Autoclave", unidad: "Servicio", precio_neto: 90000, grupo: "MP", texto_base_key: "MP" },
-  { id: "CAT-MC-001", codigo: "MC-001", categoria: "MC", servicio: "Mantencion correctiva", equipo: "Monitor multiparametro", unidad: "Servicio", precio_neto: 120000, grupo: "MC", texto_base_key: "MC" },
-  { id: "CAT-MC-002", codigo: "MC-002", categoria: "MC", servicio: "Mantencion correctiva", equipo: "Autoclave", unidad: "Servicio", precio_neto: 185000, grupo: "MC", texto_base_key: "MC" },
-  { id: "CAT-BS-001", codigo: "BS-001", categoria: "BS", servicio: "Bloque servicio tecnico", equipo: "Atencion en terreno", unidad: "Bloque", precio_neto: 65000, grupo: "BS", texto_base_key: "BS" },
-  { id: "CAT-VS-001", codigo: "VS-001", categoria: "VS", servicio: "Visita tecnica", equipo: "Evaluacion inicial", unidad: "Visita", precio_neto: 45000, grupo: "VS", texto_base_key: "VS" },
-  { id: "CAT-EV-001", codigo: "EV-001", categoria: "EV", servicio: "Evaluacion diagnostica", equipo: "Equipo biomedico", unidad: "Servicio", precio_neto: 55000, grupo: "EV", texto_base_key: "EV" },
-  { id: "CAT-RS-001", codigo: "RS-001", categoria: "RS", servicio: "Repuesto / Insumo", equipo: "Kit de repuestos", unidad: "Unidad", precio_neto: 0, grupo: "RS", texto_base_key: "RS" },
+  { id: "CAT-MP-001", codigo: "MP-001", categoria: "MP", servicio: "Mantencion preventiva", equipo: "Monitor multiparametro", unidad: "Servicio", precio_neto: 85000, grupo: "MP", texto_base_key: "MP", descripcion_larga: "" },
+  { id: "CAT-MP-002", codigo: "MP-002", categoria: "MP", servicio: "Mantencion preventiva", equipo: "Autoclave", unidad: "Servicio", precio_neto: 90000, grupo: "MP", texto_base_key: "MP", descripcion_larga: "" },
+  { id: "CAT-MC-001", codigo: "MC-001", categoria: "MC", servicio: "Mantencion correctiva", equipo: "Monitor multiparametro", unidad: "Servicio", precio_neto: 120000, grupo: "MC", texto_base_key: "MC", descripcion_larga: "" },
+  { id: "CAT-MC-002", codigo: "MC-002", categoria: "MC", servicio: "Mantencion correctiva", equipo: "Autoclave", unidad: "Servicio", precio_neto: 185000, grupo: "MC", texto_base_key: "MC", descripcion_larga: "" },
+  { id: "CAT-BS-001", codigo: "BS-001", categoria: "BS", servicio: "Bloque servicio tecnico", equipo: "Atencion en terreno", unidad: "Bloque", precio_neto: 65000, grupo: "BS", texto_base_key: "BS", descripcion_larga: "" },
+  { id: "CAT-VS-001", codigo: "VS-001", categoria: "VS", servicio: "Visita tecnica", equipo: "Evaluacion inicial", unidad: "Visita", precio_neto: 45000, grupo: "VS", texto_base_key: "VS", descripcion_larga: "" },
+  { id: "CAT-EV-001", codigo: "EV-001", categoria: "EV", servicio: "Evaluacion diagnostica", equipo: "Equipo biomedico", unidad: "Servicio", precio_neto: 55000, grupo: "EV", texto_base_key: "EV", descripcion_larga: "" },
+  { id: "CAT-RS-001", codigo: "RS-001", categoria: "RS", servicio: "Repuesto / Insumo", equipo: "Kit de repuestos", unidad: "Unidad", precio_neto: 0, grupo: "RS", texto_base_key: "RS", descripcion_larga: "" },
 ];
 
 const INITIAL_COTIZACIONES: Cotizacion[] = [];
@@ -241,6 +241,7 @@ export default function CRMPrototype() {
   const [cotizNotas, setCotizNotas] = useState("");
   const [cotizFormaPago, setCotizFormaPago] = useState("50% inicio - 50% entrega");
   const [cotizItems, setCotizItems] = useState<CotizacionItemForm[]>([]);
+  const [emitiendo, setEmitiendo] = useState(false);
   // legacy single-line state kept for backward compat with pre-fill from lead
   const [quote, setQuote] = useState({
     cliente: "",
@@ -587,6 +588,16 @@ export default function CRMPrototype() {
   async function handleEmitirCotizacion() {
     if (!cotizClienteId) { notify("Selecciona un cliente"); return; }
     if (cotizItems.length === 0) { notify("Agrega al menos un ítem"); return; }
+    setEmitiendo(true);
+
+    // Optimistic: add to historial immediately with estimated total
+    const tempId = `cot-temp-${Date.now()}`;
+    const clienteObj = clientes.find((c) => c.id === cotizClienteId);
+    const tempSubtotal = cotizItems.reduce((s, it) => s + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100)), 0);
+    const tempTotal = tempSubtotal + Math.round(tempSubtotal * 0.19);
+    const tempCot: Cotizacion = { id: tempId, nro: "—", cliente: cotizClienteId, monto: tempTotal, estado: "Pendiente", fecha: new Date().toISOString().slice(0, 10) };
+    setCotizaciones((prev) => [tempCot, ...prev]);
+
     const result = await api.createCotizacionMulti({
       cliente_id: cotizClienteId,
       notas_cliente: cotizNotas,
@@ -594,11 +605,7 @@ export default function CRMPrototype() {
       validez_dias: 30,
       items: cotizItems,
     });
-    const clienteObj = clientes.find((c) => c.id === cotizClienteId);
-    const total = result?.total_con_iva ?? cotizItems.reduce((s, it) => {
-      const sub = Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100));
-      return s + sub;
-    }, 0);
+    const total = result?.total_con_iva ?? tempTotal;
     const cot: Cotizacion = {
       id: result?.id ?? String(Date.now()),
       nro: result?.numero ?? "",
@@ -608,19 +615,26 @@ export default function CRMPrototype() {
       fecha: new Date().toISOString().slice(0, 10),
       pdfUrl: result?.pdf_url ?? undefined,
     };
-    setCotizaciones((prev) => [cot, ...prev]);
-    api.logActivity(
-      "cotizacion_emitida",
-      `Cotización ${cot.nro} emitida`,
-      `${clienteObj?.nombre ?? cotizClienteId} — ${money(total)} CLP`,
-      cot.id,
-      "cotizacion",
-      currentUser?.email,
+    setCotizaciones((prev) => prev.map((c) => c.id === tempId ? cot : c));
+    api.logActivity("cotizacion_emitida", `Cotización ${cot.nro} emitida`, `${clienteObj?.nombre ?? cotizClienteId} — ${money(total)} CLP`, cot.id, "cotizacion", currentUser?.email);
+
+    // Mark matching no-gestionado lead as gestionado
+    const rutCliente = normalizeRut(clienteObj?.rut ?? "");
+    const matchLead = leads.find((l) =>
+      l.estado === "no-gestionado" && (
+        (rutCliente.length > 4 && normalizeRut(l.rut ?? "") === rutCliente) ||
+        clienteObj?.nombre.toLowerCase().trim() === l.empresa.toLowerCase().trim()
+      )
     );
-    notify(`Cotización ${cot.nro} emitida`);
+    if (matchLead) {
+      setLeads((prev) => prev.map((l) => l.id === matchLead.id ? { ...l, estado: "gestionado" } : l));
+      api.updateLead(matchLead.id, { estado: "gestionado" });
+    }
+
+    setEmitiendo(false);
     setCotizItems([]);
     setCotizNotas("");
-    // open print window with the latest emitted cotizacion
+    notify(`Cotización ${cot.nro} emitida`);
     if (result) handlePrintDetalle(result);
   }
 
@@ -664,9 +678,11 @@ export default function CRMPrototype() {
       header .right strong{display:block;font-size:20px;color:#007a4e}
       h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
       .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-      .data-block dt{color:#64748b;font-size:12px;margin-top:6px}
-      .data-block dd{font-size:13px;font-weight:500}
-      .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:6px;font-weight:700}
+      .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:8px;font-weight:700}
+      .data-block dl{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px;align-items:baseline}
+      .data-block dt{color:#64748b;font-size:12px;white-space:nowrap}
+      .data-block dt::after{content:":"}
+      .data-block dd{font-size:12px;font-weight:500}
       table{width:100%;border-collapse:collapse;margin-bottom:20px}
       thead th{background:#007a4e;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
       td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
@@ -677,8 +693,9 @@ export default function CRMPrototype() {
       .conditions strong{display:block;margin-bottom:4px;color:#007a4e}
       .transfer{font-size:12px;color:#1e293b;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:16px}
       .transfer strong{display:block;margin-bottom:6px;color:#007a4e;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
-      .transfer dl{display:grid;grid-template-columns:auto 1fr;gap:2px 16px}
-      .transfer dt{color:#64748b}
+      .transfer dl{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px}
+      .transfer dt{color:#64748b;white-space:nowrap}
+      .transfer dt::after{content:":"}
       .transfer dd{font-weight:500}
       .glossary{margin-top:8px}
       .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #007a4e}
@@ -687,26 +704,30 @@ export default function CRMPrototype() {
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
     <header>
-      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0) sepia(1) hue-rotate(100deg) saturate(3)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
+      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
       <div class="right"><strong>${det.numero}</strong><span>${fechaStr}</span><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
     <div class="two-col">
-      <dl class="data-block">
+      <div class="data-block">
         <h4>Cliente</h4>
-        <dt>Empresa</dt><dd>${clienteObj?.nombre ?? det.cliente_id}</dd>
-        <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
-        <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
-        <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
-        <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
-      </dl>
-      <dl class="data-block">
+        <dl>
+          <dt>Empresa</dt><dd>${clienteObj?.nombre ?? det.cliente_id}</dd>
+          <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
+          <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
+          <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
+          <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
+        </dl>
+      </div>
+      <div class="data-block">
         <h4>Biomeditech SpA</h4>
-        <dt>RUT</dt><dd>76.012.345-6</dd>
-        <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
-        <dt>Teléfono</dt><dd>+56 9 9999 9999</dd>
-        <dt>Web</dt><dd>biomeditech.cl</dd>
-      </dl>
+        <dl>
+          <dt>RUT</dt><dd>76.012.345-6</dd>
+          <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
+          <dt>Teléfono</dt><dd>+56 9 9999 9999</dd>
+          <dt>Web</dt><dd>biomeditech.cl</dd>
+        </dl>
+      </div>
     </div>
     <h3>Detalle del servicio</h3>
     <table>
@@ -787,9 +808,11 @@ export default function CRMPrototype() {
       header .right strong{display:block;font-size:20px;color:#007a4e}
       h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
       .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-      .data-block dt{color:#64748b;font-size:12px;margin-top:6px}
-      .data-block dd{font-size:13px;font-weight:500}
-      .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:6px;font-weight:700}
+      .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:8px;font-weight:700}
+      .data-block dl{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px;align-items:baseline}
+      .data-block dt{color:#64748b;font-size:12px;white-space:nowrap}
+      .data-block dt::after{content:":"}
+      .data-block dd{font-size:12px;font-weight:500}
       table{width:100%;border-collapse:collapse;margin-bottom:20px}
       thead th{background:#007a4e;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
       td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
@@ -800,8 +823,9 @@ export default function CRMPrototype() {
       .conditions strong{display:block;margin-bottom:4px;color:#007a4e}
       .transfer{font-size:12px;color:#1e293b;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:16px}
       .transfer strong{display:block;margin-bottom:6px;color:#007a4e;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
-      .transfer dl{display:grid;grid-template-columns:auto 1fr;gap:2px 16px}
-      .transfer dt{color:#64748b}
+      .transfer dl{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px}
+      .transfer dt{color:#64748b;white-space:nowrap}
+      .transfer dt::after{content:":"}
       .transfer dd{font-weight:500}
       .glossary{margin-top:8px}
       .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #007a4e}
@@ -811,26 +835,30 @@ export default function CRMPrototype() {
       .draft-badge{display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
     </style></head><body>
     <header>
-      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0) sepia(1) hue-rotate(100deg) saturate(3)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
+      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
       <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><span>${fechaStr}</span><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
     <div class="two-col">
-      <dl class="data-block">
+      <div class="data-block">
         <h4>Cliente</h4>
-        <dt>Empresa</dt><dd>${clienteObj?.nombre ?? "—"}</dd>
-        <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
-        <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
-        <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
-        <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
-      </dl>
-      <dl class="data-block">
+        <dl>
+          <dt>Empresa</dt><dd>${clienteObj?.nombre ?? "—"}</dd>
+          <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
+          <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
+          <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
+          <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
+        </dl>
+      </div>
+      <div class="data-block">
         <h4>Biomeditech SpA</h4>
-        <dt>RUT</dt><dd>76.012.345-6</dd>
-        <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
-        <dt>Teléfono</dt><dd>+56 9 9999 9999</dd>
-        <dt>Web</dt><dd>biomeditech.cl</dd>
-      </dl>
+        <dl>
+          <dt>RUT</dt><dd>76.012.345-6</dd>
+          <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
+          <dt>Teléfono</dt><dd>+56 9 9999 9999</dd>
+          <dt>Web</dt><dd>biomeditech.cl</dd>
+        </dl>
+      </div>
     </div>
     <h3>Detalle del servicio</h3>
     <table>
@@ -1140,20 +1168,9 @@ export default function CRMPrototype() {
           )}
 
           {active === "productos" && (
-            <CatalogoModule
+            <ProductsModule
               catalogo={catalogo}
               setCatalogo={setCatalogo}
-              productos={productos}
-              filteredProducts={filteredProducts}
-              productQuery={productQuery}
-              setProductQuery={setProductQuery}
-              onEdit={(p) => handleEditProducto(p)}
-              onDelete={async (id) => {
-                setProductos((prev) => prev.filter((p) => p.id !== id));
-                await api.deleteProducto(id);
-                notify("Producto eliminado");
-              }}
-              onAdd={() => setModal("producto")}
               notify={notify}
             />
           )}
@@ -1213,6 +1230,7 @@ export default function CRMPrototype() {
                     setItems={setCotizItems}
                     onEmitir={handleEmitirCotizacion}
                     onDescargarPDF={handlePrintQuote}
+                    emitiendo={emitiendo}
                   />
                 </div>
                 {noGestionados.length > 0 && (
@@ -1492,13 +1510,13 @@ function catalogoDescription(item: CatalogoItem): string {
 }
 
 function catalogoToCotizacionItem(item: CatalogoItem, plantillas: Plantilla[]): CotizacionItemForm {
-  const plantilla = plantillas.find((p) => p.codigo === item.texto_base_key);
+  const plantilla = plantillas.find((p) => p.codigo === item.texto_base_key || p.codigo === item.categoria);
   return {
     producto_id: item.id,
     codigo: item.codigo,
     descripcion: catalogoDescription(item),
-    descripcion_larga: plantilla?.descripcion_larga ?? "",
-    tipo_servicio: item.texto_base_key || item.categoria,
+    descripcion_larga: item.descripcion_larga || plantilla?.descripcion_larga || "",
+    tipo_servicio: item.categoria || item.texto_base_key,
     precio_unitario: item.precio_neto,
     cantidad: 1,
     descuento_pct: 0,
@@ -1511,7 +1529,7 @@ function CotizadorForm({
   notas, setNotas,
   formaPago, setFormaPago,
   items, setItems,
-  onEmitir, onDescargarPDF,
+  onEmitir, onDescargarPDF, emitiendo = false,
 }: {
   clientes: Cliente[];
   catalogo: CatalogoItem[];
@@ -1526,6 +1544,7 @@ function CotizadorForm({
   setItems: React.Dispatch<React.SetStateAction<CotizacionItemForm[]>>;
   onEmitir: () => void;
   onDescargarPDF: () => void;
+  emitiendo?: boolean;
 }) {
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -1540,15 +1559,15 @@ function CotizadorForm({
   });
 
   function addItem(cat: CatalogoItem) {
-    const plantilla = plantillas.find((p) => p.codigo === cat.texto_base_key);
+    const plantilla = plantillas.find((p) => p.codigo === cat.texto_base_key || p.codigo === cat.categoria);
     setItems((prev) => [
       ...prev,
       {
         producto_id: cat.id,
         codigo: cat.codigo,
         descripcion: `${cat.servicio} — ${cat.equipo}`.trim().replace(/\s*—\s*$/, ""),
-        descripcion_larga: plantilla?.descripcion_larga ?? "",
-        tipo_servicio: cat.texto_base_key,
+        descripcion_larga: cat.descripcion_larga || plantilla?.descripcion_larga || "",
+        tipo_servicio: cat.categoria || cat.texto_base_key,
         precio_unitario: cat.precio_neto,
         cantidad: 1,
         descuento_pct: 0,
@@ -1682,8 +1701,8 @@ function CotizadorForm({
         <button className="ghost" onClick={onDescargarPDF} disabled={items.length === 0}>
           <Printer size={16} />PDF
         </button>
-        <button className="primary" style={{ gridColumn: "1 / -1" }} onClick={onEmitir} disabled={!clienteId || items.length === 0}>
-          <Send size={16} />Emitir cotización
+        <button className="primary" style={{ gridColumn: "1 / -1" }} onClick={onEmitir} disabled={!clienteId || items.length === 0 || emitiendo}>
+          {emitiendo ? <><span className="btn-spinner" />Emitiendo…</> : <><Send size={16} />Emitir cotización</>}
         </button>
       </div>
     </div>
@@ -1765,315 +1784,333 @@ function CotizadorPreview({
   );
 }
 
-function CatalogoModule({
-  catalogo, setCatalogo, productos, filteredProducts, productQuery, setProductQuery,
-  onEdit, onDelete, onAdd, notify,
+const PROD_SVC_DEFAULTS = [
+  { id: "MP", label: "Mantención Preventiva" },
+  { id: "MC", label: "Mantención Correctiva" },
+  { id: "MR", label: "Mantención/Reparación" },
+  { id: "INST", label: "Instalación" },
+  { id: "DIAG", label: "Diagnóstico" },
+  { id: "VS", label: "Visita Técnica" },
+  { id: "RS", label: "Repuesto/Insumo" },
+];
+const EQUIP_CAT_DEFAULTS = ["Médico", "Dental", "Estético", "Otro"];
+
+function ProductsModule({
+  catalogo, setCatalogo, notify,
 }: {
   catalogo: CatalogoItem[];
   setCatalogo: React.Dispatch<React.SetStateAction<CatalogoItem[]>>;
-  productos: Producto[];
-  filteredProducts: Producto[];
-  productQuery: string;
-  setProductQuery: (v: string) => void;
-  onEdit: (p: Producto) => void;
-  onDelete: (id: string) => void;
-  onAdd: () => void;
   notify: (msg: string) => void;
 }) {
-  const [tab, setTab] = useState<"catalogo" | "personalizados">("catalogo");
+  const [serviceTypes, setServiceTypes] = useState(PROD_SVC_DEFAULTS);
+  const [equipCats, setEquipCats] = useState(EQUIP_CAT_DEFAULTS);
+  const [descTemplates, setDescTemplates] = useState<Record<string, string>>({});
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
-  const [editingCat, setEditingCat] = useState<CatalogoItem | null>(null);
-  const [catModal, setCatModal] = useState(false);
-  const [catForm, setCatForm] = useState<CatalogoItemForm>(CATALOGO_FORM_INIT);
+  const [taxOpen, setTaxOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [modal, setModal] = useState<"product" | null>(null);
+  const [editingGroup, setEditingGroup] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [catPrices, setCatPrices] = useState<Record<string, string>>({});
-  const [catDropOpen, setCatDropOpen] = useState(false);
-  const [catSort, setCatSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "codigo", dir: "asc" });
-  const [prodSort, setProdSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "nombre", dir: "asc" });
+  const [newSvcType, setNewSvcType] = useState({ id: "", label: "" });
+  const [newEquipCat, setNewEquipCat] = useState("");
+  const [prodForm, setProdForm] = useState<{
+    nombre: string;
+    equipCat: string;
+    servicios: { id: string; precio: string; descripcion: string; enabled: boolean }[];
+  }>({ nombre: "", equipCat: EQUIP_CAT_DEFAULTS[0], servicios: [] });
 
-  const catLabels: Record<string, string> = {
-    VS: "Visita técnica", MP: "Mant. preventiva", MC: "Mant. correctiva",
-    BS: "Bloque servicio", EV: "Evaluación diag.", RS: "Repuesto / Insumo",
-  };
+  function getEquipCat(item: CatalogoItem): string {
+    if (item.texto_base_key?.includes(":")) return item.texto_base_key.split(":")[0];
+    return "Otro";
+  }
 
-  const filteredCat = catalogo.filter((c) => {
-    if (catFilter && c.categoria !== catFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return c.codigo.toLowerCase().includes(q) || c.equipo.toLowerCase().includes(q) || c.servicio.toLowerCase().includes(q);
-    }
-    return true;
-  });
+  function resolveDesc(equipCat: string, svcId: string): string {
+    return descTemplates[`${equipCat}:${svcId}`] || descTemplates[`GENERAL:${svcId}`] || "";
+  }
 
-  const sortedCat = useMemo(() => [...filteredCat].sort((a, b) => {
-    if (catSort.key === "precio_neto") return catSort.dir === "asc" ? a.precio_neto - b.precio_neto : b.precio_neto - a.precio_neto;
-    const av = String((a as unknown as Record<string, unknown>)[catSort.key] ?? "").toLowerCase();
-    const bv = String((b as unknown as Record<string, unknown>)[catSort.key] ?? "").toLowerCase();
-    return catSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-  }), [filteredCat, catSort]);
-
-  const sortedProducts = useMemo(() => [...filteredProducts].sort((a, b) => {
-    const numKeys = ["diag", "rep", "mant", "inst"];
-    if (numKeys.includes(prodSort.key)) {
-      const av = Number((a as unknown as Record<string, unknown>)[prodSort.key] ?? 0);
-      const bv = Number((b as unknown as Record<string, unknown>)[prodSort.key] ?? 0);
-      return prodSort.dir === "asc" ? av - bv : bv - av;
-    }
-    const av = String((a as unknown as Record<string, unknown>)[prodSort.key] ?? "").toLowerCase();
-    const bv = String((b as unknown as Record<string, unknown>)[prodSort.key] ?? "").toLowerCase();
-    return prodSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-  }), [filteredProducts, prodSort]);
-
-  function nextCodeForCat(cat: string): string {
+  function nextCode(svcId: string): string {
     const nums = catalogo
-      .filter((c) => c.categoria === cat && /^[A-Z]+-\d+$/.test(c.codigo))
+      .filter((c) => c.categoria === svcId && /^[A-Z]+-\d+$/.test(c.codigo))
       .map((c) => parseInt(c.codigo.split("-")[1], 10))
       .filter((n) => !isNaN(n));
-    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
-    return `${cat}-${String(next).padStart(3, "0")}`;
+    return `${svcId}-${String((nums.length > 0 ? Math.max(...nums) : 0) + 1).padStart(3, "0")}`;
   }
+
+  const groups = useMemo(() => {
+    const map: Record<string, { equipCat: string; items: CatalogoItem[] }> = {};
+    for (const item of catalogo) {
+      const ec = getEquipCat(item);
+      if (catFilter && ec !== catFilter) continue;
+      if (search && !item.equipo.toLowerCase().includes(search.toLowerCase()) && !item.codigo.toLowerCase().includes(search.toLowerCase())) continue;
+      if (!map[item.equipo]) map[item.equipo] = { equipCat: ec, items: [] };
+      map[item.equipo].items.push(item);
+    }
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  }, [catalogo, catFilter, search]);
 
   function openAdd() {
-    setEditingCat(null);
-    setCatForm({ ...CATALOGO_FORM_INIT, categoria: "", codigo: "" });
-    setCatPrices({});
-    setCatDropOpen(false);
-    setCatModal(true);
+    setEditingGroup(null);
+    setProdForm({ nombre: "", equipCat: equipCats[0] || "Médico", servicios: serviceTypes.map((st) => ({ id: st.id, precio: "", descripcion: "", enabled: false })) });
+    setModal("product");
   }
 
-  function openEdit(item: CatalogoItem) {
-    setEditingCat(item);
-    setCatForm({ codigo: item.codigo, categoria: item.categoria, servicio: item.servicio, equipo: item.equipo, unidad: item.unidad, precio_neto: String(item.precio_neto), texto_base_key: item.texto_base_key, descripcion_larga: "" });
-    setCatDropOpen(false);
-    setCatModal(true);
+  function openEdit(equipName: string, items: CatalogoItem[], equipCat: string) {
+    setEditingGroup(equipName);
+    setProdForm({
+      nombre: equipName,
+      equipCat,
+      servicios: serviceTypes.map((st) => {
+        const ex = items.find((i) => i.categoria === st.id);
+        return { id: st.id, precio: ex ? String(ex.precio_neto) : "", descripcion: ex?.descripcion_larga || "", enabled: !!ex };
+      }),
+    });
+    setModal("product");
   }
 
-  async function handleDeleteCat(item: CatalogoItem) {
-    if (!window.confirm(`¿Eliminar "${item.equipo || item.servicio}"?`)) return;
-    setCatalogo((prev) => prev.filter((c) => c.id !== item.id));
-    await api.deleteCatalogoItem(item.id);
-    notify("Ítem eliminado del catálogo");
+  async function handleDeleteGroup(items: CatalogoItem[]) {
+    if (!window.confirm(`¿Eliminar "${items[0]?.equipo}" y sus ${items.length} servicio(s)?`)) return;
+    const name = items[0]?.equipo;
+    setCatalogo((prev) => prev.filter((c) => !items.some((i) => i.id === c.id)));
+    await Promise.all(items.map((i) => api.deleteCatalogoItem(i.id)));
+    notify(`Equipo "${name}" eliminado`);
   }
 
-  async function handleSaveCat() {
-    if (!catForm.equipo.trim()) { notify("Ingresa el nombre del equipo o servicio"); return; }
+  async function handleSaveProd() {
+    if (!prodForm.nombre.trim()) { notify("Ingresa el nombre del equipo"); return; }
+    const enabled = prodForm.servicios.filter((s) => s.enabled && s.precio !== "");
+    if (enabled.length === 0) { notify("Activa al menos un tipo de servicio con precio"); return; }
     setSaving(true);
-    if (editingCat) {
-      const updated = await api.updateCatalogoItem(editingCat.id, catForm);
-      if (updated) setCatalogo((prev) => prev.map((c) => c.id === editingCat.id ? updated : c));
-      notify("Ítem actualizado");
-    } else {
-      const selectedCats = Object.keys(catPrices);
-      if (selectedCats.length === 0) { notify("Selecciona al menos una categoría"); setSaving(false); return; }
-      let count = 0;
-      for (const cat of selectedCats) {
-        const itemForm = {
-          ...catForm,
-          categoria: cat,
-          codigo: nextCodeForCat(cat),
-          precio_neto: catPrices[cat] || "0",
-          servicio: catLabels[cat] ?? cat,
-          texto_base_key: cat,
+    const svcLabel = Object.fromEntries(serviceTypes.map((st) => [st.id, st.label]));
+
+    if (editingGroup) {
+      const existing = catalogo.filter((c) => c.equipo === editingGroup);
+      for (const s of enabled) {
+        const ex = existing.find((c) => c.categoria === s.id);
+        const form: CatalogoItemForm = {
+          codigo: ex?.codigo || nextCode(s.id),
+          categoria: s.id,
+          servicio: svcLabel[s.id] || s.id,
+          equipo: prodForm.nombre,
+          unidad: "Servicio",
+          precio_neto: s.precio,
+          texto_base_key: `${prodForm.equipCat}:${s.id}`,
+          descripcion_larga: s.descripcion || resolveDesc(prodForm.equipCat, s.id),
         };
-        const created = await api.createCatalogoItem(itemForm);
-        if (created) { setCatalogo((prev) => [...prev, created]); count++; }
+        if (ex) {
+          const updated = await api.updateCatalogoItem(ex.id, form);
+          if (updated) setCatalogo((prev) => prev.map((c) => c.id === ex.id ? updated : c));
+        } else {
+          const created = await api.createCatalogoItem(form);
+          if (created) setCatalogo((prev) => [...prev, created]);
+        }
       }
-      notify(`${count} ítem${count !== 1 ? "s" : ""} agregado${count !== 1 ? "s" : ""} al catálogo`);
+      const toDelete = existing.filter((c) => !enabled.some((s) => s.id === c.categoria));
+      for (const item of toDelete) {
+        setCatalogo((prev) => prev.filter((c) => c.id !== item.id));
+        await api.deleteCatalogoItem(item.id);
+      }
+      notify(`Equipo "${prodForm.nombre}" actualizado`);
+    } else {
+      for (const s of enabled) {
+        const form: CatalogoItemForm = {
+          codigo: nextCode(s.id),
+          categoria: s.id,
+          servicio: svcLabel[s.id] || s.id,
+          equipo: prodForm.nombre,
+          unidad: "Servicio",
+          precio_neto: s.precio,
+          texto_base_key: `${prodForm.equipCat}:${s.id}`,
+          descripcion_larga: s.descripcion || resolveDesc(prodForm.equipCat, s.id),
+        };
+        const created = await api.createCatalogoItem(form);
+        if (created) setCatalogo((prev) => [...prev, created]);
+      }
+      notify(`Equipo "${prodForm.nombre}" agregado con ${enabled.length} servicio(s)`);
     }
     setSaving(false);
-    setCatModal(false);
+    setModal(null);
   }
 
   return (
     <section className="stack">
       <div className="module-toolbar">
-        <div className="segmented">
-          <button className={tab === "catalogo" ? "selected" : ""} onClick={() => setTab("catalogo")}>
-            Catálogo Biomeditech <span>{catalogo.length}</span>
-          </button>
-          <button className={tab === "personalizados" ? "selected" : ""} onClick={() => setTab("personalizados")}>
-            Personalizados <span>{productos.length}</span>
-          </button>
+        <div style={{ display: "flex", gap: 8, flex: 1, flexWrap: "wrap", alignItems: "center" }}>
+          <div className="segmented">
+            <button className={!catFilter ? "selected" : ""} onClick={() => setCatFilter("")}>Todos <span>{groups.length}</span></button>
+            {equipCats.map((cat) => {
+              const count = groups.filter(([, g]) => g.equipCat === cat).length;
+              return <button key={cat} className={catFilter === cat ? "selected" : ""} onClick={() => setCatFilter(cat)}>{cat} <span>{count}</span></button>;
+            })}
+          </div>
+          <input placeholder="Buscar equipo..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
         </div>
-        {tab === "catalogo" && (
-          <button className="primary" onClick={openAdd}><Plus size={16} />Agregar ítem</button>
-        )}
-        {tab === "personalizados" && (
-          <button className="primary" onClick={onAdd}><Plus size={16} />Agregar producto</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="ghost" onClick={() => setSettingsOpen((v) => !v)} title="Gestionar tipos de servicio y categorías"><Settings size={15} />Configurar</button>
+          <button className="primary" onClick={openAdd}><Plus size={16} />Nuevo equipo</button>
+        </div>
+      </div>
+
+      {/* Settings panel */}
+      {settingsOpen && (
+        <div className="panel" style={{ padding: 16, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div>
+              <strong style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#64748b" }}>Tipos de servicio</strong>
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                {serviceTypes.map((st) => (
+                  <div key={st.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                    <span className="tag navy" style={{ minWidth: 44, textAlign: "center", fontSize: 11 }}>{st.id}</span>
+                    <span style={{ flex: 1, color: "#475569" }}>{st.label}</span>
+                    <button onClick={() => { if (window.confirm(`¿Eliminar "${st.label}"?`)) setServiceTypes((p) => p.filter((s) => s.id !== st.id)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}><Trash2 size={13} /></button>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <input placeholder="ID" value={newSvcType.id} onChange={(e) => setNewSvcType((p) => ({ ...p, id: e.target.value.toUpperCase().slice(0, 8) }))} style={{ width: 64 }} maxLength={8} />
+                  <input placeholder="Nombre del servicio" value={newSvcType.label} onChange={(e) => setNewSvcType((p) => ({ ...p, label: e.target.value }))} style={{ flex: 1 }} maxLength={60} />
+                  <button className="primary small" onClick={() => { if (!newSvcType.id || !newSvcType.label) return; if (serviceTypes.some((s) => s.id === newSvcType.id)) { notify("Ya existe ese código"); return; } setServiceTypes((p) => [...p, { ...newSvcType }]); setNewSvcType({ id: "", label: "" }); }}><Plus size={14} /></button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <strong style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#64748b" }}>Categorías de equipo</strong>
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                {equipCats.map((cat) => (
+                  <div key={cat} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                    <span style={{ flex: 1, color: "#475569" }}>{cat}</span>
+                    <button onClick={() => { if (window.confirm(`¿Eliminar categoría "${cat}"?`)) setEquipCats((p) => p.filter((c) => c !== cat)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}><Trash2 size={13} /></button>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <input placeholder="Nueva categoría" value={newEquipCat} onChange={(e) => setNewEquipCat(e.target.value)} style={{ flex: 1 }} maxLength={40} />
+                  <button className="primary small" onClick={() => { if (!newEquipCat.trim()) return; if (equipCats.includes(newEquipCat.trim())) { notify("Ya existe"); return; } setEquipCats((p) => [...p, newEquipCat.trim()]); setNewEquipCat(""); }}><Plus size={14} /></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Glosario / Taxonomy collapsible */}
+      <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+        <button onClick={() => setTaxOpen((v) => !v)} style={{ width: "100%", background: "#f8fafc", border: "none", padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}><FileText size={15} />Glosario de glosas por categoría</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d={taxOpen ? "M2 8L6 4L10 8" : "M2 4L6 8L10 4"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+        {taxOpen && (
+          <div style={{ padding: 16 }}>
+            <p style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>Estas descripciones se asignan automáticamente al crear ítems de la misma categoría + tipo de servicio. Si el equipo tiene descripción propia, esa tiene prioridad.</p>
+            {[...equipCats, "GENERAL"].map((cat) => (
+              <div key={cat} style={{ marginBottom: 20 }}>
+                <strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".06em", color: cat === "GENERAL" ? "#64748b" : "var(--bio-green-dark)" }}>{cat === "GENERAL" ? "GENERAL (fallback global)" : cat}</strong>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+                  {serviceTypes.filter((st) => st.id !== "VS").map((st) => (
+                    <label key={st.id} style={{ fontSize: 12 }}>
+                      {st.id} — {st.label}
+                      <textarea rows={2} value={descTemplates[`${cat}:${st.id}`] || ""} placeholder={cat === "GENERAL" ? `Descripción estándar de ${st.label}...` : `Descripción de ${st.label} para equipos ${cat}...`} onChange={(e) => setDescTemplates((p) => ({ ...p, [`${cat}:${st.id}`]: e.target.value }))} style={{ fontSize: 11, lineHeight: 1.5, marginTop: 2 }} maxLength={600} />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
-      {catModal && (
-        <div className="modal-backdrop" onClick={() => setCatModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+      {/* Unified products table */}
+      <div className="panel table-card" style={{ overflowX: "auto" }}>
+        <table style={{ tableLayout: "fixed", minWidth: 600 }}>
+          <thead>
+            <tr>
+              <th style={{ width: "32%" }}>Equipo</th>
+              <th style={{ width: "12%" }}>Categoría</th>
+              {serviceTypes.map((st) => <th key={st.id} title={st.label} style={{ textAlign: "right", fontSize: 11 }}>{st.id}</th>)}
+              <th style={{ width: 72 }}>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.length === 0 && (
+              <tr><td colSpan={3 + serviceTypes.length} style={{ textAlign: "center", color: "#94a3b8", padding: 20 }}>
+                {search || catFilter ? "Sin resultados para este filtro." : "No hay equipos registrados. Haz clic en «Nuevo equipo» para agregar."}
+              </td></tr>
+            )}
+            {groups.map(([equipName, { items, equipCat }]) => (
+              <tr key={equipName}>
+                <td><strong style={{ fontSize: 13 }}>{equipName}</strong></td>
+                <td><span className="tag navy" style={{ fontSize: 11 }}>{equipCat}</span></td>
+                {serviceTypes.map((st) => {
+                  const item = items.find((i) => i.categoria === st.id);
+                  return <td key={st.id} style={{ textAlign: "right", fontSize: 12 }}>{item ? <strong>{money(item.precio_neto)}</strong> : <span style={{ color: "#cbd5e0" }}>—</span>}</td>;
+                })}
+                <td>
+                  <div className="row-actions">
+                    <button aria-label="Editar" onClick={() => openEdit(equipName, items, equipCat)} title="Editar"><Edit3 size={14} /></button>
+                    <button aria-label="Eliminar" className="danger" onClick={() => handleDeleteGroup(items)} title="Eliminar"><Trash2 size={14} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Product add/edit modal */}
+      {modal === "product" && (
+        <div className="modal-backdrop" onClick={() => setModal(null)}>
+          <div className="modal" style={{ maxWidth: 600 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h2>{editingCat ? "Editar ítem catálogo" : "Nuevo ítem catálogo"}</h2>
-              <button onClick={() => setCatModal(false)} aria-label="Cerrar"><X size={17} /></button>
+              <h2>{editingGroup ? `Editar: ${editingGroup}` : "Nuevo equipo"}</h2>
+              <button onClick={() => setModal(null)} aria-label="Cerrar"><X size={17} /></button>
             </div>
             <div className="modal-grid">
-              {editingCat ? (
-                <>
-                  <label>
-                    Categoría
-                    <select value={catForm.categoria} onChange={(e) => setCatForm((f) => ({ ...f, categoria: e.target.value }))}>
-                      {Object.entries(catLabels).map(([k, v]) => <option key={k} value={k}>{k} — {v}</option>)}
-                    </select>
-                  </label>
-                  <label>Código<input value={catForm.codigo} onChange={(e) => setCatForm((f) => ({ ...f, codigo: e.target.value }))} placeholder="MP-001" maxLength={30} /></label>
-                  <label>Precio neto (CLP)<input type="number" min={0} value={catForm.precio_neto} onChange={(e) => setCatForm((f) => ({ ...f, precio_neto: e.target.value }))} placeholder="85000" /></label>
-                  <label>Unidad<input value={catForm.unidad} onChange={(e) => setCatForm((f) => ({ ...f, unidad: e.target.value }))} placeholder="Servicio" maxLength={40} /></label>
-                </>
-              ) : (
-                <div className="wide" style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 900, color: "var(--slate)" }}>Servicios *</span>
-                  <div style={{ position: "relative" }}>
-                    <button
-                      type="button"
-                      onClick={() => setCatDropOpen((v) => !v)}
-                      style={{ width: "100%", minHeight: 40, padding: "0 12px", border: "1px solid var(--border)", borderRadius: 8, background: "#fff", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, cursor: "pointer", color: "var(--ink)" }}
-                    >
-                      <span style={{ color: Object.keys(catPrices).length === 0 ? "#94a3b8" : "var(--ink)" }}>
-                        {Object.keys(catPrices).length === 0 ? "Seleccionar servicios..." : Object.keys(catPrices).join(", ")}
-                      </span>
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                        <path d={catDropOpen ? "M2 8L6 4L10 8" : "M2 4L6 8L10 4"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                    {catDropOpen && (
-                      <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 20, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 8px 24px rgba(15,35,64,0.12)", padding: "6px 0" }}>
-                        {Object.entries(catLabels).map(([k, v]) => (
-                          <label key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", cursor: "pointer", fontSize: 13, userSelect: "none" }}>
-                            <input
-                              type="checkbox"
-                              checked={k in catPrices}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setCatPrices((prev) => ({ ...prev, [k]: "" }));
-                                } else {
-                                  setCatPrices((prev) => { const n = { ...prev }; delete n[k]; return n; });
-                                }
-                              }}
-                              style={{ minHeight: 0, height: 15, width: 15, padding: 0, margin: 0, flexShrink: 0 }}
-                            />
-                            <span style={{ fontWeight: 700, color: "var(--navy)", minWidth: 28 }}>{k}</span>
-                            <span style={{ color: "var(--slate)" }}>{v}</span>
+              <label className="wide">
+                Nombre del equipo *
+                <input value={prodForm.nombre} onChange={(e) => setProdForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Autoclave clase B 23L" maxLength={120} disabled={!!editingGroup} />
+              </label>
+              <label>
+                Categoría *
+                <select value={prodForm.equipCat} onChange={(e) => setProdForm((f) => ({ ...f, equipCat: e.target.value }))}>
+                  {equipCats.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+              <div className="wide">
+                <p style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>Tipos de servicio</p>
+                {prodForm.servicios.map((s, idx) => {
+                  const stLabel = serviceTypes.find((st) => st.id === s.id)?.label ?? s.id;
+                  const tplDesc = resolveDesc(prodForm.equipCat, s.id);
+                  return (
+                    <div key={s.id} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px", marginBottom: 8, background: s.enabled ? "#fff" : "#f8fafc" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, margin: 0, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                          <input type="checkbox" checked={s.enabled} onChange={(e) => setProdForm((f) => ({ ...f, servicios: f.servicios.map((sv, i) => i === idx ? { ...sv, enabled: e.target.checked } : sv) }))} style={{ width: 15, height: 15, minHeight: 0, margin: 0, flexShrink: 0 }} />
+                          <span className="tag navy" style={{ fontSize: 11 }}>{s.id}</span>
+                          <span style={{ color: "#475569", fontWeight: 400 }}>{stLabel}</span>
+                        </label>
+                        {s.enabled && (
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto", margin: 0 }}>
+                            <span style={{ fontSize: 12, color: "#64748b", whiteSpace: "nowrap" }}>Precio neto:</span>
+                            <input type="number" min={0} value={s.precio} onChange={(e) => setProdForm((f) => ({ ...f, servicios: f.servicios.map((sv, i) => i === idx ? { ...sv, precio: e.target.value } : sv) }))} placeholder="85000" style={{ width: 110, minHeight: 32, fontSize: 13 }} />
                           </label>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              <label className="wide">Equipo / descripción<input value={catForm.equipo} onChange={(e) => setCatForm((f) => ({ ...f, equipo: e.target.value }))} placeholder="Monitor de signos vitales" maxLength={120} /></label>
-              {!editingCat && (
-                <label>Unidad <span style={{ fontWeight: 400, color: "#94a3b8" }}>(aplica a todos)</span>
-                  <input value={catForm.unidad} onChange={(e) => setCatForm((f) => ({ ...f, unidad: e.target.value }))} placeholder="Servicio" maxLength={40} />
-                </label>
-              )}
-              {!editingCat && Object.keys(catPrices).map((cat) => (
-                <label key={cat}>
-                  Precio {cat} — {catLabels[cat]} (CLP)
-                  <input type="number" min={0} value={catPrices[cat]} onChange={(e) => setCatPrices((prev) => ({ ...prev, [cat]: e.target.value }))} placeholder="85000" />
-                </label>
-              ))}
-              <label className="wide">Descripción larga<textarea rows={3} value={catForm.descripcion_larga} onChange={(e) => setCatForm((f) => ({ ...f, descripcion_larga: e.target.value }))} maxLength={800} /></label>
+                      {s.enabled && (
+                        <label style={{ marginTop: 8, display: "block" }}>
+                          <span style={{ fontSize: 11, color: "#64748b" }}>Descripción en cotización (opcional)</span>
+                          <textarea rows={2} value={s.descripcion} placeholder={tplDesc || `Descripción de ${stLabel}...`} onChange={(e) => setProdForm((f) => ({ ...f, servicios: f.servicios.map((sv, i) => i === idx ? { ...sv, descripcion: e.target.value } : sv) }))} style={{ fontSize: 12, marginTop: 2 }} maxLength={600} />
+                          {tplDesc && !s.descripcion && <span style={{ fontSize: 11, color: "#94a3b8" }}>Dejando vacío se usará la plantilla de &quot;{prodForm.equipCat}:{s.id}&quot;</span>}
+                        </label>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
             <div className="modal-actions">
-              <button className="ghost" onClick={() => setCatModal(false)}>Cancelar</button>
-              <button className="primary" onClick={handleSaveCat} disabled={saving}>{saving ? "Guardando..." : editingCat ? "Actualizar" : "Guardar"}</button>
+              <button className="ghost" onClick={() => setModal(null)}>Cancelar</button>
+              <button className="primary" onClick={handleSaveProd} disabled={saving}>{saving ? "Guardando..." : editingGroup ? "Actualizar" : "Guardar equipo"}</button>
             </div>
           </div>
         </div>
-      )}
-
-      {tab === "catalogo" && (
-        <div className="panel table-card">
-          <div style={{ padding: "12px 16px", display: "flex", gap: 8 }}>
-            <select style={{ width: 180 }} value={catFilter} onChange={(e) => setCatFilter(e.target.value)}>
-              <option value="">Todas las categorías</option>
-              {Object.entries(catLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <input placeholder="Buscar código, equipo o servicio..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <SortTh label="Código" sortKey="codigo" current={catSort} onSort={(k) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                <SortTh label="Categoría" sortKey="categoria" current={catSort} onSort={(k) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                <SortTh label="Equipo / Servicio" sortKey="equipo" current={catSort} onSort={(k) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                <th>Unidad</th>
-                <SortTh label="Precio neto" sortKey="precio_neto" current={catSort} onSort={(k) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                <th>Plantilla texto</th><th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedCat.slice(0, 100).map((c) => (
-                <tr key={c.id}>
-                  <td className="mono" style={{ fontSize: 12 }}>{c.codigo}</td>
-                  <td><span className="tag navy">{catLabels[c.categoria] ?? c.categoria}</span></td>
-                  <td><strong>{c.equipo}</strong>{c.servicio ? <small style={{ display: "block", color: "#64748b" }}>{c.servicio}</small> : null}</td>
-                  <td style={{ color: "#64748b", fontSize: 12 }}>{c.unidad}</td>
-                  <td style={{ fontWeight: 600 }}>{money(c.precio_neto)} CLP</td>
-                  <td style={{ color: "#64748b", fontSize: 11 }}>{c.texto_base_key}</td>
-                  <td>
-                    <div className="row-actions">
-                      <button aria-label="Editar" onClick={() => openEdit(c)}><Edit3 size={15} /></button>
-                      <button aria-label="Eliminar" className="danger" onClick={() => handleDeleteCat(c)}><Trash2 size={15} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {sortedCat.length > 100 && <p style={{ padding: "8px 16px", fontSize: 12, color: "#94a3b8" }}>Mostrando 100 de {sortedCat.length} ítems. Usa el buscador para filtrar.</p>}
-        </div>
-      )}
-
-      {tab === "personalizados" && (
-        <DataModule
-          title=""
-          search={productQuery}
-          setSearch={setProductQuery}
-          searchPlaceholder="Buscar por ID, producto, categoría o precio..."
-          onAdd={onAdd}
-          hideHeader
-        >
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <SortTh label="Producto" sortKey="nombre" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                <SortTh label="Categoría" sortKey="cat" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                <SortTh label="Diagnóstico" sortKey="diag" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                <SortTh label="Reparación" sortKey="rep" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                <SortTh label="Mantención" sortKey="mant" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                <SortTh label="Instalación" sortKey="inst" current={prodSort} onSort={(k) => setProdSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedProducts.map((product) => (
-                <tr key={product.id}>
-                  <td className="mono">{product.id}</td>
-                  <td><strong>{product.nombre}</strong></td>
-                  <td><span className="tag navy">{product.cat}</span></td>
-                  <td>{money(product.diag)}</td>
-                  <td>{money(product.rep)}</td>
-                  <td>{money(product.mant)}</td>
-                  <td>{money(product.inst)}</td>
-                  <td>
-                    <RowActions
-                      notify={notify}
-                      onEdit={() => onEdit(product)}
-                      onDelete={() => onDelete(product.id)}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </DataModule>
       )}
     </section>
   );
@@ -2344,6 +2381,7 @@ function Modal({
       precio_neto: 0,
       grupo: categoria,
       texto_base_key: categoria,
+      descripcion_larga: "",
     };
     setCatalogo((prev) => [...prev, item]);
     setLeadItems((prev) => [...prev, catalogoToCotizacionItem(item, plantillas)]);

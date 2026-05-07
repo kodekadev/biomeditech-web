@@ -142,6 +142,7 @@ export interface CatalogoItem {
   precio_neto: number;
   grupo: string;
   texto_base_key: string;
+  descripcion_larga: string;
 }
 
 export interface Plantilla {
@@ -560,6 +561,7 @@ export async function fetchCatalogo(): Promise<CatalogoItem[]> {
       precio_neto: num(raw.precio_neto),
       grupo: str(raw.grupo),
       texto_base_key: str(raw.texto_base_key),
+      descripcion_larga: str(raw.descripcion_larga),
     };
   });
 }
@@ -728,6 +730,7 @@ export async function createCatalogoItem(form: CatalogoItemForm): Promise<Catalo
     precio_neto: num(raw.precio_neto),
     grupo: str(raw.grupo),
     texto_base_key: str(raw.texto_base_key),
+    descripcion_larga: str(raw.descripcion_larga),
   };
 }
 
@@ -753,6 +756,7 @@ export async function updateCatalogoItem(id: string, form: CatalogoItemForm): Pr
     precio_neto: num(raw.precio_neto),
     grupo: str(raw.grupo),
     texto_base_key: str(raw.texto_base_key),
+    descripcion_larga: str(raw.descripcion_larga),
   };
 }
 
