@@ -102,7 +102,7 @@ function getPrice(productId: string, service: QuoteService, productos: Producto[
 
 // Utility functions are imported from @/lib/utils
 
-const LEAD_FORM_INIT: LeadForm = { rut: "", nombre: "", empresa: "", tel: "+56 ", email: "", canal: "wsp", servicio: "", equipo: "" };
+const LEAD_FORM_INIT: LeadForm = { rut: "", nombre: "", empresa: "", tel: "+56 ", email: "", canal: "wsp", servicio: "", equipo: "", direccion: "" };
 const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", tel: "+56 ", correo: "", rubro: "Médico", estado: "activo", direccion: "", ciudad: "", comuna: "" };
 const CATALOGO_FORM_INIT: CatalogoItemForm = { codigo: "", categoria: "MP", servicio: "", equipo: "", unidad: "Servicio", precio_neto: "", texto_base_key: "", descripcion_larga: "" };
 const PRODUCTO_FORM_INIT: ProductoForm = { nombre: "", cat: "Equipos médicos", marca: "", diag: "", rep: "", mant: "", inst: "" };
@@ -391,9 +391,11 @@ export default function CRMPrototype() {
 
     setCotizClienteId(match?.id ?? "");
 
+    // Build base items list
+    let finalItems: CotizacionItemForm[] = [];
     const preItems = leadPreItems[lead.id];
     if (preItems && preItems.length > 0) {
-      setCotizItems(preItems);
+      finalItems = preItems;
     } else {
       const q = `${lead.servicio} ${lead.equipo}`.toLowerCase();
       const inferred = catalogo.find((c) =>
@@ -401,9 +403,26 @@ export default function CRMPrototype() {
         q.includes(c.equipo.toLowerCase()) ||
         q.includes(c.servicio.toLowerCase())
       );
-      if (inferred) setCotizItems([catalogoToCotizacionItem(inferred, plantillas)]);
-      else setCotizItems([]);
+      if (inferred) finalItems = [catalogoToCotizacionItem(inferred, plantillas)];
     }
+
+    // Visita técnica rule: cobrada si dirección no es Santiago,
+    // o si es Santiago pero neto < $500.000
+    const addr = lead.direccion || match?.ciudad || match?.direccion || "";
+    if (addr.trim()) {
+      const esEnSantiago = /santiago|stgo/i.test(addr);
+      const neto = finalItems.reduce((s, it) => s + it.precio_unitario * it.cantidad, 0);
+      const vsRequerida = !esEnSantiago || neto < 500000;
+      if (vsRequerida) {
+        const vsItem = catalogo.find((c) => c.categoria === "VS");
+        const yaIncluida = finalItems.some((i) => i.tipo_servicio === "VS" || (vsItem && i.codigo === vsItem.codigo));
+        if (vsItem && !yaIncluida) {
+          finalItems = [catalogoToCotizacionItem(vsItem, plantillas), ...finalItems];
+        }
+      }
+    }
+
+    setCotizItems(finalItems);
     setCotizNotas([
       `Origen lead: ${lead.nombre}`,
       lead.empresa ? `Empresa: ${lead.empresa}` : "",
@@ -411,6 +430,7 @@ export default function CRMPrototype() {
       lead.email ? `Correo: ${lead.email}` : "",
       lead.equipo ? `Equipo/producto: ${lead.equipo}` : "",
       lead.servicio ? `Servicio solicitado: ${serviceLabel(lead.servicio)}` : "",
+      addr ? `Dirección: ${addr}` : "",
     ].filter(Boolean).join(" | "));
     if (!match) notify("Cliente no encontrado — selecciona o crea uno antes de emitir");
     goTo("cotizaciones");
@@ -1497,6 +1517,17 @@ function CotizadorForm({
 
   const subtotal = items.reduce((s, it) => s + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100)), 0);
 
+  // Visita técnica indicator (live, based on selected client city and current subtotal)
+  const clienteObj = clientes.find((c) => c.id === clienteId);
+  const clienteAddr = clienteObj ? `${clienteObj.ciudad || ""} ${clienteObj.direccion || ""}`.toLowerCase().trim() : "";
+  const vsIndicator: { cobrada: boolean; razon: string } | null = clienteAddr
+    ? /santiago|stgo/.test(clienteAddr)
+      ? subtotal >= 500000
+        ? { cobrada: false, razon: "Santiago + cotización ≥ $500.000 → incluida sin costo" }
+        : { cobrada: true, razon: "Santiago + cotización < $500.000 → cobrada" }
+      : { cobrada: true, razon: "Fuera de Santiago → siempre cobrada" }
+    : null;
+
   return (
     <div className="form-stack">
       <label>
@@ -1506,6 +1537,17 @@ function CotizadorForm({
           {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
         </select>
       </label>
+      {vsIndicator && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: vsIndicator.cobrada ? "#fff7ed" : "#f0fdf4", border: `1px solid ${vsIndicator.cobrada ? "#fed7aa" : "#bbf7d0"}`, fontSize: 12 }}>
+          <span style={{ fontSize: 16 }}>{vsIndicator.cobrada ? "🔴" : "🟢"}</span>
+          <div>
+            <strong style={{ color: vsIndicator.cobrada ? "#9a3412" : "#166534" }}>
+              Visita técnica: {vsIndicator.cobrada ? "cobrada" : "incluida sin costo"}
+            </strong>
+            <span style={{ color: "#64748b", marginLeft: 6 }}>{vsIndicator.razon}</span>
+          </div>
+        </div>
+      )}
 
       <label>Forma de pago
         <input value={formaPago} onChange={(e) => setFormaPago(e.target.value)} maxLength={80} />
@@ -2157,7 +2199,22 @@ function Modal({
 
   useEffect(() => {
     if (kind === "lead" && editingLead) {
-      setLeadForm({ rut: editingLead.rut ?? "", nombre: editingLead.nombre, empresa: editingLead.empresa, tel: editingLead.tel, email: editingLead.email, canal: editingLead.canal, servicio: editingLead.servicio, equipo: editingLead.equipo });
+      const rutNorm = normalizeRut(editingLead.rut ?? "");
+      const matchingClient = clientes.find((c) =>
+        (rutNorm.length > 4 && normalizeRut(c.rut) === rutNorm) ||
+        c.nombre.toLowerCase().trim() === (editingLead.empresa || editingLead.nombre).toLowerCase().trim()
+      );
+      setLeadForm({
+        rut: editingLead.rut ?? matchingClient?.rut ?? "",
+        nombre: editingLead.nombre,
+        empresa: editingLead.empresa,
+        tel: editingLead.tel,
+        email: editingLead.email,
+        canal: editingLead.canal,
+        servicio: editingLead.servicio,
+        equipo: editingLead.equipo,
+        direccion: editingLead.direccion ?? (matchingClient ? [matchingClient.direccion, matchingClient.ciudad].filter(Boolean).join(", ") : ""),
+      });
       setLeadItems(leadPreItems[editingLead.id] ?? []);
     } else if (kind === "cliente" && editingCliente) {
       setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, tel: editingCliente.telefono || "+56 ", correo: editingCliente.correo, rubro: editingCliente.rubro, estado: editingCliente.estado || "activo", direccion: editingCliente.direccion || "", ciudad: editingCliente.ciudad || "", comuna: editingCliente.comuna || "" });
@@ -2293,6 +2350,17 @@ function Modal({
                 {leadForm.email && !isValidEmail(leadForm.email) && (
                   <span className="field-error">Correo inválido (ej: usuario@empresa.cl)</span>
                 )}
+              </label>
+              <label className="wide">Dirección cliente
+                <input
+                  value={leadForm.direccion ?? ""}
+                  onChange={(e) => setLeadForm((f) => ({ ...f, direccion: e.target.value }))}
+                  placeholder="Ej: Av. Providencia 1234, Santiago"
+                  maxLength={200}
+                />
+                <span style={{ fontSize: 11, color: "#64748b", marginTop: 2, display: "block" }}>
+                  Visita técnica: cobrada si no es Santiago o si el monto es &lt; $500.000
+                </span>
               </label>
               <label>
                 Canal

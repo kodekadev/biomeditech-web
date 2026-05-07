@@ -65,6 +65,7 @@ export interface Lead {
   servicio: string;
   tiempo: string;
   equipo: string;
+  direccion?: string;
   creado_por?: string;
 }
 
@@ -187,6 +188,7 @@ export type LeadForm = {
   canal: string;
   servicio: string;
   equipo: string;
+  direccion?: string;
 };
 
 export type ClienteForm = {
@@ -272,6 +274,7 @@ function mapLead(value: unknown): Lead {
     servicio: str(raw.servicio_interes),
     tiempo: raw.creado_en ? relativeTime(str(raw.creado_en)) : "",
     equipo: str(raw.notas),
+    direccion: str(raw.direccion) || undefined,
   };
 }
 
@@ -368,6 +371,7 @@ export async function createLead(form: LeadForm): Promise<Lead | null> {
     servicio_interes: form.servicio,
     notas: form.equipo,
     rut: form.rut,
+    direccion: form.direccion,
     creado_por,
   });
   return r?.data ? mapLead(r.data) : null;
@@ -489,6 +493,8 @@ export async function saveLead(id: string, form: LeadForm): Promise<Lead | null>
     canal: form.canal,
     servicio_interes: form.servicio,
     notas: form.equipo,
+    rut: form.rut,
+    direccion: form.direccion,
   });
   return r?.data ? mapLead(r.data) : null;
 }
