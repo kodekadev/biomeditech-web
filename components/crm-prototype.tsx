@@ -746,11 +746,11 @@ export default function CRMPrototype() {
     <div class="transfer">
       <strong>Datos de transferencia</strong>
       <dl>
-        <dt>Banco</dt><dd>Banco de Chile</dd>
+        <dt>Banco</dt><dd>Banco Santander</dd>
         <dt>Tipo cuenta</dt><dd>Cuenta corriente</dd>
-        <dt>N° cuenta</dt><dd>000-00000-00</dd>
-        <dt>RUT</dt><dd>76.012.345-6</dd>
-        <dt>Nombre</dt><dd>Biomeditech SpA</dd>
+        <dt>N° cuenta</dt><dd>99275138</dd>
+        <dt>RUT</dt><dd>78.200.394-1</dd>
+        <dt>Nombre</dt><dd>GVA SpA</dd>
         <dt>Correo</dt><dd>contacto@biomeditech.cl</dd>
       </dl>
     </div>
@@ -877,11 +877,11 @@ export default function CRMPrototype() {
     <div class="transfer">
       <strong>Datos de transferencia</strong>
       <dl>
-        <dt>Banco</dt><dd>Banco de Chile</dd>
+        <dt>Banco</dt><dd>Banco Santander</dd>
         <dt>Tipo cuenta</dt><dd>Cuenta corriente</dd>
-        <dt>N° cuenta</dt><dd>000-00000-00</dd>
-        <dt>RUT</dt><dd>76.012.345-6</dd>
-        <dt>Nombre</dt><dd>Biomeditech SpA</dd>
+        <dt>N° cuenta</dt><dd>99275138</dd>
+        <dt>RUT</dt><dd>78.200.394-1</dd>
+        <dt>Nombre</dt><dd>GVA SpA</dd>
         <dt>Correo</dt><dd>contacto@biomeditech.cl</dd>
       </dl>
     </div>
@@ -2268,6 +2268,34 @@ function Modal({
   const [leadCatFilter, setLeadCatFilter] = useState("");
   const [leadCatSearch, setLeadCatSearch] = useState("");
   const [leadItems, setLeadItems] = useState<CotizacionItemForm[]>([]);
+  const [geoLoading, setGeoLoading] = useState(false);
+
+  const debouncedDireccion = useDebounce(kind === "cliente" ? clienteForm.direccion : "", 700);
+
+  useEffect(() => {
+    if (!debouncedDireccion || debouncedDireccion.length < 8) return;
+    if (clienteForm.ciudad && clienteForm.comuna) return;
+    let cancelled = false;
+    setGeoLoading(true);
+    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(debouncedDireccion + ", Chile")}&format=json&addressdetails=1&limit=1&accept-language=es`, { headers: { "Accept-Language": "es" } })
+      .then((r) => r.json())
+      .then((data: unknown) => {
+        if (cancelled) return;
+        const result = (data as { address?: Record<string, string> }[])[0];
+        if (!result?.address) return;
+        const addr = result.address;
+        const ciudad = addr.city || addr.town || addr.village || addr.municipality || "";
+        const comuna = addr.suburb || addr.city_district || addr.county || ciudad;
+        setClienteForm((f) => ({
+          ...f,
+          ciudad: f.ciudad || ciudad,
+          comuna: f.comuna || comuna,
+        }));
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setGeoLoading(false); });
+    return () => { cancelled = true; setGeoLoading(false); };
+  }, [debouncedDireccion]);
 
   const effectiveLeadCat = leadCatFilter || (CAT_LABELS[leadForm.servicio] ? leadForm.servicio : "");
   const leadCatalogResults = catalogo.filter((c) => {
@@ -2587,7 +2615,13 @@ function Modal({
                 </select>
               </label>
               <label className="wide">Dirección<input value={clienteForm.direccion} onChange={(e) => setClienteForm((f) => ({ ...f, direccion: e.target.value }))} placeholder="Av. Providencia 1234" maxLength={150} /></label>
-              <label>Ciudad<input value={clienteForm.ciudad} onChange={(e) => setClienteForm((f) => ({ ...f, ciudad: e.target.value }))} placeholder="Santiago" maxLength={80} /></label>
+              <label>
+                Ciudad
+                <div style={{ position: "relative" }}>
+                  <input value={clienteForm.ciudad} onChange={(e) => setClienteForm((f) => ({ ...f, ciudad: e.target.value }))} placeholder="Santiago" maxLength={80} style={{ width: "100%" }} />
+                  {geoLoading && <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#94a3b8", pointerEvents: "none" }}>buscando…</span>}
+                </div>
+              </label>
               <label>Comuna<input value={clienteForm.comuna} onChange={(e) => setClienteForm((f) => ({ ...f, comuna: e.target.value }))} placeholder="Providencia" maxLength={80} /></label>
             </>
           )}
