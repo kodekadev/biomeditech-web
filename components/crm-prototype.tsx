@@ -722,7 +722,8 @@ export default function CRMPrototype() {
       <div class="data-block">
         <h4>Biomeditech SpA</h4>
         <dl>
-          <dt>RUT</dt><dd>76.012.345-6</dd>
+          <dt>RUT</dt><dd>78.200.394-1</dd>
+          <dt>Dirección</dt><dd>Pedro Torres 798, Ñuñoa</dd>
           <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
           <dt>Teléfono</dt><dd>+56 9 9999 9999</dd>
           <dt>Web</dt><dd>biomeditech.cl</dd>
@@ -853,7 +854,8 @@ export default function CRMPrototype() {
       <div class="data-block">
         <h4>Biomeditech SpA</h4>
         <dl>
-          <dt>RUT</dt><dd>76.012.345-6</dd>
+          <dt>RUT</dt><dd>78.200.394-1</dd>
+          <dt>Dirección</dt><dd>Pedro Torres 798, Ñuñoa</dd>
           <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
           <dt>Teléfono</dt><dd>+56 9 9999 9999</dd>
           <dt>Web</dt><dd>biomeditech.cl</dd>
