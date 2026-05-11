@@ -704,7 +704,7 @@ export default function CRMPrototype() {
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
     <header>
-      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="background:linear-gradient(135deg,#20b5a0,#0d7d72);border-radius:8px;padding:8px 14px;display:flex;align-items:center"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
       <div class="right"><strong>${det.numero}</strong><span>${fechaStr}</span><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
@@ -725,7 +725,7 @@ export default function CRMPrototype() {
           <dt>RUT</dt><dd>78.200.394-1</dd>
           <dt>Dirección</dt><dd>Pedro Torres 798, Ñuñoa</dd>
           <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
-          <dt>Teléfono</dt><dd>+56 9 9999 9999</dd>
+          <dt>Teléfono</dt><dd>+56 9 5989 0781</dd>
           <dt>Web</dt><dd>biomeditech.cl</dd>
         </dl>
       </div>
@@ -836,7 +836,7 @@ export default function CRMPrototype() {
       .draft-badge{display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
     </style></head><body>
     <header>
-      <div><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="filter:brightness(0)"/><p style="margin-top:4px;color:#64748b;font-size:12px">Reparación y mantención de equipos médicos</p></div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="background:linear-gradient(135deg,#20b5a0,#0d7d72);border-radius:8px;padding:8px 14px;display:flex;align-items:center"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
       <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><span>${fechaStr}</span><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
@@ -857,7 +857,7 @@ export default function CRMPrototype() {
           <dt>RUT</dt><dd>78.200.394-1</dd>
           <dt>Dirección</dt><dd>Pedro Torres 798, Ñuñoa</dd>
           <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
-          <dt>Teléfono</dt><dd>+56 9 9999 9999</dd>
+          <dt>Teléfono</dt><dd>+56 9 5989 0781</dd>
           <dt>Web</dt><dd>biomeditech.cl</dd>
         </dl>
       </div>
