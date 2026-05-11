@@ -10,11 +10,13 @@ import {
   ChevronUp,
   ClipboardList,
   Clock3,
+  Download,
   Edit3,
   Eye,
   EyeOff,
   FileArchive,
   FileText,
+  History,
   LayoutDashboard,
   Lock,
   Mail,
@@ -34,7 +36,7 @@ import * as api from "@/lib/api";
 import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, CatalogoItemForm, Plantilla, CotizacionItemForm } from "@/lib/api";
 import { money, formatRut, normalizeRut, isValidEmail, validateRut, isValidPhone, isActivo, fmtActivityDate } from "@/lib/utils";
 
-type ModuleId = "dashboard" | "leads" | "clientes" | "productos" | "cotizaciones" | "protocolos";
+type ModuleId = "dashboard" | "leads" | "clientes" | "productos" | "cotizaciones" | "historial" | "protocolos";
 type LeadStatus = "gestionado" | "no-gestionado";
 type LeadChannel = "wsp" | "email";
 type QuoteService = "diagnostico" | "reparacion" | "mantencion" | "instalacion" | "mixto" | "";
@@ -45,6 +47,7 @@ const NAV_ITEMS: Array<{ id: ModuleId; label: string; icon: React.ElementType; g
   { id: "clientes", label: "Clientes", icon: BriefcaseMedical, group: "Gestión" },
   { id: "productos", label: "Productos / Servicios", icon: Wrench, group: "Gestión" },
   { id: "cotizaciones", label: "Cotizaciones", icon: ClipboardList, group: "Operaciones" },
+  { id: "historial", label: "Historial", icon: History, group: "Operaciones" },
   { id: "protocolos", label: "Protocolos Mantención", icon: FileArchive, group: "Operaciones" },
 ];
 
@@ -671,7 +674,12 @@ export default function CRMPrototype() {
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización ${det.numero}</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
+      body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:72px 40px 36px}
+      .action-bar{position:fixed;top:0;left:0;right:0;background:#0f2340;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;z-index:999;gap:12px}
+      .action-bar span{font-weight:600;font-size:14px}
+      .action-bar .btn-print{background:#007a4e;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+      .action-bar .btn-close{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+      @media print{.action-bar{display:none}body{padding:36px 40px}}
       header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #007a4e}
       header img{height:40px}
       header .right{text-align:right}
@@ -705,7 +713,7 @@ export default function CRMPrototype() {
     </style></head><body>
     <header>
       <div style="display:flex;align-items:center;gap:12px"><div style="background:linear-gradient(135deg,#20b5a0,#0d7d72);border-radius:8px;padding:8px 14px;display:flex;align-items:center"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
-      <div class="right"><strong>${det.numero}</strong><span>${fechaStr}</span><br/><span style="color:#64748b">biomeditech.cl</span></div>
+      <div class="right"><strong>${det.numero}</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
     <div class="two-col">
@@ -758,10 +766,16 @@ export default function CRMPrototype() {
     ${det.notas_cliente ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${det.notas_cliente}</em></p>` : ""}
     ${glossaryHtml}
     <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por ${det.validez_dias} días desde emisión</footer>
+    <div class="action-bar">
+      <span>Cotización ${det.numero}</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn-print" onclick="window.print()">🖨 Imprimir / Descargar PDF</button>
+        <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
+      </div>
+    </div>
     </body></html>`);
     win.document.close();
     win.focus();
-    win.print();
   }
 
   function handlePrintQuote() {
@@ -837,7 +851,7 @@ export default function CRMPrototype() {
     </style></head><body>
     <header>
       <div style="display:flex;align-items:center;gap:12px"><div style="background:linear-gradient(135deg,#20b5a0,#0d7d72);border-radius:8px;padding:8px 14px;display:flex;align-items:center"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
-      <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><span>${fechaStr}</span><br/><span style="color:#64748b">biomeditech.cl</span></div>
+      <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
     <div class="two-col">
@@ -1272,8 +1286,13 @@ export default function CRMPrototype() {
                   formaPago={cotizFormaPago}
                   fecha={fecha}
                 />
-                <HistoryTable cotizaciones={cotizaciones} clientes={clientes} onVerCotizacion={handleVerCotizacion} />
               </div>
+            </section>
+          )}
+
+          {active === "historial" && (
+            <section className="stack">
+              <HistorialModule cotizaciones={cotizaciones} clientes={clientes} onVerCotizacion={handleVerCotizacion} />
             </section>
           )}
 
@@ -1550,6 +1569,18 @@ function CotizadorForm({
 }) {
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [clienteSearch, setClienteSearch] = useState("");
+  const [showClienteDrop, setShowClienteDrop] = useState(false);
+
+  const selectedCliente = clientes.find((c) => c.id === clienteId);
+
+  useEffect(() => { setClienteSearch(""); }, [clienteId]);
+
+  const clientesDrop = useMemo(() => {
+    if (!clienteSearch) return clientes.slice(0, 8);
+    const q = clienteSearch.toLowerCase();
+    return clientes.filter((c) => c.nombre.toLowerCase().includes(q) || (c.rut || "").includes(q)).slice(0, 8);
+  }, [clientes, clienteSearch]);
 
   const filtered = catalogo.filter((c) => {
     if (catFilter && c.categoria !== catFilter) return false;
@@ -1602,10 +1633,48 @@ function CotizadorForm({
     <div className="form-stack">
       <label>
         Cliente *
-        <select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-          <option value="">— Seleccionar cliente —</option>
-          {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-        </select>
+        <div style={{ position: "relative" }}>
+          {selectedCliente && !showClienteDrop ? (
+            <div
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer", background: "#f8fafc" }}
+              onClick={() => { setShowClienteDrop(true); setClienteSearch(""); }}
+            >
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#0f2340" }}>{selectedCliente.nombre}</span>
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>{selectedCliente.rut}</span>
+              <X size={13} style={{ color: "#94a3b8", cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); setClienteId(""); }} />
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid #007a4e", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
+              <Search size={13} style={{ color: "#94a3b8", flexShrink: 0 }} />
+              <input
+                autoFocus
+                placeholder="Buscar cliente por nombre o RUT..."
+                value={clienteSearch}
+                onChange={(e) => { setClienteSearch(e.target.value); setShowClienteDrop(true); }}
+                onFocus={() => setShowClienteDrop(true)}
+                onBlur={() => setTimeout(() => setShowClienteDrop(false), 150)}
+                style={{ flex: 1, border: "none", outline: "none", fontSize: 13, background: "transparent" }}
+              />
+            </div>
+          )}
+          {showClienteDrop && (
+            <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,.1)", zIndex: 50, maxHeight: 240, overflowY: "auto", marginTop: 2 }}>
+              {clientesDrop.length === 0 && <div style={{ padding: "10px 14px", color: "#94a3b8", fontSize: 13 }}>Sin resultados</div>}
+              {clientesDrop.map((c) => (
+                <div
+                  key={c.id}
+                  onMouseDown={() => { setClienteId(c.id); setShowClienteDrop(false); }}
+                  style={{ padding: "9px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f0faf5")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 500, color: "#0f2340" }}>{c.nombre}</span>
+                  <span style={{ fontSize: 11, color: "#94a3b8" }}>{c.rut}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </label>
       {vsIndicator && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: vsIndicator.cobrada ? "#fff7ed" : "#f0fdf4", border: `1px solid ${vsIndicator.cobrada ? "#fed7aa" : "#bbf7d0"}`, fontSize: 12 }}>
@@ -2128,12 +2197,13 @@ function ProductsModule({
   );
 }
 
-function HistoryTable({ cotizaciones, clientes, onVerCotizacion }: {
+function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
   cotizaciones: Cotizacion[];
   clientes: Cliente[];
   onVerCotizacion: (id: string) => void;
 }) {
-  const [clienteFilter, setClienteFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [estadoFilter, setEstadoFilter] = useState("");
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "fecha", dir: "desc" });
 
   function getClienteName(clienteId: string) {
@@ -2146,41 +2216,53 @@ function HistoryTable({ cotizaciones, clientes, onVerCotizacion }: {
   }
 
   const visible = useMemo(() => {
+    const q = search.toLowerCase();
     const list = cotizaciones.filter((cot) => {
-      if (!clienteFilter) return true;
-      return getClienteName(cot.cliente).toLowerCase().includes(clienteFilter.toLowerCase());
+      if (estadoFilter && cot.estado !== estadoFilter) return false;
+      if (!q) return true;
+      return (
+        cot.nro.toLowerCase().includes(q) ||
+        getClienteName(cot.cliente).toLowerCase().includes(q)
+      );
     });
     return [...list].sort((a, b) => {
-      if (sort.key === "monto") {
-        return sort.dir === "asc" ? a.monto - b.monto : b.monto - a.monto;
-      }
+      if (sort.key === "monto") return sort.dir === "asc" ? a.monto - b.monto : b.monto - a.monto;
       if (sort.key === "cliente") {
         const av = getClienteName(a.cliente).toLowerCase();
         const bv = getClienteName(b.cliente).toLowerCase();
         return sort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
       }
-      const av = String((a as unknown as Record<string,unknown>)[sort.key] ?? "").toLowerCase();
-      const bv = String((b as unknown as Record<string,unknown>)[sort.key] ?? "").toLowerCase();
+      const av = String((a as unknown as Record<string, unknown>)[sort.key] ?? "").toLowerCase();
+      const bv = String((b as unknown as Record<string, unknown>)[sort.key] ?? "").toLowerCase();
       return sort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-    }).slice(0, 20);
-  }, [cotizaciones, clienteFilter, sort, clientes]);
+    });
+  }, [cotizaciones, search, estadoFilter, sort, clientes]);
+
+  const estados = ["Pendiente", "Aprobada", "Rechazada", "En revisión"];
 
   return (
-    <div className="panel table-card compact">
-      <div className="panel-title"><FileText size={18} />Historial de cotizaciones</div>
-      <div style={{ padding: "0 16px 10px", display: "flex", gap: 8, alignItems: "center" }}>
-        <Search size={14} style={{ color: "#94a3b8", flexShrink: 0 }} />
-        <input
-          placeholder="Filtrar por cliente..."
-          value={clienteFilter}
-          onChange={(e) => setClienteFilter(e.target.value)}
-          style={{ flex: 1, minHeight: 32, fontSize: 12 }}
-        />
-        {clienteFilter && (
-          <button onClick={() => setClienteFilter("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 0 }}>
-            <X size={14} />
-          </button>
-        )}
+    <div className="panel table-card">
+      <div className="panel-head">
+        <div className="panel-title"><History size={18} />Historial de cotizaciones</div>
+        <span className="tag navy">{visible.length} resultado{visible.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div style={{ padding: "8px 16px 10px", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 200, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 10px" }}>
+          <Search size={14} style={{ color: "#94a3b8", flexShrink: 0 }} />
+          <input
+            placeholder="Buscar por N° cotización o cliente..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ flex: 1, minHeight: 28, fontSize: 13, border: "none", background: "transparent", outline: "none" }}
+          />
+          {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 0 }}><X size={13} /></button>}
+        </div>
+        <div className="segmented" style={{ flexShrink: 0 }}>
+          <button className={!estadoFilter ? "selected" : ""} onClick={() => setEstadoFilter("")}>Todos</button>
+          {estados.map((e) => (
+            <button key={e} className={estadoFilter === e ? "selected" : ""} onClick={() => setEstadoFilter(e)}>{e}</button>
+          ))}
+        </div>
       </div>
       <table>
         <thead>
@@ -2190,34 +2272,30 @@ function HistoryTable({ cotizaciones, clientes, onVerCotizacion }: {
             <SortTh label="Monto total" sortKey="monto" current={sort} onSort={toggleSort} />
             <SortTh label="Estado" sortKey="estado" current={sort} onSort={toggleSort} />
             <SortTh label="Fecha" sortKey="fecha" current={sort} onSort={toggleSort} />
-            <th>Ver</th>
+            <th>Ver / Descargar</th>
           </tr>
         </thead>
         <tbody>
           {visible.length === 0 && (
-            <tr><td colSpan={6} style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>Sin resultados</td></tr>
+            <tr><td colSpan={6} style={{ textAlign: "center", color: "#94a3b8", padding: 20 }}>Sin resultados</td></tr>
           )}
           {visible.map((cot) => (
             <tr key={cot.id}>
               <td style={{ fontFamily: "monospace", fontSize: 12 }}>{cot.nro}</td>
-              <td>{getClienteName(cot.cliente)}</td>
+              <td style={{ fontWeight: 500 }}>{getClienteName(cot.cliente)}</td>
               <td>{money(cot.monto)} CLP</td>
               <td>
-                <span className={`tag ${cot.estado === "Aprobada" ? "green" : cot.estado === "En revisión" ? "navy" : "amber"}`}>
+                <span className={`tag ${cot.estado === "Aprobada" ? "green" : cot.estado === "En revisión" ? "navy" : cot.estado === "Rechazada" ? "red" : "amber"}`}>
                   {cot.estado}
                 </span>
               </td>
               <td style={{ color: "#64748b", fontSize: 12 }}>{cot.fecha}</td>
               <td>
-                {cot.pdfUrl
-                  ? <a href={cot.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0f2340", fontWeight: 600, textDecoration: "none" }}>
-                      <FileText size={13} />PDF
-                    </a>
-                  : cot.id
-                    ? <button onClick={() => onVerCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0f2340", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                        <Eye size={13} />Ver
-                      </button>
-                    : <span style={{ color: "#cbd5e0", fontSize: 12 }}>—</span>
+                {cot.id && !cot.id.startsWith("cot-temp-")
+                  ? <button onClick={() => onVerCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "#007a4e", fontWeight: 600, background: "none", border: "1px solid #bbf7d0", borderRadius: 6, cursor: "pointer", padding: "4px 10px" }}>
+                      <Download size={13} />Ver / Descargar
+                    </button>
+                  : <span style={{ color: "#cbd5e0", fontSize: 12 }}>emitiendo…</span>
                 }
               </td>
             </tr>
