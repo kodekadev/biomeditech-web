@@ -781,9 +781,8 @@ export default function CRMPrototype() {
   }
 
   function handlePrintQuote() {
-    if (cotizItems.length === 0) { notify("Agrega al menos un ítem antes de descargar"); return; }
+    if (cotizItems.length === 0) { notify("Agrega al menos un ítem antes de previsualizar"); return; }
     const clienteObj = clientes.find((c) => c.id === cotizClienteId);
-    const fechaStr = new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
     const subtotal = cotizItems.reduce((s, it) => s + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100)), 0);
     const iva = Math.round(subtotal * 0.19);
     const total = subtotal + iva;
@@ -798,27 +797,37 @@ export default function CRMPrototype() {
         <td><strong>${money(sub)}</strong></td>
       </tr>`;
     }).join("");
-    const glossaryEntriesDraft: { label: string; desc: string }[] = [];
-    const seenGlossDraft = new Set<string>();
+    const glossaryEntries: { label: string; desc: string }[] = [];
+    const seenGloss = new Set<string>();
+    const localTemplates: Record<string, string> = (() => { try { return JSON.parse(localStorage.getItem("crm_desc_templates") || "{}"); } catch { return {}; } })();
     cotizItems.forEach((it) => {
-      const key = it.tipo_servicio || it.descripcion_larga;
-      if (it.descripcion_larga && key && !seenGlossDraft.has(key)) {
-        seenGlossDraft.add(key);
-        glossaryEntriesDraft.push({ label: it.tipo_servicio || it.descripcion.split("—")[0].trim(), desc: it.descripcion_larga });
+      const key = it.tipo_servicio || it.descripcion.split("—")[0].trim();
+      const descLarga = it.descripcion_larga ||
+        plantillas.find((p) => p.codigo === it.tipo_servicio || p.codigo.endsWith(`:${it.tipo_servicio}`))?.descripcion_larga ||
+        localTemplates[`GENERAL:${it.tipo_servicio}`] ||
+        Object.entries(localTemplates).find(([k]) => k.endsWith(`:${it.tipo_servicio}`))?.[1] || "";
+      if (descLarga && key && !seenGloss.has(key)) {
+        seenGloss.add(key);
+        glossaryEntries.push({ label: key, desc: descLarga });
       }
     });
-    const glossaryHtmlDraft = glossaryEntriesDraft.length > 0
+    const glossaryHtml = glossaryEntries.length > 0
       ? `<div class="glossary">
-          <h3 style="page-break-before:always">Descripción de servicios</h3>
-          ${glossaryEntriesDraft.map((e) => `<div class="gloss-item"><strong>${e.label}</strong><p>${e.desc}</p></div>`).join("")}
+          <h3>Descripción de servicios</h3>
+          ${glossaryEntries.map((e) => `<div class="gloss-item"><strong>${e.label}</strong><p>${e.desc}</p></div>`).join("")}
         </div>`
       : "";
     const win = window.open("", "_blank", "width=920,height=750");
     if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización BORRADOR</title>
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Borrador Cotización</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
+      body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:72px 40px 36px}
+      .action-bar{position:fixed;top:0;left:0;right:0;background:#0f2340;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;z-index:999;gap:12px}
+      .action-bar span{font-weight:600;font-size:14px}
+      .action-bar .btn-print{background:#007a4e;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+      .action-bar .btn-close{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+      @media print{.action-bar{display:none}body{padding:36px 40px}}
       header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #007a4e}
       header img{height:40px}
       header .right{text-align:right}
@@ -906,12 +915,18 @@ export default function CRMPrototype() {
       </dl>
     </div>
     ${cotizNotas ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${cotizNotas}</em></p>` : ""}
-    ${glossaryHtmlDraft}
+    ${glossaryHtml}
     <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 30 días desde emisión</footer>
+    <div class="action-bar">
+      <span>Borrador de Cotización</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn-print" onclick="window.print()">🖨 Imprimir / Descargar PDF</button>
+        <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
+      </div>
+    </div>
     </body></html>`);
     win.document.close();
     win.focus();
-    win.print();
   }
 
   async function handleVerCotizacion(id: string) {
