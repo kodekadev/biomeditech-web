@@ -65,14 +65,14 @@ const INITIAL_PRODUCTOS: Producto[] = [
 ];
 
 const INITIAL_CATALOGO: CatalogoItem[] = [
-  { id: "CAT-MP-001", codigo: "MP-001", categoria: "MP", servicio: "Mantencion preventiva", equipo: "Monitor multiparametro", unidad: "Servicio", precio_neto: 85000, grupo: "MP", texto_base_key: "MP", descripcion_larga: "" },
-  { id: "CAT-MP-002", codigo: "MP-002", categoria: "MP", servicio: "Mantencion preventiva", equipo: "Autoclave", unidad: "Servicio", precio_neto: 90000, grupo: "MP", texto_base_key: "MP", descripcion_larga: "" },
-  { id: "CAT-MC-001", codigo: "MC-001", categoria: "MC", servicio: "Mantencion correctiva", equipo: "Monitor multiparametro", unidad: "Servicio", precio_neto: 120000, grupo: "MC", texto_base_key: "MC", descripcion_larga: "" },
-  { id: "CAT-MC-002", codigo: "MC-002", categoria: "MC", servicio: "Mantencion correctiva", equipo: "Autoclave", unidad: "Servicio", precio_neto: 185000, grupo: "MC", texto_base_key: "MC", descripcion_larga: "" },
-  { id: "CAT-BS-001", codigo: "BS-001", categoria: "BS", servicio: "Bloque servicio tecnico", equipo: "Atencion en terreno", unidad: "Bloque", precio_neto: 65000, grupo: "BS", texto_base_key: "BS", descripcion_larga: "" },
-  { id: "CAT-VS-001", codigo: "VS-001", categoria: "VS", servicio: "Visita tecnica", equipo: "Evaluacion inicial", unidad: "Visita", precio_neto: 45000, grupo: "VS", texto_base_key: "VS", descripcion_larga: "" },
-  { id: "CAT-EV-001", codigo: "EV-001", categoria: "EV", servicio: "Evaluacion diagnostica", equipo: "Equipo biomedico", unidad: "Servicio", precio_neto: 55000, grupo: "EV", texto_base_key: "EV", descripcion_larga: "" },
-  { id: "CAT-RS-001", codigo: "RS-001", categoria: "RS", servicio: "Repuesto / Insumo", equipo: "Kit de repuestos", unidad: "Unidad", precio_neto: 0, grupo: "RS", texto_base_key: "RS", descripcion_larga: "" },
+  { id: "CATMP001", codigo: "MP001", categoria: "MP", servicio: "Mantencion preventiva", equipo: "Monitor multiparametro", unidad: "Servicio", precio_neto: 85000, grupo: "MP", texto_base_key: "MP", descripcion_larga: "" },
+  { id: "CATMP002", codigo: "MP002", categoria: "MP", servicio: "Mantencion preventiva", equipo: "Autoclave", unidad: "Servicio", precio_neto: 90000, grupo: "MP", texto_base_key: "MP", descripcion_larga: "" },
+  { id: "CATMC001", codigo: "MC001", categoria: "MC", servicio: "Mantencion correctiva", equipo: "Monitor multiparametro", unidad: "Servicio", precio_neto: 120000, grupo: "MC", texto_base_key: "MC", descripcion_larga: "" },
+  { id: "CATMC002", codigo: "MC002", categoria: "MC", servicio: "Mantencion correctiva", equipo: "Autoclave", unidad: "Servicio", precio_neto: 185000, grupo: "MC", texto_base_key: "MC", descripcion_larga: "" },
+  { id: "CATBS001", codigo: "BS001", categoria: "BS", servicio: "Bloque servicio tecnico", equipo: "Atencion en terreno", unidad: "Bloque", precio_neto: 65000, grupo: "BS", texto_base_key: "BS", descripcion_larga: "" },
+  { id: "CATVS001", codigo: "VS001", categoria: "VS", servicio: "Visita tecnica", equipo: "Evaluacion inicial", unidad: "Visita", precio_neto: 45000, grupo: "VS", texto_base_key: "VS", descripcion_larga: "" },
+  { id: "CATEV001", codigo: "EV001", categoria: "EV", servicio: "Evaluacion diagnostica", equipo: "Equipo biomedico", unidad: "Servicio", precio_neto: 55000, grupo: "EV", texto_base_key: "EV", descripcion_larga: "" },
+  { id: "CATRS001", codigo: "RS001", categoria: "RS", servicio: "Repuesto / Insumo", equipo: "Kit de repuestos", unidad: "Unidad", precio_neto: 0, grupo: "RS", texto_base_key: "RS", descripcion_larga: "" },
 ];
 
 const INITIAL_COTIZACIONES: Cotizacion[] = [];
@@ -420,22 +420,7 @@ export default function CRMPrototype() {
       if (inferred) finalItems = [catalogoToCotizacionItem(inferred, plantillas)];
     }
 
-    // Visita técnica rule: cobrada si dirección no es Santiago,
-    // o si es Santiago pero neto < $500.000
     const addr = lead.direccion || match?.ciudad || match?.direccion || "";
-    if (addr.trim()) {
-      const esEnSantiago = /santiago|stgo/i.test(addr);
-      const neto = finalItems.reduce((s, it) => s + it.precio_unitario * it.cantidad, 0);
-      const vsRequerida = !esEnSantiago || neto < 500000;
-      if (vsRequerida) {
-        const vsItem = catalogo.find((c) => c.categoria === "VS");
-        const yaIncluida = finalItems.some((i) => i.tipo_servicio === "VS" || (vsItem && i.codigo === vsItem.codigo));
-        if (vsItem && !yaIncluida) {
-          finalItems = [catalogoToCotizacionItem(vsItem, plantillas), ...finalItems];
-        }
-      }
-    }
-
     setCotizItems(finalItems);
     setCotizNotas([
       `Origen lead: ${lead.nombre}`,
@@ -1654,17 +1639,6 @@ function CotizadorForm({
 
   const subtotal = items.reduce((s, it) => s + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100)), 0);
 
-  // Visita técnica indicator (live, based on selected client city and current subtotal)
-  const clienteObj = clientes.find((c) => c.id === clienteId);
-  const clienteAddr = clienteObj ? `${clienteObj.ciudad || ""} ${clienteObj.direccion || ""}`.toLowerCase().trim() : "";
-  const vsIndicator: { cobrada: boolean; razon: string } | null = clienteAddr
-    ? /santiago|stgo/.test(clienteAddr)
-      ? subtotal >= 500000
-        ? { cobrada: false, razon: "Santiago + cotización ≥ $500.000 → incluida sin costo" }
-        : { cobrada: true, razon: "Santiago + cotización < $500.000 → cobrada" }
-      : { cobrada: true, razon: "Fuera de Santiago → siempre cobrada" }
-    : null;
-
   return (
     <div className="form-stack">
       <label>
@@ -1712,18 +1686,6 @@ function CotizadorForm({
           )}
         </div>
       </label>
-      {vsIndicator && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: vsIndicator.cobrada ? "#fff7ed" : "#f0fdf4", border: `1px solid ${vsIndicator.cobrada ? "#fed7aa" : "#bbf7d0"}`, fontSize: 12 }}>
-          <span style={{ fontSize: 16 }}>{vsIndicator.cobrada ? "🔴" : "🟢"}</span>
-          <div>
-            <strong style={{ color: vsIndicator.cobrada ? "#9a3412" : "#166534" }}>
-              Visita técnica: {vsIndicator.cobrada ? "cobrada" : "incluida sin costo"}
-            </strong>
-            <span style={{ color: "#64748b", marginLeft: 6 }}>{vsIndicator.razon}</span>
-          </div>
-        </div>
-      )}
-
       <label>Forma de pago
         <input value={formaPago} onChange={(e) => setFormaPago(e.target.value)} maxLength={80} />
       </label>
@@ -2304,7 +2266,7 @@ function PeriodoPicker({ anio, mes, fechas, onAnio, onMes }: {
     const set = new Set<number>();
     set.add(new Date().getFullYear());
     fechas.forEach((f) => { if (f) { const y = new Date(f).getFullYear(); if (y > 2000) set.add(y); } });
-    return [...set].sort((a, b) => b - a);
+    return Array.from(set).sort((a, b) => b - a);
   }, [fechas]);
 
   return (
@@ -2715,9 +2677,6 @@ function Modal({
                   placeholder="Ej: Av. Providencia 1234, Santiago"
                   maxLength={200}
                 />
-                <span style={{ fontSize: 11, color: "#64748b", marginTop: 2, display: "block" }}>
-                  Visita técnica: cobrada si no es Santiago o si el monto es &lt; $500.000
-                </span>
               </label>
               <label>
                 Canal
