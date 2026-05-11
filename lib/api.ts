@@ -67,6 +67,7 @@ export interface Lead {
   equipo: string;
   direccion?: string;
   creado_por?: string;
+  creado_en?: string;
 }
 
 export interface Cliente {
@@ -276,6 +277,7 @@ function mapLead(value: unknown): Lead {
     tiempo: raw.creado_en ? relativeTime(str(raw.creado_en)) : "",
     equipo: str(raw.notas),
     direccion: str(raw.direccion) || undefined,
+    creado_en: raw.creado_en ? str(raw.creado_en).slice(0, 10) : undefined,
   };
 }
 

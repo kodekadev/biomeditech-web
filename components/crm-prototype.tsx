@@ -226,6 +226,7 @@ export default function CRMPrototype() {
   const [clientSort, setClientSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "nombre", dir: "asc" });
   const [isLoading, setIsLoading] = useState(true);
   const [leadFilter, setLeadFilter] = useState<"todos" | LeadStatus>("todos");
+  const [leadPeriodo, setLeadPeriodo] = useState<"" | "semana" | "mes" | "anio">("");
   const [clientQuery, setClientQuery] = useState("");
   const [clientSearchField, setClientSearchField] = useState<"todos" | "rut" | "nombre" | "contacto" | "correo">("todos");
   const [productQuery, setProductQuery] = useState("");
@@ -298,7 +299,17 @@ export default function CRMPrototype() {
   // All hooks must be called before any conditional return
   const noGestionados = useMemo(() => leads.filter((l) => l.estado === "no-gestionado"), [leads]);
   const visibleLeads = useMemo(() => {
-    const list = leadFilter === "todos" ? leads : leads.filter((l) => l.estado === leadFilter);
+    const list = leads.filter((l) => {
+      if (leadFilter !== "todos" && l.estado !== leadFilter) return false;
+      if (leadPeriodo && l.creado_en) {
+        const d = new Date(l.creado_en);
+        const now = new Date();
+        if (leadPeriodo === "semana" && d < new Date(now.getTime() - 7 * 86400000)) return false;
+        if (leadPeriodo === "mes" && (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth())) return false;
+        if (leadPeriodo === "anio" && d.getFullYear() !== now.getFullYear()) return false;
+      }
+      return true;
+    });
     return [...list].sort((a, b) => {
       if (leadSort.key === "tiempo") {
         const ai = leads.indexOf(a);
@@ -309,7 +320,7 @@ export default function CRMPrototype() {
       const bv = String((b as unknown as Record<string,unknown>)[leadSort.key] ?? "").toLowerCase();
       return leadSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
     });
-  }, [leads, leadFilter, leadSort]);
+  }, [leads, leadFilter, leadPeriodo, leadSort]);
   const debouncedClientQuery = useDebounce(clientQuery, 250);
   const debouncedProductQuery = useDebounce(productQuery, 250);
   const filteredClients = useMemo(() => {
@@ -1005,6 +1016,12 @@ export default function CRMPrototype() {
                   </button>
                 </div>
                 <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+                  <div className="segmented">
+                    <button className={!leadPeriodo ? "selected" : ""} onClick={() => setLeadPeriodo("")}>Todo</button>
+                    <button className={leadPeriodo === "semana" ? "selected" : ""} onClick={() => setLeadPeriodo("semana")}>Semana</button>
+                    <button className={leadPeriodo === "mes" ? "selected" : ""} onClick={() => setLeadPeriodo("mes")}>Mes</button>
+                    <button className={leadPeriodo === "anio" ? "selected" : ""} onClick={() => setLeadPeriodo("anio")}>Año</button>
+                  </div>
                   <div className="segmented">
                     <button className={leadView === "iconos" ? "selected" : ""} onClick={() => setLeadView("iconos")} title="Vista tarjetas">
                       <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="1" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor"/></svg>
@@ -2146,7 +2163,7 @@ function ProductsModule({
             <div className="modal-grid">
               <label className="wide">
                 Nombre del equipo *
-                <input value={prodForm.nombre} onChange={(e) => setProdForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Autoclave clase B 23L" maxLength={120} disabled={!!editingGroup} />
+                <input value={prodForm.nombre} onChange={(e) => setProdForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Autoclave clase B 23L" maxLength={120} />
               </label>
               <label>
                 Categoría *
@@ -2204,6 +2221,7 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
 }) {
   const [search, setSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("");
+  const [periodo, setPeriodo] = useState<"" | "semana" | "mes" | "anio">("");
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "fecha", dir: "desc" });
 
   function getClienteName(clienteId: string) {
@@ -2217,8 +2235,15 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
 
   const visible = useMemo(() => {
     const q = search.toLowerCase();
+    const now = new Date();
     const list = cotizaciones.filter((cot) => {
       if (estadoFilter && cot.estado !== estadoFilter) return false;
+      if (periodo && cot.fecha) {
+        const d = new Date(cot.fecha);
+        if (periodo === "semana" && d < new Date(now.getTime() - 7 * 86400000)) return false;
+        if (periodo === "mes" && (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth())) return false;
+        if (periodo === "anio" && d.getFullYear() !== now.getFullYear()) return false;
+      }
       if (!q) return true;
       return (
         cot.nro.toLowerCase().includes(q) ||
@@ -2256,6 +2281,12 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
             style={{ flex: 1, minHeight: 28, fontSize: 13, border: "none", background: "transparent", outline: "none" }}
           />
           {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 0 }}><X size={13} /></button>}
+        </div>
+        <div className="segmented" style={{ flexShrink: 0 }}>
+          <button className={!periodo ? "selected" : ""} onClick={() => setPeriodo("")}>Todo</button>
+          <button className={periodo === "semana" ? "selected" : ""} onClick={() => setPeriodo("semana")}>Semana</button>
+          <button className={periodo === "mes" ? "selected" : ""} onClick={() => setPeriodo("mes")}>Mes</button>
+          <button className={periodo === "anio" ? "selected" : ""} onClick={() => setPeriodo("anio")}>Año</button>
         </div>
         <div className="segmented" style={{ flexShrink: 0 }}>
           <button className={!estadoFilter ? "selected" : ""} onClick={() => setEstadoFilter("")}>Todos</button>
