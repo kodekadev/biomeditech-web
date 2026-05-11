@@ -668,8 +668,11 @@ export default function CRMPrototype() {
     const seenGloss = new Set<string>();
     det.items.forEach((it) => {
       const key = it.tipo_servicio || it.descripcion.split("—")[0].trim();
+      const localTemplates: Record<string, string> = (() => { try { return JSON.parse(localStorage.getItem("crm_desc_templates") || "{}"); } catch { return {}; } })();
       const descLarga = it.descripcion_larga ||
-        plantillas.find((p) => p.codigo === it.tipo_servicio || p.codigo.endsWith(`:${it.tipo_servicio}`))?.descripcion_larga || "";
+        plantillas.find((p) => p.codigo === it.tipo_servicio || p.codigo.endsWith(`:${it.tipo_servicio}`))?.descripcion_larga ||
+        localTemplates[`GENERAL:${it.tipo_servicio}`] ||
+        Object.entries(localTemplates).find(([k]) => k.endsWith(`:${it.tipo_servicio}`))?.[1] || "";
       if (descLarga && key && !seenGloss.has(key)) {
         seenGloss.add(key);
         glossaryEntries.push({ label: key, desc: descLarga });
@@ -930,6 +933,20 @@ export default function CRMPrototype() {
     const det = await api.fetchCotizacionDetalle(id);
     if (!det) { notify("No se pudo cargar el detalle de la cotización"); return; }
     handlePrintDetalle(det);
+  }
+
+  function handleUpdateCotizacionEstado(id: string, estado: string) {
+    setCotizaciones((prev) => prev.map((c) => c.id === id ? { ...c, estado } : c));
+    api.updateCotizacion(id, { estado });
+  }
+
+  function handleUpsertPlantilla(existingId: string | null, codigo: string, descripcion: string) {
+    setPlantillas((prev) => {
+      const idx = prev.findIndex((p) => p.codigo === codigo);
+      if (idx >= 0) return prev.map((p, i) => i === idx ? { ...p, descripcion_larga: descripcion } : p);
+      return [...prev, { id: existingId || `tmp-${codigo}`, codigo, descripcion_larga: descripcion }];
+    });
+    api.upsertPlantilla(existingId, codigo, descripcion);
   }
 
   function handleLogout() {
@@ -1204,6 +1221,8 @@ export default function CRMPrototype() {
             <ProductsModule
               catalogo={catalogo}
               setCatalogo={setCatalogo}
+              plantillas={plantillas}
+              onUpsertPlantilla={handleUpsertPlantilla}
               notify={notify}
             />
           )}
@@ -1309,7 +1328,7 @@ export default function CRMPrototype() {
 
           {active === "historial" && (
             <section className="stack">
-              <HistorialModule cotizaciones={cotizaciones} clientes={clientes} onVerCotizacion={handleVerCotizacion} />
+              <HistorialModule cotizaciones={cotizaciones} clientes={clientes} onVerCotizacion={handleVerCotizacion} onUpdateEstado={handleUpdateCotizacionEstado} />
             </section>
           )}
 
@@ -1883,11 +1902,69 @@ const PROD_SVC_DEFAULTS = [
 ];
 const EQUIP_CAT_DEFAULTS = ["Médico", "Dental", "Estético", "Otro"];
 
+function DescripcionEditor({ codigo, label, value, plantillaId, onSave }: {
+  codigo: string; label: string; value: string;
+  plantillaId: string | null;
+  onSave: (val: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => { setDraft(value); }, [value]);
+
+  const hasContent = value.trim().length > 0;
+
+  if (!editing) {
+    return (
+      <div style={{ display: "flex", gap: 12, padding: "10px 14px", background: hasContent ? "#f0faf5" : "#fafafa", borderRadius: 8, border: `1px solid ${hasContent ? "#bbf7d0" : "#e2e8f0"}`, alignItems: "flex-start" }}>
+        <span className="tag navy" style={{ flexShrink: 0, minWidth: 44, textAlign: "center", fontSize: 11, marginTop: 2 }}>{codigo}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, color: "#0f2340", marginBottom: hasContent ? 4 : 0 }}>{label}</div>
+          {hasContent
+            ? <p style={{ fontSize: 12, color: "#475569", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>{value}</p>
+            : <span style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>Sin descripción — haz clic en Editar para agregar</span>
+          }
+        </div>
+        <button onClick={() => { setDraft(value); setEditing(true); }} style={{ flexShrink: 0, background: "none", border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}>
+          <Edit3 size={12} />Editar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "12px 14px", background: "#fff", borderRadius: 8, border: "2px solid #007a4e" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span className="tag navy" style={{ fontSize: 11 }}>{codigo}</span>
+          <strong style={{ fontSize: 13, color: "#0f2340" }}>{label}</strong>
+          {plantillaId && <span style={{ fontSize: 11, color: "#94a3b8" }}>guardado en API</span>}
+        </div>
+      </div>
+      <textarea
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={4}
+        maxLength={800}
+        placeholder={`Describe qué incluye el servicio de ${label.toLowerCase()}...`}
+        style={{ width: "100%", fontSize: 13, lineHeight: 1.6, resize: "vertical", borderRadius: 6, border: "1px solid #e2e8f0", padding: "8px 10px" }}
+      />
+      <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+        <button onClick={() => setEditing(false)} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 6, padding: "6px 14px", fontSize: 12, cursor: "pointer", color: "#64748b" }}>Cancelar</button>
+        <button className="primary small" onClick={() => { onSave(draft.trim()); setEditing(false); }}>Guardar</button>
+      </div>
+    </div>
+  );
+}
+
 function ProductsModule({
-  catalogo, setCatalogo, notify,
+  catalogo, setCatalogo, plantillas, onUpsertPlantilla, notify,
 }: {
   catalogo: CatalogoItem[];
   setCatalogo: React.Dispatch<React.SetStateAction<CatalogoItem[]>>;
+  plantillas: Plantilla[];
+  onUpsertPlantilla: (existingId: string | null, codigo: string, descripcion: string) => void;
   notify: (msg: string) => void;
 }) {
   const [serviceTypes, setServiceTypes] = useState<{ id: string; label: string }[]>(() => {
@@ -2089,30 +2166,33 @@ function ProductsModule({
         </div>
       )}
 
-      {/* Glosario / Taxonomy collapsible */}
-      <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
-        <button onClick={() => setTaxOpen((v) => !v)} style={{ width: "100%", background: "#f8fafc", border: "none", padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 8 }}><FileText size={15} />Glosario de glosas por categoría</span>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d={taxOpen ? "M2 8L6 4L10 8" : "M2 4L6 8L10 4"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </button>
-        {taxOpen && (
-          <div style={{ padding: 16 }}>
-            <p style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>Estas descripciones se asignan automáticamente al crear ítems de la misma categoría + tipo de servicio. Si el equipo tiene descripción propia, esa tiene prioridad.</p>
-            {[...equipCats, "GENERAL"].map((cat) => (
-              <div key={cat} style={{ marginBottom: 20 }}>
-                <strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".06em", color: cat === "GENERAL" ? "#64748b" : "var(--bio-green-dark)" }}>{cat === "GENERAL" ? "GENERAL (fallback global)" : cat}</strong>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-                  {serviceTypes.filter((st) => st.id !== "VS").map((st) => (
-                    <label key={st.id} style={{ fontSize: 12 }}>
-                      {st.id} — {st.label}
-                      <textarea rows={2} value={descTemplates[`${cat}:${st.id}`] || ""} placeholder={cat === "GENERAL" ? `Descripción estándar de ${st.label}...` : `Descripción de ${st.label} para equipos ${cat}...`} onChange={(e) => setDescTemplates((p) => ({ ...p, [`${cat}:${st.id}`]: e.target.value }))} style={{ fontSize: 11, lineHeight: 1.5, marginTop: 2 }} maxLength={600} />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Descripciones de servicios */}
+      <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div className="panel-title" style={{ marginBottom: 0 }}><FileText size={16} />Descripciones de servicios</div>
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>Se usan en el glosario de la cotización</span>
+        </div>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          {serviceTypes.filter((st) => st.id !== "VS").map((st) => {
+            const plantilla = plantillas.find((p) => p.codigo === st.id || p.codigo === `GENERAL:${st.id}`);
+            const localVal = descTemplates[`GENERAL:${st.id}`] || descTemplates[st.id] || "";
+            const current = plantilla?.descripcion_larga || localVal;
+            return (
+              <DescripcionEditor
+                key={st.id}
+                codigo={st.id}
+                label={st.label}
+                value={current}
+                plantillaId={plantilla?.id || null}
+                onSave={(val) => {
+                  setDescTemplates((p) => ({ ...p, [`GENERAL:${st.id}`]: val }));
+                  onUpsertPlantilla(plantilla?.id || null, st.id, val);
+                  notify(`Descripción de ${st.label} guardada`);
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* Unified products table */}
@@ -2251,10 +2331,13 @@ function PeriodoPicker({ anio, mes, fechas, onAnio, onMes }: {
   );
 }
 
-function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
+const COT_ESTADOS = ["Pendiente", "En revisión", "Aprobada", "Rechazada"];
+
+function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEstado }: {
   cotizaciones: Cotizacion[];
   clientes: Cliente[];
   onVerCotizacion: (id: string) => void;
+  onUpdateEstado: (id: string, estado: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("");
@@ -2334,7 +2417,7 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
             <SortTh label="Monto total" sortKey="monto" current={sort} onSort={toggleSort} />
             <SortTh label="Estado" sortKey="estado" current={sort} onSort={toggleSort} />
             <SortTh label="Fecha" sortKey="fecha" current={sort} onSort={toggleSort} />
-            <th>Ver / Descargar</th>
+            <th>Ver</th>
           </tr>
         </thead>
         <tbody>
@@ -2347,9 +2430,16 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
               <td style={{ fontWeight: 500 }}>{getClienteName(cot.cliente)}</td>
               <td>{money(cot.monto)} CLP</td>
               <td>
-                <span className={`tag ${cot.estado === "Aprobada" ? "green" : cot.estado === "En revisión" ? "navy" : cot.estado === "Rechazada" ? "red" : "amber"}`}>
-                  {cot.estado}
-                </span>
+                {cot.id && !cot.id.startsWith("cot-temp-")
+                  ? <select
+                      value={cot.estado}
+                      onChange={(e) => onUpdateEstado(cot.id, e.target.value)}
+                      style={{ fontSize: 12, padding: "3px 6px", borderRadius: 6, border: "1px solid #e2e8f0", cursor: "pointer", background: cot.estado === "Aprobada" ? "#f0fdf4" : cot.estado === "Rechazada" ? "#fef2f2" : cot.estado === "En revisión" ? "#eff6ff" : "#fffbeb", color: cot.estado === "Aprobada" ? "#166534" : cot.estado === "Rechazada" ? "#991b1b" : cot.estado === "En revisión" ? "#1e40af" : "#92400e", fontWeight: 600 }}
+                    >
+                      {COT_ESTADOS.map((e) => <option key={e} value={e}>{e}</option>)}
+                    </select>
+                  : <span style={{ color: "#cbd5e0", fontSize: 12 }}>—</span>
+                }
               </td>
               <td style={{ color: "#64748b", fontSize: 12 }}>{cot.fecha}</td>
               <td>

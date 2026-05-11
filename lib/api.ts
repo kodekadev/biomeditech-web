@@ -549,6 +549,19 @@ export async function logActivity(
   });
 }
 
+export async function updateCotizacion(id: string, patch: { estado: string }): Promise<void> {
+  await apiMutate("PATCH", `/api/cotizaciones/${id}`, patch);
+}
+
+export async function upsertPlantilla(existingId: string | null, codigo: string, descripcion_larga: string): Promise<string | null> {
+  if (existingId) {
+    await apiMutate("PATCH", `/api/plantillas/${existingId}`, { descripcion_larga });
+    return existingId;
+  }
+  const r = await apiMutate<{ data: Record<string, unknown> }>("POST", "/api/plantillas", { codigo, descripcion_larga });
+  return r?.data ? str(r.data.id) : null;
+}
+
 export async function fetchCatalogo(): Promise<CatalogoItem[]> {
   const r = await apiGet<{ data: unknown[] }>("/api/catalogo?limit=200");
   return (r?.data ?? []).map((v) => {
