@@ -714,7 +714,7 @@ export default function CRMPrototype() {
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
     <header>
-      <div style="display:flex;align-items:center;gap:12px"><div style="background:linear-gradient(135deg,#20b5a0,#0d7d72);border-radius:8px;padding:8px 14px;display:flex;align-items:center"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="background:#007a4e;border-radius:8px;padding:8px 14px;display:flex;align-items:center"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
       <div class="right"><strong>${det.numero}</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
@@ -863,7 +863,7 @@ export default function CRMPrototype() {
       .draft-badge{display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
     </style></head><body>
     <header>
-      <div style="display:flex;align-items:center;gap:12px"><div style="background:linear-gradient(135deg,#20b5a0,#0d7d72);border-radius:8px;padding:8px 14px;display:flex;align-items:center"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="background:#007a4e;border-radius:8px;padding:8px 14px;display:flex;align-items:center"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
       <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
@@ -1871,9 +1871,8 @@ function CotizadorPreview({
 const PROD_SVC_DEFAULTS = [
   { id: "MP", label: "Mantención Preventiva" },
   { id: "MC", label: "Mantención Correctiva" },
-  { id: "MR", label: "Mantención/Reparación" },
-  { id: "INST", label: "Instalación" },
-  { id: "DIAG", label: "Diagnóstico" },
+  { id: "BS", label: "Bloque de Servicio" },
+  { id: "EV", label: "Evaluación Diagnóstica" },
   { id: "VS", label: "Visita Técnica" },
   { id: "RS", label: "Repuesto/Insumo" },
 ];
@@ -2741,8 +2740,8 @@ function Modal({
                                   if (leadItems.some(i => i.producto_id === c.id)) {
                                     setLeadItems((prev) => prev.filter(i => i.producto_id !== c.id));
                                   } else {
-                                    const plantilla = plantillas.find((p) => p.codigo === c.texto_base_key);
-                                    setLeadItems((prev) => [...prev, { producto_id: c.id, codigo: c.codigo, descripcion: `${c.servicio} — ${c.equipo}`.trim().replace(/\s*—\s*$/, ""), descripcion_larga: plantilla?.descripcion_larga ?? "", tipo_servicio: c.texto_base_key, precio_unitario: c.precio_neto, cantidad: 1, descuento_pct: 0 }]);
+                                    const plantilla = plantillas.find((p) => p.codigo === c.categoria || p.codigo === c.texto_base_key);
+                                    setLeadItems((prev) => [...prev, { producto_id: c.id, codigo: c.codigo, descripcion: `${c.servicio} — ${c.equipo}`.trim().replace(/\s*—\s*$/, ""), descripcion_larga: plantilla?.descripcion_larga ?? "", tipo_servicio: c.categoria || c.texto_base_key, precio_unitario: c.precio_neto, cantidad: 1, descuento_pct: 0 }]);
                                   }
                                 }}
                               >{leadItems.some(i => i.producto_id === c.id) ? "✓ Quitar" : "+ Agregar"}</button>

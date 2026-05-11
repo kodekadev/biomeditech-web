@@ -659,6 +659,7 @@ export async function createCotizacionMulti(form: CotizacionForm): Promise<Cotiz
       producto_id: it.producto_id,
       linea_numero: idx + 1,
       descripcion: it.descripcion,
+      descripcion_larga: it.descripcion_larga,
       tipo_servicio: it.tipo_servicio,
       precio_unitario: it.precio_unitario,
       cantidad: it.cantidad,
