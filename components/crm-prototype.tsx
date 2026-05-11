@@ -226,7 +226,8 @@ export default function CRMPrototype() {
   const [clientSort, setClientSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "nombre", dir: "asc" });
   const [isLoading, setIsLoading] = useState(true);
   const [leadFilter, setLeadFilter] = useState<"todos" | LeadStatus>("todos");
-  const [leadPeriodo, setLeadPeriodo] = useState<"" | "semana" | "mes" | "anio">("");
+  const [leadAnio, setLeadAnio] = useState(0);
+  const [leadMes, setLeadMes] = useState(0);
   const [clientQuery, setClientQuery] = useState("");
   const [clientSearchField, setClientSearchField] = useState<"todos" | "rut" | "nombre" | "contacto" | "correo">("todos");
   const [productQuery, setProductQuery] = useState("");
@@ -301,12 +302,10 @@ export default function CRMPrototype() {
   const visibleLeads = useMemo(() => {
     const list = leads.filter((l) => {
       if (leadFilter !== "todos" && l.estado !== leadFilter) return false;
-      if (leadPeriodo && l.creado_en) {
+      if ((leadAnio || leadMes) && l.creado_en) {
         const d = new Date(l.creado_en);
-        const now = new Date();
-        if (leadPeriodo === "semana" && d < new Date(now.getTime() - 7 * 86400000)) return false;
-        if (leadPeriodo === "mes" && (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth())) return false;
-        if (leadPeriodo === "anio" && d.getFullYear() !== now.getFullYear()) return false;
+        if (leadAnio && d.getFullYear() !== leadAnio) return false;
+        if (leadMes && d.getMonth() + 1 !== leadMes) return false;
       }
       return true;
     });
@@ -320,7 +319,7 @@ export default function CRMPrototype() {
       const bv = String((b as unknown as Record<string,unknown>)[leadSort.key] ?? "").toLowerCase();
       return leadSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
     });
-  }, [leads, leadFilter, leadPeriodo, leadSort]);
+  }, [leads, leadFilter, leadAnio, leadMes, leadSort]);
   const debouncedClientQuery = useDebounce(clientQuery, 250);
   const debouncedProductQuery = useDebounce(productQuery, 250);
   const filteredClients = useMemo(() => {
@@ -668,15 +667,17 @@ export default function CRMPrototype() {
     const glossaryEntries: { label: string; desc: string }[] = [];
     const seenGloss = new Set<string>();
     det.items.forEach((it) => {
-      const key = it.tipo_servicio || it.descripcion_larga;
-      if (it.descripcion_larga && key && !seenGloss.has(key)) {
+      const key = it.tipo_servicio || it.descripcion.split("—")[0].trim();
+      const descLarga = it.descripcion_larga ||
+        plantillas.find((p) => p.codigo === it.tipo_servicio || p.codigo.endsWith(`:${it.tipo_servicio}`))?.descripcion_larga || "";
+      if (descLarga && key && !seenGloss.has(key)) {
         seenGloss.add(key);
-        glossaryEntries.push({ label: it.tipo_servicio || it.descripcion.split("—")[0].trim(), desc: it.descripcion_larga });
+        glossaryEntries.push({ label: key, desc: descLarga });
       }
     });
     const glossaryHtml = glossaryEntries.length > 0
       ? `<div class="glossary">
-          <h3 style="page-break-before:always">Descripción de servicios</h3>
+          <h3>Descripción de servicios</h3>
           ${glossaryEntries.map((e) => `<div class="gloss-item"><strong>${e.label}</strong><p>${e.desc}</p></div>`).join("")}
         </div>`
       : "";
@@ -716,7 +717,9 @@ export default function CRMPrototype() {
       .transfer dt{color:#64748b;white-space:nowrap}
       .transfer dt::after{content:":"}
       .transfer dd{font-weight:500}
-      .glossary{margin-top:8px}
+      .glossary{margin-top:32px;padding-top:20px;border-top:2px solid #007a4e}
+      .glossary h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:12px}
+      @media print{.glossary{page-break-before:always;margin-top:0;padding-top:24px}}
       .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #007a4e}
       .gloss-item strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:4px}
       .gloss-item p{font-size:12px;color:#475569;white-space:pre-line;line-height:1.6}
@@ -853,7 +856,9 @@ export default function CRMPrototype() {
       .transfer dt{color:#64748b;white-space:nowrap}
       .transfer dt::after{content:":"}
       .transfer dd{font-weight:500}
-      .glossary{margin-top:8px}
+      .glossary{margin-top:32px;padding-top:20px;border-top:2px solid #007a4e}
+      .glossary h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:12px}
+      @media print{.glossary{page-break-before:always;margin-top:0;padding-top:24px}}
       .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #007a4e}
       .gloss-item strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:4px}
       .gloss-item p{font-size:12px;color:#475569;white-space:pre-line;line-height:1.6}
@@ -1016,12 +1021,7 @@ export default function CRMPrototype() {
                   </button>
                 </div>
                 <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-                  <div className="segmented">
-                    <button className={!leadPeriodo ? "selected" : ""} onClick={() => setLeadPeriodo("")}>Todo</button>
-                    <button className={leadPeriodo === "semana" ? "selected" : ""} onClick={() => setLeadPeriodo("semana")}>Semana</button>
-                    <button className={leadPeriodo === "mes" ? "selected" : ""} onClick={() => setLeadPeriodo("mes")}>Mes</button>
-                    <button className={leadPeriodo === "anio" ? "selected" : ""} onClick={() => setLeadPeriodo("anio")}>Año</button>
-                  </div>
+                  <PeriodoPicker anio={leadAnio} mes={leadMes} fechas={leads.map((l) => l.creado_en || "")} onAnio={setLeadAnio} onMes={setLeadMes} />
                   <div className="segmented">
                     <button className={leadView === "iconos" ? "selected" : ""} onClick={() => setLeadView("iconos")} title="Vista tarjetas">
                       <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="1" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor"/></svg>
@@ -2214,6 +2214,43 @@ function ProductsModule({
   );
 }
 
+const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+function PeriodoPicker({ anio, mes, fechas, onAnio, onMes }: {
+  anio: number; mes: number; fechas: string[];
+  onAnio: (v: number) => void; onMes: (v: number) => void;
+}) {
+  const anios = useMemo(() => {
+    const set = new Set<number>();
+    set.add(new Date().getFullYear());
+    fechas.forEach((f) => { if (f) { const y = new Date(f).getFullYear(); if (y > 2000) set.add(y); } });
+    return [...set].sort((a, b) => b - a);
+  }, [fechas]);
+
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+      <select
+        value={anio || ""}
+        onChange={(e) => { onAnio(e.target.value ? Number(e.target.value) : 0); onMes(0); }}
+        style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, border: "1px solid #e2e8f0", cursor: "pointer" }}
+      >
+        <option value="">Todos los años</option>
+        {anios.map((y) => <option key={y} value={y}>{y}</option>)}
+      </select>
+      {anio > 0 && (
+        <select
+          value={mes || ""}
+          onChange={(e) => onMes(e.target.value ? Number(e.target.value) : 0)}
+          style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, border: "1px solid #e2e8f0", cursor: "pointer" }}
+        >
+          <option value="">Todos los meses</option>
+          {MESES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+        </select>
+      )}
+    </div>
+  );
+}
+
 function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
   cotizaciones: Cotizacion[];
   clientes: Cliente[];
@@ -2221,7 +2258,8 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
 }) {
   const [search, setSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("");
-  const [periodo, setPeriodo] = useState<"" | "semana" | "mes" | "anio">("");
+  const [anioFilter, setAnioFilter] = useState(0);
+  const [mesFilter, setMesFilter] = useState(0);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "fecha", dir: "desc" });
 
   function getClienteName(clienteId: string) {
@@ -2235,14 +2273,12 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
 
   const visible = useMemo(() => {
     const q = search.toLowerCase();
-    const now = new Date();
     const list = cotizaciones.filter((cot) => {
       if (estadoFilter && cot.estado !== estadoFilter) return false;
-      if (periodo && cot.fecha) {
+      if ((anioFilter || mesFilter) && cot.fecha) {
         const d = new Date(cot.fecha);
-        if (periodo === "semana" && d < new Date(now.getTime() - 7 * 86400000)) return false;
-        if (periodo === "mes" && (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth())) return false;
-        if (periodo === "anio" && d.getFullYear() !== now.getFullYear()) return false;
+        if (anioFilter && d.getFullYear() !== anioFilter) return false;
+        if (mesFilter && d.getMonth() + 1 !== mesFilter) return false;
       }
       if (!q) return true;
       return (
@@ -2261,7 +2297,7 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
       const bv = String((b as unknown as Record<string, unknown>)[sort.key] ?? "").toLowerCase();
       return sort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
     });
-  }, [cotizaciones, search, estadoFilter, sort, clientes]);
+  }, [cotizaciones, search, estadoFilter, anioFilter, mesFilter, sort, clientes]);
 
   const estados = ["Pendiente", "Aprobada", "Rechazada", "En revisión"];
 
@@ -2282,12 +2318,7 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion }: {
           />
           {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 0 }}><X size={13} /></button>}
         </div>
-        <div className="segmented" style={{ flexShrink: 0 }}>
-          <button className={!periodo ? "selected" : ""} onClick={() => setPeriodo("")}>Todo</button>
-          <button className={periodo === "semana" ? "selected" : ""} onClick={() => setPeriodo("semana")}>Semana</button>
-          <button className={periodo === "mes" ? "selected" : ""} onClick={() => setPeriodo("mes")}>Mes</button>
-          <button className={periodo === "anio" ? "selected" : ""} onClick={() => setPeriodo("anio")}>Año</button>
-        </div>
+        <PeriodoPicker anio={anioFilter} mes={mesFilter} fechas={cotizaciones.map((c) => c.fecha)} onAnio={setAnioFilter} onMes={setMesFilter} />
         <div className="segmented" style={{ flexShrink: 0 }}>
           <button className={!estadoFilter ? "selected" : ""} onClick={() => setEstadoFilter("")}>Todos</button>
           {estados.map((e) => (
