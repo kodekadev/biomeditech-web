@@ -1804,9 +1804,19 @@ function ProductsModule({
   setCatalogo: React.Dispatch<React.SetStateAction<CatalogoItem[]>>;
   notify: (msg: string) => void;
 }) {
-  const [serviceTypes, setServiceTypes] = useState(PROD_SVC_DEFAULTS);
-  const [equipCats, setEquipCats] = useState(EQUIP_CAT_DEFAULTS);
-  const [descTemplates, setDescTemplates] = useState<Record<string, string>>({});
+  const [serviceTypes, setServiceTypes] = useState<{ id: string; label: string }[]>(() => {
+    try { const s = localStorage.getItem("crm_svc_types"); return s ? JSON.parse(s) : PROD_SVC_DEFAULTS; } catch { return PROD_SVC_DEFAULTS; }
+  });
+  const [equipCats, setEquipCats] = useState<string[]>(() => {
+    try { const s = localStorage.getItem("crm_equip_cats"); return s ? JSON.parse(s) : EQUIP_CAT_DEFAULTS; } catch { return EQUIP_CAT_DEFAULTS; }
+  });
+  const [descTemplates, setDescTemplates] = useState<Record<string, string>>(() => {
+    try { const s = localStorage.getItem("crm_desc_templates"); return s ? JSON.parse(s) : {}; } catch { return {}; }
+  });
+  useEffect(() => { try { localStorage.setItem("crm_svc_types", JSON.stringify(serviceTypes)); } catch {} }, [serviceTypes]);
+  useEffect(() => { try { localStorage.setItem("crm_equip_cats", JSON.stringify(equipCats)); } catch {} }, [equipCats]);
+  useEffect(() => { try { localStorage.setItem("crm_desc_templates", JSON.stringify(descTemplates)); } catch {} }, [descTemplates]);
+
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
   const [taxOpen, setTaxOpen] = useState(false);
@@ -1833,10 +1843,10 @@ function ProductsModule({
 
   function nextCode(svcId: string): string {
     const nums = catalogo
-      .filter((c) => c.categoria === svcId && /^[A-Z]+-\d+$/.test(c.codigo))
-      .map((c) => parseInt(c.codigo.split("-")[1], 10))
+      .filter((c) => c.categoria === svcId && new RegExp(`^${svcId}\\d+$`).test(c.codigo))
+      .map((c) => parseInt(c.codigo.slice(svcId.length), 10))
       .filter((n) => !isNaN(n));
-    return `${svcId}-${String((nums.length > 0 ? Math.max(...nums) : 0) + 1).padStart(3, "0")}`;
+    return `${svcId}${String((nums.length > 0 ? Math.max(...nums) : 0) + 1).padStart(3, "0")}`;
   }
 
   const groups = useMemo(() => {
