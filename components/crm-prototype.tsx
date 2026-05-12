@@ -1601,23 +1601,12 @@ function normCat(cat: string): string {
 
 function resolveDescLarga(item: CatalogoItem, plantillas: Plantilla[]): string {
   if (item.descripcion_larga) return item.descripcion_larga;
-  // Normalize texto_base_key for template lookup (e.g., "MP_Médico" → "MP_MEDICO")
-  const rawKey = item.texto_base_key || "";
-  const normKey = rawKey.includes("_")
-    ? rawKey.split("_")[0] + "_" + normCat(rawKey.slice(rawKey.indexOf("_") + 1))
-    : rawKey;
   const generalKey = `${item.categoria}_GENERAL`;
-  // Try category-specific template
-  if (normKey) {
-    const byKey = plantillas.find((p) => p.codigo === normKey || p.codigo === rawKey);
-    if (byKey?.descripcion_larga) return byKey.descripcion_larga;
-  }
-  // Try general template
   const byGeneral = plantillas.find((p) => p.codigo === generalKey);
   if (byGeneral?.descripcion_larga) return byGeneral.descripcion_larga;
   try {
     const local = JSON.parse(localStorage.getItem("crm_desc_templates") || "{}") as Record<string, string>;
-    return local[normKey] || local[rawKey] || local[generalKey] || "";
+    return local[generalKey] || "";
   } catch { return ""; }
 }
 
@@ -2116,12 +2105,9 @@ function ProductsModule({
   }
 
   function resolveDesc(equipCat: string, svcId: string): string {
-    const catKey = `${svcId}_${normCat(equipCat)}`;   // normalized for lookup (MP_MEDICO)
-    const rawCatKey = `${svcId}_${equipCat}`;
     const genKey = `${svcId}_GENERAL`;
-    const byCat = plantillas.find((p) => p.codigo === catKey || p.codigo === rawCatKey);
     const byGeneral = plantillas.find((p) => p.codigo === genKey);
-    return byCat?.descripcion_larga || byGeneral?.descripcion_larga || descTemplates[catKey] || descTemplates[rawCatKey] || descTemplates[genKey] || "";
+    return byGeneral?.descripcion_larga || descTemplates[genKey] || "";
   }
 
   function nextCode(svcId: string): string {
