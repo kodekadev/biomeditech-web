@@ -410,10 +410,14 @@ export default function CRMPrototype() {
   }
 
   function handleCotizarLead(lead: Lead) {
-    const match = clientes.find((c) =>
-      c.nombre.toLowerCase().includes(lead.empresa.toLowerCase()) ||
-      lead.empresa.toLowerCase().includes(c.nombre.toLowerCase())
-    );
+    const rutNorm = normalizeRut(lead.rut ?? "");
+    const match = clientes.find((c) => {
+      if (rutNorm.length > 4 && normalizeRut(c.rut) === rutNorm) return true;
+      return (
+        c.nombre.toLowerCase().includes(lead.empresa.toLowerCase()) ||
+        lead.empresa.toLowerCase().includes(c.nombre.toLowerCase())
+      );
+    });
 
     setCotizClienteId(match?.id ?? "");
 
@@ -433,17 +437,19 @@ export default function CRMPrototype() {
     }
 
     const addr = lead.direccion || match?.ciudad || match?.direccion || "";
+    const tel = (lead.tel && lead.tel.trim() !== "+56" && lead.tel.trim() !== "+56 ") ? lead.tel : (match?.telefono ?? "");
+    const email = lead.email || match?.correo || "";
     setCotizItems(finalItems);
     setCotizNotas([
       `Origen lead: ${lead.nombre}`,
-      lead.empresa ? `Empresa: ${lead.empresa}` : "",
-      lead.tel ? `Tel: ${lead.tel}` : "",
-      lead.email ? `Correo: ${lead.email}` : "",
+      (match?.nombre && match.nombre !== lead.empresa) ? `Empresa: ${match.nombre}` : (lead.empresa ? `Empresa: ${lead.empresa}` : ""),
+      tel ? `Tel: ${tel}` : "",
+      email ? `Correo: ${email}` : "",
       lead.equipo ? `Equipo/producto: ${lead.equipo}` : "",
       lead.servicio ? `Servicio solicitado: ${serviceLabel(lead.servicio)}` : "",
       addr ? `Dirección: ${addr}` : "",
     ].filter(Boolean).join(" | "));
-    if (!match) notify("Cliente no encontrado — selecciona o crea uno antes de emitir");
+    if (!match) notify("Cliente no encontrado por RUT ni nombre — selecciona o crea uno antes de emitir");
     goTo("cotizaciones");
   }
 
@@ -2226,6 +2232,7 @@ function ProductsModule({
 
       {/* Settings panel */}
       {settingsOpen && (
+        <>
         <div className="panel" style={{ padding: 16, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
           <div style={{ display: "flex", gap: 32, flexWrap: "wrap", alignItems: "flex-start" }}>
             {/* Categorías de equipo */}
@@ -2315,9 +2322,8 @@ function ProductsModule({
             </div>
           </div>
         </div>
-      )}
 
-      {/* Descripciones de servicios */}
+        {/* Descripciones de servicios */}
       <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div className="panel-title" style={{ marginBottom: 0 }}><FileText size={16} />Descripciones de servicios</div>
@@ -2393,6 +2399,8 @@ function ProductsModule({
           })}
         </div>
       </div>
+      </>
+      )}
 
       {/* Unified products table */}
       <div className="panel table-card" style={{ overflowX: "auto" }}>
