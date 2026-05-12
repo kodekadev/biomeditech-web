@@ -435,11 +435,16 @@ button {
 .panel-head,
 .module-toolbar,
 .lead-card-head,
-.card-actions,
 .split-actions {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .panel-head {
@@ -748,8 +753,8 @@ button {
 }
 
 .card-icon-btn {
-  flex: 0 0 38px !important;
-  width: 38px;
+  flex: 0 0 32px !important;
+  width: 32px;
   padding: 6px 0 !important;
 }
 
