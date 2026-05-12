@@ -47,7 +47,7 @@ const NAV_ITEMS: Array<{ id: ModuleId; label: string; icon: React.ElementType; g
   { id: "clientes", label: "Clientes", icon: BriefcaseMedical, group: "Gestión" },
   { id: "productos", label: "Productos / Servicios", icon: Wrench, group: "Gestión" },
   { id: "cotizaciones", label: "Cotizaciones", icon: ClipboardList, group: "Operaciones" },
-  { id: "historial", label: "Historial", icon: History, group: "Operaciones" },
+  { id: "historial", label: "Historial de cotizaciones", icon: History, group: "Operaciones" },
   { id: "protocolos", label: "Protocolos Mantención", icon: FileArchive, group: "Operaciones" },
 ];
 
@@ -2610,10 +2610,15 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
         </div>
         <PeriodoPicker anio={anioFilter} mes={mesFilter} fechas={cotizaciones.map((c) => c.fecha)} onAnio={setAnioFilter} onMes={setMesFilter} />
         <div className="segmented" style={{ flexShrink: 0 }}>
-          <button className={!estadoFilter ? "selected" : ""} onClick={() => setEstadoFilter("")}>Todos</button>
-          {estados.map((e) => (
-            <button key={e} className={estadoFilter === e ? "selected" : ""} onClick={() => setEstadoFilter(e)}>{e}</button>
-          ))}
+          <button className={!estadoFilter ? "selected" : ""} onClick={() => setEstadoFilter("")}>Todos <span>{cotizaciones.length}</span></button>
+          {estados.map((e) => {
+            const count = cotizaciones.filter((c) => c.estado === e).length;
+            return (
+              <button key={e} className={estadoFilter === e ? "selected" : ""} onClick={() => setEstadoFilter(e)}>
+                {e} <span>{count}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
       <table>
