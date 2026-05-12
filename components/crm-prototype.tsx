@@ -726,7 +726,7 @@ export default function CRMPrototype() {
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
     <header>
-      <div style="display:flex;align-items:center;gap:12px"><div style="background:#007a4e;border-radius:8px;padding:8px 14px;display:flex;align-items:center"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="background:#007a4e;border-radius:8px;padding:8px 14px;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
       <div class="right"><strong>${det.numero}</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
@@ -877,7 +877,7 @@ export default function CRMPrototype() {
       .draft-badge{display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
     </style></head><body>
     <header>
-      <div style="display:flex;align-items:center;gap:12px"><div style="background:#007a4e;border-radius:8px;padding:8px 14px;display:flex;align-items:center"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="background:#007a4e;border-radius:8px;padding:8px 14px;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
       <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
@@ -1021,6 +1021,13 @@ export default function CRMPrototype() {
             <p>Biomeditech CRM / {active === "dashboard" ? "Inicio" : activeTitle}</p>
           </div>
           <div className="topbar-actions">
+            <button
+              className="icon-button"
+              aria-label="Actualizar"
+              title="Actualizar datos"
+              onClick={() => window.location.reload()}
+              style={{ fontSize: 17, fontWeight: 700 }}
+            >↺</button>
             <button className="icon-button" aria-label="Notificaciones">
               <Bell size={18} />
               <span className="notify-dot" />
@@ -1588,18 +1595,23 @@ function normCat(cat: string): string {
 
 function resolveDescLarga(item: CatalogoItem, plantillas: Plantilla[]): string {
   if (item.descripcion_larga) return item.descripcion_larga;
-  // Try category-specific template (e.g., MP_DENTAL)
-  if (item.texto_base_key) {
-    const byKey = plantillas.find((p) => p.codigo === item.texto_base_key);
+  // Normalize texto_base_key for template lookup (e.g., "MP_Médico" → "MP_MEDICO")
+  const rawKey = item.texto_base_key || "";
+  const normKey = rawKey.includes("_")
+    ? rawKey.split("_")[0] + "_" + normCat(rawKey.slice(rawKey.indexOf("_") + 1))
+    : rawKey;
+  const generalKey = `${item.categoria}_GENERAL`;
+  // Try category-specific template
+  if (normKey) {
+    const byKey = plantillas.find((p) => p.codigo === normKey || p.codigo === rawKey);
     if (byKey?.descripcion_larga) return byKey.descripcion_larga;
   }
-  // Try general template (e.g., MP_GENERAL)
-  const generalKey = `${item.categoria}_GENERAL`;
+  // Try general template
   const byGeneral = plantillas.find((p) => p.codigo === generalKey);
   if (byGeneral?.descripcion_larga) return byGeneral.descripcion_larga;
   try {
     const local = JSON.parse(localStorage.getItem("crm_desc_templates") || "{}") as Record<string, string>;
-    return local[item.texto_base_key || ""] || local[generalKey] || "";
+    return local[normKey] || local[rawKey] || local[generalKey] || "";
   } catch { return ""; }
 }
 
@@ -1827,6 +1839,13 @@ function CotizadorForm({
       )}
 
       <label>Notas / Observaciones<textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} maxLength={500} /></label>
+
+      {/* Email automático — placeholder Resend (no funcional aún) */}
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#475569", padding: "8px 10px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", cursor: "not-allowed", opacity: 0.7 }}>
+        <input type="checkbox" disabled style={{ width: 15, height: 15, minHeight: 0, margin: 0, flexShrink: 0 }} />
+        <span>Enviar correo automáticamente al cliente al emitir</span>
+        <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: "auto" }}>Próximamente</span>
+      </label>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
         <button className="ghost" onClick={() => setItems([])}>
@@ -2065,12 +2084,18 @@ function ProductsModule({
   }>({ nombre: "", equipCat: EQUIP_CAT_DEFAULTS[0], servicios: [] });
 
   function getEquipCat(item: CatalogoItem): string {
-    if (item.texto_base_key?.includes(":")) return item.texto_base_key.split(":")[0];
+    const key = item.texto_base_key;
+    if (!key) return "Otro";
+    // New format: SVC_EquipCat (e.g., "MP_Médico", "VS_Dental")
+    const under = key.indexOf("_");
+    if (under > 0) return key.slice(under + 1);
+    // Legacy format: EQUIPCAT:SVC
+    if (key.includes(":")) return key.split(":")[0];
     return "Otro";
   }
 
   function resolveDesc(equipCat: string, svcId: string): string {
-    const catKey = `${svcId}_${normCat(equipCat)}`;
+    const catKey = `${svcId}_${normCat(equipCat)}`;   // normalized for lookup (MP_MEDICO)
     const genKey = `${svcId}_GENERAL`;
     return descTemplates[catKey] || descTemplates[genKey] || "";
   }
@@ -2096,6 +2121,8 @@ function ProductsModule({
   }, [catalogo, catFilter, search]);
 
   function openAdd() {
+    // If already adding a new item with data, just focus the open modal
+    if (modal === "product" && !editingGroup) return;
     setEditingGroup(null);
     setProdForm({ nombre: "", equipCat: equipCats[0] || "Médico", servicios: serviceTypes.map((st) => ({ id: st.id, precio: st.defaultPrice > 0 ? String(st.defaultPrice) : "", descripcion: "", enabled: false })) });
     setModal("product");
@@ -2140,7 +2167,7 @@ function ProductsModule({
           equipo: prodForm.nombre,
           unidad: "Servicio",
           precio_neto: s.precio,
-          texto_base_key: `${s.id}_${normCat(prodForm.equipCat)}`,
+          texto_base_key: `${s.id}_${prodForm.equipCat}`,
           descripcion_larga: s.descripcion || resolveDesc(prodForm.equipCat, s.id),
         };
         if (ex) {
@@ -2166,7 +2193,7 @@ function ProductsModule({
           equipo: prodForm.nombre,
           unidad: "Servicio",
           precio_neto: s.precio,
-          texto_base_key: `${s.id}_${normCat(prodForm.equipCat)}`,
+          texto_base_key: `${s.id}_${prodForm.equipCat}`,
           descripcion_larga: s.descripcion || resolveDesc(prodForm.equipCat, s.id),
         };
         const created = await api.createCatalogoItem(form);
@@ -2193,7 +2220,7 @@ function ProductsModule({
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="ghost" onClick={() => setSettingsOpen((v) => !v)} title="Gestionar tipos de servicio y categorías"><Settings size={15} />Configurar</button>
-          <button className="primary" onClick={openAdd}><Plus size={16} />Nuevo equipo</button>
+          <button className="primary" onClick={openAdd}><Plus size={16} />Nuevo ítem</button>
         </div>
       </div>
 
@@ -2213,7 +2240,7 @@ function ProductsModule({
                 ))}
                 <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                   <input placeholder="Nueva categoría" value={newEquipCat} onChange={(e) => setNewEquipCat(e.target.value)} style={{ flex: 1 }} maxLength={40} />
-                  <button className="primary small" onClick={() => { if (!newEquipCat.trim()) return; if (equipCats.includes(newEquipCat.trim())) { notify("Ya existe"); return; } setEquipCats((p) => [...p, newEquipCat.trim()]); setNewEquipCat(""); }}><Plus size={14} /></button>
+                  <button className="primary small" onClick={() => { if (!newEquipCat.trim()) { notify("Debe ingresar una categoría"); return; } if (equipCats.includes(newEquipCat.trim())) { notify("Ya existe"); return; } setEquipCats((p) => [...p, newEquipCat.trim()]); setNewEquipCat(""); }}><Plus size={14} /></button>
                 </div>
               </div>
             </div>
@@ -2277,7 +2304,8 @@ function ProductsModule({
                   onClick={() => {
                     const id = newSvcId.trim();
                     const label = newSvcLabel.trim();
-                    if (!id || !label) { notify("Ingresa código y nombre"); return; }
+                    if (!id) { notify("Debe ingresar un código"); return; }
+                    if (!label) { notify("Debe ingresar el nombre del servicio"); return; }
                     if (serviceTypes.some((s) => s.id === id)) { notify(`El código "${id}" ya existe`); return; }
                     setServiceTypes((p) => [...p, { id, label, defaultPrice: Number(newSvcPrice) || 0 }]);
                     setNewSvcId(""); setNewSvcLabel(""); setNewSvcPrice("");
@@ -2380,7 +2408,7 @@ function ProductsModule({
           <tbody>
             {groups.length === 0 && (
               <tr><td colSpan={3 + serviceTypes.length} style={{ textAlign: "center", color: "#94a3b8", padding: 20 }}>
-                {search || catFilter ? "Sin resultados para este filtro." : "No hay equipos registrados. Haz clic en «Nuevo equipo» para agregar."}
+                {search || catFilter ? "Sin resultados para este filtro." : "No hay equipos registrados. Haz clic en «Nuevo ítem» para agregar."}
               </td></tr>
             )}
             {groups.map(([equipName, { items, equipCat }]) => (
@@ -2405,15 +2433,15 @@ function ProductsModule({
 
       {/* Product add/edit modal */}
       {modal === "product" && (
-        <div className="modal-backdrop" onClick={() => setModal(null)}>
-          <div className="modal" style={{ maxWidth: 600 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-backdrop">
+          <div className="modal" style={{ maxWidth: 600 }}>
             <div className="modal-head">
-              <h2>{editingGroup ? `Editar: ${editingGroup}` : "Nuevo equipo"}</h2>
+              <h2>{editingGroup ? `Editar: ${editingGroup}` : "Nuevo ítem"}</h2>
               <button onClick={() => setModal(null)} aria-label="Cerrar"><X size={17} /></button>
             </div>
             <div className="modal-grid">
               <label className="wide">
-                Nombre del equipo *
+                Nombre del ítem *
                 <input value={prodForm.nombre} onChange={(e) => setProdForm((f) => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Autoclave clase B 23L" maxLength={120} />
               </label>
               <label>
@@ -2456,7 +2484,7 @@ function ProductsModule({
             </div>
             <div className="modal-actions">
               <button className="ghost" onClick={() => setModal(null)}>Cancelar</button>
-              <button className="primary" onClick={handleSaveProd} disabled={saving}>{saving ? "Guardando..." : editingGroup ? "Actualizar" : "Guardar equipo"}</button>
+              <button className="primary" onClick={handleSaveProd} disabled={saving}>{saving ? "Guardando..." : editingGroup ? "Actualizar" : "Guardar ítem"}</button>
             </div>
           </div>
         </div>
@@ -2757,6 +2785,8 @@ function Modal({
     }
   }, [kind, editingLead, editingCliente, editingProducto, clientePrefill]);
 
+  const [saving, setSaving] = useState(false);
+
   if (!kind) return null;
 
   const isEditing =
@@ -2771,7 +2801,8 @@ function Modal({
     cotizacion: "Nueva cotización rápida",
   };
 
-  function handleSave() {
+  async function handleSave() {
+    if (saving) return;
     if (kind === "lead") {
       if (!leadForm.nombre.trim()) { notify("El nombre del contacto es requerido"); return; }
       if (!leadForm.empresa.trim()) { notify("La empresa es requerida"); return; }
@@ -2779,6 +2810,7 @@ function Modal({
       if (!validateRut(leadForm.rut)) { notify("El RUT ingresado no es válido. Verifica el dígito verificador."); return; }
       if (leadForm.tel && leadForm.tel.replace(/\D/g, "").length > 0 && !isValidPhone(leadForm.tel)) { notify("El teléfono no tiene un formato válido (ej: +56 9 1234 5678)"); return; }
       if (leadForm.email && !isValidEmail(leadForm.email)) { notify("El correo no tiene un formato válido"); return; }
+      setSaving(true);
       editingLead ? onUpdateLead(editingLead.id, leadForm, leadItems) : onSaveLead(leadForm, leadItems);
     } else if (kind === "cliente") {
       if (!clienteForm.rut?.trim()) { notify("El RUT de la empresa es requerido"); return; }
@@ -2789,10 +2821,12 @@ function Modal({
       if (!isValidPhone(clienteForm.tel)) { notify("El teléfono no tiene un formato válido (ej: +56 9 1234 5678)"); return; }
       if (!clienteForm.correo.trim()) { notify("El correo es requerido"); return; }
       if (!isValidEmail(clienteForm.correo)) { notify("El correo no tiene un formato válido"); return; }
+      setSaving(true);
       editingCliente ? onUpdateCliente(editingCliente.id, clienteForm) : onSaveCliente(clienteForm);
     } else if (kind === "producto") {
       if (!productoForm.nombre.trim()) { notify("El nombre del producto es requerido"); return; }
       if ([productoForm.diag, productoForm.rep, productoForm.mant, productoForm.inst].some((v) => Number(v) < 0)) { notify("Los precios no pueden ser negativos"); return; }
+      setSaving(true);
       editingProducto ? onUpdateProducto(editingProducto.id, productoForm) : onSaveProducto(productoForm);
     } else if (kind === "cotizacion") {
       close();
@@ -2831,8 +2865,8 @@ function Modal({
   }
 
   return (
-    <div className="modal-backdrop" onClick={close}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <div className="modal-backdrop">
+      <div className="modal">
         <div className="modal-head">
           <h2>{titles[kind]}</h2>
           <button onClick={close} aria-label="Cerrar"><X size={17} /></button>
@@ -3075,9 +3109,11 @@ function Modal({
           )}
         </div>
         <div className="modal-actions">
-          <button className="ghost" onClick={close}>Cancelar</button>
-          <button className="primary" onClick={handleSave}>
-            {kind === "cotizacion" ? "Ir a cotizaciones" : isEditing ? "Actualizar" : "Guardar"}
+          <button className="ghost" onClick={close} disabled={saving}>Cancelar</button>
+          <button className="primary" onClick={handleSave} disabled={saving}>
+            {saving
+              ? <><span className="btn-spinner" />Guardando...</>
+              : kind === "cotizacion" ? "Ir a cotizaciones" : isEditing ? "Actualizar" : "Guardar"}
           </button>
         </div>
       </div>
