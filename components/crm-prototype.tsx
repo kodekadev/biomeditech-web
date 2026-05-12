@@ -246,6 +246,18 @@ export default function CRMPrototype() {
   const [cotizNotas, setCotizNotas] = useState("");
   const [cotizFormaPago, setCotizFormaPago] = useState("50% inicio - 50% entrega");
   const [cotizItems, setCotizItems] = useState<CotizacionItemForm[]>([]);
+  const DEFAULT_CONDICIONES = [
+    "Valores expresados en pesos chilenos",
+    "Servicio sujeto a coordinación previa con supervisor de sede",
+    "El costo de la visita se cobrará separado en caso de detectarse desviaciones",
+    "Informe técnico individual será emitido por cada equipo intervenido",
+    "Validez de la cotización: 15 días",
+    "Forma de pago: según condiciones acordadas con el cliente",
+  ].join("\n");
+  const [cotizCondiciones, setCotizCondiciones] = useState(() => {
+    try { return localStorage.getItem("crm_condiciones") || DEFAULT_CONDICIONES; } catch { return DEFAULT_CONDICIONES; }
+  });
+  useEffect(() => { try { localStorage.setItem("crm_condiciones", cotizCondiciones); } catch {} }, [cotizCondiciones]);
   const [emitiendo, setEmitiendo] = useState(false);
   // legacy single-line state kept for backward compat with pre-fill from lead
   const [quote, setQuote] = useState({
@@ -655,9 +667,9 @@ export default function CRMPrototype() {
       const key = it.tipo_servicio || it.descripcion.split("—")[0].trim();
       const localTemplates: Record<string, string> = (() => { try { return JSON.parse(localStorage.getItem("crm_desc_templates") || "{}"); } catch { return {}; } })();
       const descLarga = it.descripcion_larga ||
-        plantillas.find((p) => p.codigo === it.tipo_servicio || p.codigo.endsWith(`:${it.tipo_servicio}`))?.descripcion_larga ||
-        localTemplates[`GENERAL:${it.tipo_servicio}`] ||
-        Object.entries(localTemplates).find(([k]) => k.endsWith(`:${it.tipo_servicio}`))?.[1] || "";
+        plantillas.find((p) => p.codigo === it.tipo_servicio)?.descripcion_larga ||
+        plantillas.find((p) => p.codigo === `${it.tipo_servicio}_GENERAL`)?.descripcion_larga ||
+        localTemplates[`${it.tipo_servicio}_GENERAL`] || "";
       if (descLarga && key && !seenGloss.has(key)) {
         seenGloss.add(key);
         glossaryEntries.push({ label: key, desc: descLarga });
@@ -673,7 +685,7 @@ export default function CRMPrototype() {
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización ${det.numero}</title>
     <style>
-      *{box-sizing:border-box;margin:0;padding:0}
+      *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
       body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:72px 40px 36px}
       .action-bar{position:fixed;top:0;left:0;right:0;background:#0f2340;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;z-index:999;gap:12px}
       .action-bar span{font-weight:600;font-size:14px}
@@ -751,8 +763,10 @@ export default function CRMPrototype() {
       <tr><td>Total</td><td>${money(det.total_con_iva)} CLP</td></tr>
     </table>
     <div class="conditions">
-      <strong>Condiciones</strong>
-      Forma de pago: ${det.forma_pago} · Validez: ${det.validez_dias} días · Diagnóstico incluido en servicio aceptado
+      <strong>Condiciones Comerciales</strong>
+      <ul style="margin:6px 0 0 16px;padding:0">${
+        (() => { try { return (localStorage.getItem("crm_condiciones") || "").split("\n").filter(Boolean).map((l: string) => `<li>${l}</li>`).join(""); } catch { return ""; } })()
+      }</ul>
     </div>
     <div class="transfer">
       <strong>Datos de transferencia</strong>
@@ -803,9 +817,9 @@ export default function CRMPrototype() {
     cotizItems.forEach((it) => {
       const key = it.tipo_servicio || it.descripcion.split("—")[0].trim();
       const descLarga = it.descripcion_larga ||
-        plantillas.find((p) => p.codigo === it.tipo_servicio || p.codigo.endsWith(`:${it.tipo_servicio}`))?.descripcion_larga ||
-        localTemplates[`GENERAL:${it.tipo_servicio}`] ||
-        Object.entries(localTemplates).find(([k]) => k.endsWith(`:${it.tipo_servicio}`))?.[1] || "";
+        plantillas.find((p) => p.codigo === it.tipo_servicio)?.descripcion_larga ||
+        plantillas.find((p) => p.codigo === `${it.tipo_servicio}_GENERAL`)?.descripcion_larga ||
+        localTemplates[`${it.tipo_servicio}_GENERAL`] || "";
       if (descLarga && key && !seenGloss.has(key)) {
         seenGloss.add(key);
         glossaryEntries.push({ label: key, desc: descLarga });
@@ -821,7 +835,7 @@ export default function CRMPrototype() {
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Borrador Cotización</title>
     <style>
-      *{box-sizing:border-box;margin:0;padding:0}
+      *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
       body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:72px 40px 36px}
       .action-bar{position:fixed;top:0;left:0;right:0;background:#0f2340;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;z-index:999;gap:12px}
       .action-bar span{font-weight:600;font-size:14px}
@@ -900,8 +914,8 @@ export default function CRMPrototype() {
       <tr><td>Total</td><td>${money(total)} CLP</td></tr>
     </table>
     <div class="conditions">
-      <strong>Condiciones</strong>
-      Forma de pago: ${cotizFormaPago} · Validez: 30 días · Diagnóstico incluido en servicio aceptado
+      <strong>Condiciones Comerciales</strong>
+      <ul style="margin:6px 0 0 16px;padding:0">${cotizCondiciones.split("\n").filter(Boolean).map((l) => `<li>${l}</li>`).join("")}</ul>
     </div>
     <div class="transfer">
       <strong>Datos de transferencia</strong>
@@ -1278,6 +1292,8 @@ export default function CRMPrototype() {
                     setNotas={setCotizNotas}
                     formaPago={cotizFormaPago}
                     setFormaPago={setCotizFormaPago}
+                    condiciones={cotizCondiciones}
+                    setCondiciones={setCotizCondiciones}
                     items={cotizItems}
                     setItems={setCotizItems}
                     onEmitir={handleEmitirCotizacion}
@@ -1566,13 +1582,24 @@ function catalogoDescription(item: CatalogoItem): string {
   return `${item.servicio} - ${item.equipo}`.trim().replace(/\s*-\s*$/, "");
 }
 
+function normCat(cat: string): string {
+  return cat.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9]/g, "");
+}
+
 function resolveDescLarga(item: CatalogoItem, plantillas: Plantilla[]): string {
   if (item.descripcion_larga) return item.descripcion_larga;
-  const plantilla = plantillas.find((p) => p.codigo === item.texto_base_key || p.codigo === item.categoria);
-  if (plantilla?.descripcion_larga) return plantilla.descripcion_larga;
+  // Try category-specific template (e.g., MP_DENTAL)
+  if (item.texto_base_key) {
+    const byKey = plantillas.find((p) => p.codigo === item.texto_base_key);
+    if (byKey?.descripcion_larga) return byKey.descripcion_larga;
+  }
+  // Try general template (e.g., MP_GENERAL)
+  const generalKey = `${item.categoria}_GENERAL`;
+  const byGeneral = plantillas.find((p) => p.codigo === generalKey);
+  if (byGeneral?.descripcion_larga) return byGeneral.descripcion_larga;
   try {
     const local = JSON.parse(localStorage.getItem("crm_desc_templates") || "{}") as Record<string, string>;
-    return local[`GENERAL:${item.categoria}`] || local[item.categoria] || "";
+    return local[item.texto_base_key || ""] || local[generalKey] || "";
   } catch { return ""; }
 }
 
@@ -1594,6 +1621,7 @@ function CotizadorForm({
   clienteId, setClienteId,
   notas, setNotas,
   formaPago, setFormaPago,
+  condiciones, setCondiciones,
   items, setItems,
   onEmitir, onDescargarPDF, emitiendo = false,
 }: {
@@ -1606,6 +1634,8 @@ function CotizadorForm({
   setNotas: (v: string) => void;
   formaPago: string;
   setFormaPago: (v: string) => void;
+  condiciones: string;
+  setCondiciones: (v: string) => void;
   items: CotizacionItemForm[];
   setItems: React.Dispatch<React.SetStateAction<CotizacionItemForm[]>>;
   onEmitir: () => void;
@@ -1614,6 +1644,7 @@ function CotizadorForm({
 }) {
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [condOpen, setCondOpen] = useState(false);
   const [clienteSearch, setClienteSearch] = useState("");
   const [showClienteDrop, setShowClienteDrop] = useState(false);
 
@@ -1700,6 +1731,29 @@ function CotizadorForm({
       <label>Forma de pago
         <input value={formaPago} onChange={(e) => setFormaPago(e.target.value)} maxLength={80} />
       </label>
+
+      {/* Condiciones comerciales */}
+      <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+        <button
+          type="button"
+          onClick={() => setCondOpen((v) => !v)}
+          style={{ width: "100%", background: "#f8fafc", border: "none", padding: "10px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, fontWeight: 600, color: "#0f2340" }}
+        >
+          <span>Condiciones comerciales</span>
+          {condOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+        {condOpen && (
+          <div style={{ padding: 12 }}>
+            <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6 }}>Una condición por línea. Se muestran como lista con viñetas en el PDF.</p>
+            <textarea
+              rows={7}
+              value={condiciones}
+              onChange={(e) => setCondiciones(e.target.value)}
+              style={{ width: "100%", fontSize: 12, lineHeight: 1.6, resize: "vertical", borderRadius: 6, border: "1px solid #e2e8f0", padding: "8px 10px" }}
+            />
+          </div>
+        )}
+      </div>
 
       <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12 }}>
         <p style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Agregar ítems del catálogo</p>
@@ -1931,6 +1985,47 @@ function DescripcionEditor({ codigo, label, value, plantillaId, onSave }: {
   );
 }
 
+function AddCatDescRow({ svcId, equipCats, existing, onAdd }: {
+  svcId: string;
+  equipCats: string[];
+  existing: string[];
+  onAdd: (catKey: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState("");
+
+  const available = equipCats.filter((c) => {
+    const key = `${svcId}_${normCat(c)}`;
+    return !existing.includes(key);
+  });
+
+  if (!open) {
+    return (
+      <div style={{ borderTop: "1px solid #f1f5f9", padding: "8px 12px" }}>
+        <button
+          onClick={() => { setOpen(true); setSelected(available[0] || ""); }}
+          style={{ background: "none", border: "1px dashed #cbd5e0", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}
+        ><Plus size={12} />Agregar descripción por categoría de equipo</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ borderTop: "1px solid #e2e8f0", padding: "10px 12px", background: "#fafafa", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <span style={{ fontSize: 12, color: "#64748b" }}>Categoría:</span>
+      <select value={selected} onChange={(e) => setSelected(e.target.value)} style={{ fontSize: 13 }}>
+        {available.map((c) => <option key={c} value={c}>{c} → {svcId}_{normCat(c)}</option>)}
+      </select>
+      <button
+        className="primary small"
+        disabled={!selected}
+        onClick={() => { onAdd(`${svcId}_${normCat(selected)}`); setOpen(false); }}
+      >Crear</button>
+      <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 12 }}>Cancelar</button>
+    </div>
+  );
+}
+
 function ProductsModule({
   catalogo, setCatalogo, plantillas, onUpsertPlantilla, notify,
 }: {
@@ -1975,7 +2070,9 @@ function ProductsModule({
   }
 
   function resolveDesc(equipCat: string, svcId: string): string {
-    return descTemplates[`${equipCat}:${svcId}`] || descTemplates[`GENERAL:${svcId}`] || "";
+    const catKey = `${svcId}_${normCat(equipCat)}`;
+    const genKey = `${svcId}_GENERAL`;
+    return descTemplates[catKey] || descTemplates[genKey] || "";
   }
 
   function nextCode(svcId: string): string {
@@ -2043,7 +2140,7 @@ function ProductsModule({
           equipo: prodForm.nombre,
           unidad: "Servicio",
           precio_neto: s.precio,
-          texto_base_key: `${prodForm.equipCat}:${s.id}`,
+          texto_base_key: `${s.id}_${normCat(prodForm.equipCat)}`,
           descripcion_larga: s.descripcion || resolveDesc(prodForm.equipCat, s.id),
         };
         if (ex) {
@@ -2069,7 +2166,7 @@ function ProductsModule({
           equipo: prodForm.nombre,
           unidad: "Servicio",
           precio_neto: s.precio,
-          texto_base_key: `${prodForm.equipCat}:${s.id}`,
+          texto_base_key: `${s.id}_${normCat(prodForm.equipCat)}`,
           descripcion_larga: s.descripcion || resolveDesc(prodForm.equipCat, s.id),
         };
         const created = await api.createCatalogoItem(form);
@@ -2196,26 +2293,74 @@ function ProductsModule({
       <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div className="panel-title" style={{ marginBottom: 0 }}><FileText size={16} />Descripciones de servicios</div>
-          <span style={{ fontSize: 12, color: "#94a3b8" }}>Se usan en el glosario de la cotización</span>
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>Plantillas usadas en el glosario de cotización</span>
         </div>
-        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 20 }}>
           {serviceTypes.map((st) => {
-            const plantilla = plantillas.find((p) => p.codigo === st.id || p.codigo === `GENERAL:${st.id}`);
-            const localVal = descTemplates[`GENERAL:${st.id}`] || descTemplates[st.id] || "";
-            const current = plantilla?.descripcion_larga || localVal;
+            const genKey = `${st.id}_GENERAL`;
+            const genPlantilla = plantillas.find((p) => p.codigo === genKey);
+            const genVal = genPlantilla?.descripcion_larga || descTemplates[genKey] || "";
+            // Category-specific keys: all descTemplates starting with "${st.id}_" except GENERAL
+            const catKeys = Object.keys(descTemplates).filter((k) => k.startsWith(`${st.id}_`) && k !== genKey);
             return (
-              <DescripcionEditor
-                key={st.id}
-                codigo={st.id}
-                label={st.label}
-                value={current}
-                plantillaId={plantilla?.id || null}
-                onSave={(val) => {
-                  setDescTemplates((p) => ({ ...p, [`GENERAL:${st.id}`]: val }));
-                  onUpsertPlantilla(plantilla?.id || null, st.id, val);
-                  notify(`Descripción de ${st.label} guardada`);
-                }}
-              />
+              <div key={st.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+                {/* General */}
+                <div style={{ padding: "8px 12px", background: "#f8fafc", borderBottom: catKeys.length > 0 ? "1px solid #e2e8f0" : undefined, fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: ".06em" }}>
+                  {st.id}_GENERAL — {st.label}
+                </div>
+                <div style={{ padding: 12 }}>
+                  <DescripcionEditor
+                    codigo={genKey}
+                    label={`${st.label} (general)`}
+                    value={genVal}
+                    plantillaId={genPlantilla?.id || null}
+                    onSave={(val) => {
+                      setDescTemplates((p) => ({ ...p, [genKey]: val }));
+                      onUpsertPlantilla(genPlantilla?.id || null, genKey, val);
+                      notify(`Descripción ${genKey} guardada`);
+                    }}
+                  />
+                </div>
+                {/* Category-specific */}
+                {catKeys.map((catKey) => {
+                  const catPlantilla = plantillas.find((p) => p.codigo === catKey);
+                  const catVal = catPlantilla?.descripcion_larga || descTemplates[catKey] || "";
+                  return (
+                    <div key={catKey}>
+                      <div style={{ padding: "6px 12px", background: "#f0faf5", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "#007a4e", textTransform: "uppercase", letterSpacing: ".06em" }}>{catKey}</span>
+                        <button
+                          onClick={() => { if (window.confirm(`¿Eliminar plantilla "${catKey}"?`)) setDescTemplates((p) => { const n = { ...p }; delete n[catKey]; return n; }); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}
+                        ><Trash2 size={12} /></button>
+                      </div>
+                      <div style={{ padding: 12 }}>
+                        <DescripcionEditor
+                          codigo={catKey}
+                          label={catKey}
+                          value={catVal}
+                          plantillaId={catPlantilla?.id || null}
+                          onSave={(val) => {
+                            setDescTemplates((p) => ({ ...p, [catKey]: val }));
+                            onUpsertPlantilla(catPlantilla?.id || null, catKey, val);
+                            notify(`Descripción ${catKey} guardada`);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Add category-specific */}
+                <AddCatDescRow
+                  svcId={st.id}
+                  equipCats={equipCats}
+                  existing={catKeys}
+                  onAdd={(catKey) => {
+                    setDescTemplates((p) => ({ ...p, [catKey]: "" }));
+                    notify(`Plantilla ${catKey} creada — agrega la descripción`);
+                  }}
+                />
+              </div>
             );
           })}
         </div>
