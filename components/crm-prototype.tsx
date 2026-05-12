@@ -936,7 +936,7 @@ export default function CRMPrototype() {
     </div>
     ${cotizNotas ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${cotizNotas}</em></p>` : ""}
     ${glossaryHtml}
-    <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 30 días desde emisión</footer>
+    <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 15 días desde emisión</footer>
     <div class="action-bar">
       <span>Borrador de Cotización</span>
       <div style="display:flex;gap:8px">
@@ -1596,7 +1596,7 @@ function catalogoDescription(item: CatalogoItem): string {
 }
 
 function normCat(cat: string): string {
-  return cat.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9]/g, "");
+  return cat.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z0-9]/g, "");
 }
 
 function resolveDescLarga(item: CatalogoItem, plantillas: Plantilla[]): string {
@@ -1632,6 +1632,21 @@ function catalogoToCotizacionItem(item: CatalogoItem, plantillas: Plantilla[]): 
     cantidad: 1,
     descuento_pct: 0,
   };
+}
+
+function resolveCotizacionItemDesc(
+  item: { producto_id?: string; tipo_servicio: string; descripcion_larga: string },
+  catalogo: CatalogoItem[],
+  plantillas: Plantilla[]
+): string {
+  if (item.descripcion_larga) return item.descripcion_larga;
+
+  const catalogItem = catalogo.find((c) => c.id === item.producto_id);
+  if (catalogItem?.descripcion_larga) return catalogItem.descripcion_larga;
+
+  const serviceKey = item.tipo_servicio;
+  const generalKey = `${serviceKey}_GENERAL`;
+  return plantillas.find((p) => p.codigo === generalKey)?.descripcion_larga ?? "";
 }
 
 function CotizadorForm({
@@ -2102,8 +2117,11 @@ function ProductsModule({
 
   function resolveDesc(equipCat: string, svcId: string): string {
     const catKey = `${svcId}_${normCat(equipCat)}`;   // normalized for lookup (MP_MEDICO)
+    const rawCatKey = `${svcId}_${equipCat}`;
     const genKey = `${svcId}_GENERAL`;
-    return descTemplates[catKey] || descTemplates[genKey] || "";
+    const byCat = plantillas.find((p) => p.codigo === catKey || p.codigo === rawCatKey);
+    const byGeneral = plantillas.find((p) => p.codigo === genKey);
+    return byCat?.descripcion_larga || byGeneral?.descripcion_larga || descTemplates[catKey] || descTemplates[rawCatKey] || descTemplates[genKey] || "";
   }
 
   function nextCode(svcId: string): string {
@@ -2174,7 +2192,7 @@ function ProductsModule({
           unidad: "Servicio",
           precio_neto: s.precio,
           texto_base_key: `${s.id}_${prodForm.equipCat}`,
-          descripcion_larga: s.descripcion || resolveDesc(prodForm.equipCat, s.id),
+          descripcion_larga: s.descripcion,
         };
         if (ex) {
           const updated = await api.updateCatalogoItem(ex.id, form);
@@ -2200,7 +2218,7 @@ function ProductsModule({
           unidad: "Servicio",
           precio_neto: s.precio,
           texto_base_key: `${s.id}_${prodForm.equipCat}`,
-          descripcion_larga: s.descripcion || resolveDesc(prodForm.equipCat, s.id),
+          descripcion_larga: s.descripcion,
         };
         const created = await api.createCatalogoItem(form);
         if (created) setCatalogo((prev) => [...prev, created]);
@@ -2982,8 +3000,7 @@ function Modal({
                                   if (leadItems.some(i => i.producto_id === c.id)) {
                                     setLeadItems((prev) => prev.filter(i => i.producto_id !== c.id));
                                   } else {
-                                    const plantilla = plantillas.find((p) => p.codigo === c.categoria || p.codigo === c.texto_base_key);
-                                    setLeadItems((prev) => [...prev, { producto_id: c.id, codigo: c.codigo, descripcion: `${c.servicio} — ${c.equipo}`.trim().replace(/\s*—\s*$/, ""), descripcion_larga: plantilla?.descripcion_larga ?? "", tipo_servicio: c.categoria || c.texto_base_key, precio_unitario: c.precio_neto, cantidad: 1, descuento_pct: 0 }]);
+                                    setLeadItems((prev) => [...prev, catalogoToCotizacionItem(c, plantillas)]);
                                   }
                                 }}
                               >{leadItems.some(i => i.producto_id === c.id) ? "✓ Quitar" : "+ Agregar"}</button>

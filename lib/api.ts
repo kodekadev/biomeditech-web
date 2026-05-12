@@ -725,17 +725,11 @@ export async function createCatalogoItem(form: CatalogoItemForm): Promise<Catalo
     precio_neto: Number(form.precio_neto) || 0,
     grupo: form.categoria,
     texto_base_key: form.texto_base_key,
+    descripcion_larga: form.descripcion_larga,
     activo: true,
   });
   if (!r?.data) return null;
   const raw = r.data as Record<string, unknown>;
-  // Also save description template if provided
-  if (form.descripcion_larga && form.texto_base_key) {
-    await apiMutate("POST", "/api/plantillas", {
-      codigo: form.texto_base_key,
-      descripcion_larga: form.descripcion_larga,
-    });
-  }
   return {
     id: str(raw.id),
     codigo: str(raw.codigo),
@@ -759,6 +753,7 @@ export async function updateCatalogoItem(id: string, form: CatalogoItemForm): Pr
     unidad: form.unidad || "Servicio",
     precio_neto: Number(form.precio_neto) || 0,
     texto_base_key: form.texto_base_key,
+    descripcion_larga: form.descripcion_larga,
   });
   if (!r?.data) return null;
   const raw = r.data as Record<string, unknown>;
