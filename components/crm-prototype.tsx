@@ -1566,13 +1566,22 @@ function catalogoDescription(item: CatalogoItem): string {
   return `${item.servicio} - ${item.equipo}`.trim().replace(/\s*-\s*$/, "");
 }
 
-function catalogoToCotizacionItem(item: CatalogoItem, plantillas: Plantilla[]): CotizacionItemForm {
+function resolveDescLarga(item: CatalogoItem, plantillas: Plantilla[]): string {
+  if (item.descripcion_larga) return item.descripcion_larga;
   const plantilla = plantillas.find((p) => p.codigo === item.texto_base_key || p.codigo === item.categoria);
+  if (plantilla?.descripcion_larga) return plantilla.descripcion_larga;
+  try {
+    const local = JSON.parse(localStorage.getItem("crm_desc_templates") || "{}") as Record<string, string>;
+    return local[`GENERAL:${item.categoria}`] || local[item.categoria] || "";
+  } catch { return ""; }
+}
+
+function catalogoToCotizacionItem(item: CatalogoItem, plantillas: Plantilla[]): CotizacionItemForm {
   return {
     producto_id: item.id,
     codigo: item.codigo,
     descripcion: catalogoDescription(item),
-    descripcion_larga: item.descripcion_larga || plantilla?.descripcion_larga || "",
+    descripcion_larga: resolveDescLarga(item, plantillas),
     tipo_servicio: item.categoria || item.texto_base_key,
     precio_unitario: item.precio_neto,
     cantidad: 1,
@@ -1628,20 +1637,7 @@ function CotizadorForm({
   });
 
   function addItem(cat: CatalogoItem) {
-    const plantilla = plantillas.find((p) => p.codigo === cat.texto_base_key || p.codigo === cat.categoria);
-    setItems((prev) => [
-      ...prev,
-      {
-        producto_id: cat.id,
-        codigo: cat.codigo,
-        descripcion: `${cat.servicio} — ${cat.equipo}`.trim().replace(/\s*—\s*$/, ""),
-        descripcion_larga: cat.descripcion_larga || plantilla?.descripcion_larga || "",
-        tipo_servicio: cat.categoria || cat.texto_base_key,
-        precio_unitario: cat.precio_neto,
-        cantidad: 1,
-        descuento_pct: 0,
-      },
-    ]);
+    setItems((prev) => [...prev, catalogoToCotizacionItem(cat, plantillas)]);
   }
 
   function updateItem(idx: number, patch: Partial<CotizacionItemForm>) {
@@ -1868,7 +1864,15 @@ function CotizadorPreview({
   );
 }
 
-const SERVICE_TYPES = Object.entries(CAT_LABELS).map(([id, label]) => ({ id, label }));
+type ServiceTypeEntry = { id: string; label: string; defaultPrice: number };
+const SERVICE_TYPES_DEFAULTS: ServiceTypeEntry[] = [
+  { id: "VS", label: "Visita técnica", defaultPrice: 45000 },
+  { id: "MP", label: "Mantención preventiva", defaultPrice: 85000 },
+  { id: "MC", label: "Mantención correctiva", defaultPrice: 120000 },
+  { id: "BS", label: "Bloque servicio", defaultPrice: 65000 },
+  { id: "EV", label: "Evaluación diagnóstica", defaultPrice: 55000 },
+  { id: "RS", label: "Repuesto / Insumo", defaultPrice: 0 },
+];
 const EQUIP_CAT_DEFAULTS = ["Médico", "Dental", "Estético", "Otro"];
 
 function DescripcionEditor({ codigo, label, value, plantillaId, onSave }: {
@@ -1936,24 +1940,29 @@ function ProductsModule({
   onUpsertPlantilla: (existingId: string | null, codigo: string, descripcion: string) => void;
   notify: (msg: string) => void;
 }) {
-  const serviceTypes = SERVICE_TYPES;
+  const [serviceTypes, setServiceTypes] = useState<ServiceTypeEntry[]>(() => {
+    try { const s = localStorage.getItem("crm_svc_types"); return s ? JSON.parse(s) : SERVICE_TYPES_DEFAULTS; } catch { return SERVICE_TYPES_DEFAULTS; }
+  });
   const [equipCats, setEquipCats] = useState<string[]>(() => {
     try { const s = localStorage.getItem("crm_equip_cats"); return s ? JSON.parse(s) : EQUIP_CAT_DEFAULTS; } catch { return EQUIP_CAT_DEFAULTS; }
   });
   const [descTemplates, setDescTemplates] = useState<Record<string, string>>(() => {
     try { const s = localStorage.getItem("crm_desc_templates"); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
+  useEffect(() => { try { localStorage.setItem("crm_svc_types", JSON.stringify(serviceTypes)); } catch {} }, [serviceTypes]);
   useEffect(() => { try { localStorage.setItem("crm_equip_cats", JSON.stringify(equipCats)); } catch {} }, [equipCats]);
   useEffect(() => { try { localStorage.setItem("crm_desc_templates", JSON.stringify(descTemplates)); } catch {} }, [descTemplates]);
 
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
-  const [taxOpen, setTaxOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [modal, setModal] = useState<"product" | null>(null);
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [newEquipCat, setNewEquipCat] = useState("");
+  const [newSvcId, setNewSvcId] = useState("");
+  const [newSvcLabel, setNewSvcLabel] = useState("");
+  const [newSvcPrice, setNewSvcPrice] = useState("");
   const [prodForm, setProdForm] = useState<{
     nombre: string;
     equipCat: string;
@@ -1991,7 +2000,7 @@ function ProductsModule({
 
   function openAdd() {
     setEditingGroup(null);
-    setProdForm({ nombre: "", equipCat: equipCats[0] || "Médico", servicios: serviceTypes.map((st) => ({ id: st.id, precio: "", descripcion: "", enabled: false })) });
+    setProdForm({ nombre: "", equipCat: equipCats[0] || "Médico", servicios: serviceTypes.map((st) => ({ id: st.id, precio: st.defaultPrice > 0 ? String(st.defaultPrice) : "", descripcion: "", enabled: false })) });
     setModal("product");
   }
 
@@ -2094,17 +2103,90 @@ function ProductsModule({
       {/* Settings panel */}
       {settingsOpen && (
         <div className="panel" style={{ padding: 16, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-          <strong style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#64748b" }}>Categorías de equipo</strong>
-          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6, maxWidth: 320 }}>
-            {equipCats.map((cat) => (
-              <div key={cat} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                <span style={{ flex: 1, color: "#475569" }}>{cat}</span>
-                <button onClick={() => { if (window.confirm(`¿Eliminar categoría "${cat}"?`)) setEquipCats((p) => p.filter((c) => c !== cat)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}><Trash2 size={13} /></button>
+          <div style={{ display: "flex", gap: 32, flexWrap: "wrap", alignItems: "flex-start" }}>
+            {/* Categorías de equipo */}
+            <div style={{ minWidth: 220, flex: "0 0 220px" }}>
+              <strong style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#64748b" }}>Categorías de equipo</strong>
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                {equipCats.map((cat) => (
+                  <div key={cat} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                    <span style={{ flex: 1, color: "#475569" }}>{cat}</span>
+                    <button onClick={() => { if (window.confirm(`¿Eliminar categoría "${cat}"?`)) setEquipCats((p) => p.filter((c) => c !== cat)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}><Trash2 size={13} /></button>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <input placeholder="Nueva categoría" value={newEquipCat} onChange={(e) => setNewEquipCat(e.target.value)} style={{ flex: 1 }} maxLength={40} />
+                  <button className="primary small" onClick={() => { if (!newEquipCat.trim()) return; if (equipCats.includes(newEquipCat.trim())) { notify("Ya existe"); return; } setEquipCats((p) => [...p, newEquipCat.trim()]); setNewEquipCat(""); }}><Plus size={14} /></button>
+                </div>
               </div>
-            ))}
-            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-              <input placeholder="Nueva categoría" value={newEquipCat} onChange={(e) => setNewEquipCat(e.target.value)} style={{ flex: 1 }} maxLength={40} />
-              <button className="primary small" onClick={() => { if (!newEquipCat.trim()) return; if (equipCats.includes(newEquipCat.trim())) { notify("Ya existe"); return; } setEquipCats((p) => [...p, newEquipCat.trim()]); setNewEquipCat(""); }}><Plus size={14} /></button>
+            </div>
+
+            {/* Tipos de servicio */}
+            <div style={{ flex: 1, minWidth: 360 }}>
+              <strong style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#64748b" }}>Tipos de servicio</strong>
+              <div style={{ marginTop: 8, overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: "#f1f5f9" }}>
+                      <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: 600, color: "#475569", fontSize: 11, textTransform: "uppercase", borderRadius: "6px 0 0 6px" }}>Código</th>
+                      <th style={{ padding: "6px 10px", textAlign: "left", fontWeight: 600, color: "#475569", fontSize: 11, textTransform: "uppercase" }}>Nombre</th>
+                      <th style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600, color: "#475569", fontSize: 11, textTransform: "uppercase" }}>Precio base</th>
+                      <th style={{ width: 32, borderRadius: "0 6px 6px 0" }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {serviceTypes.map((st) => (
+                      <tr key={st.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "7px 10px" }}><span className="tag navy" style={{ fontSize: 11 }}>{st.id}</span></td>
+                        <td style={{ padding: "7px 10px", color: "#0f2340" }}>{st.label}</td>
+                        <td style={{ padding: "7px 10px", textAlign: "right", color: "#475569" }}>{st.defaultPrice > 0 ? money(st.defaultPrice) : <span style={{ color: "#cbd5e0" }}>—</span>}</td>
+                        <td style={{ padding: "7px 6px", textAlign: "center" }}>
+                          <button
+                            onClick={() => { if (window.confirm(`¿Eliminar tipo de servicio "${st.id}"?`)) setServiceTypes((p) => p.filter((s) => s.id !== st.id)); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2, display: "flex" }}
+                          ><Trash2 size={13} /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Agregar nuevo tipo */}
+              <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                <input
+                  placeholder="Código (ej: DX)"
+                  value={newSvcId}
+                  onChange={(e) => setNewSvcId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                  style={{ width: 90 }}
+                  maxLength={6}
+                />
+                <input
+                  placeholder="Nombre del servicio"
+                  value={newSvcLabel}
+                  onChange={(e) => setNewSvcLabel(e.target.value)}
+                  style={{ flex: 1, minWidth: 140 }}
+                  maxLength={60}
+                />
+                <input
+                  type="number"
+                  placeholder="Precio base"
+                  value={newSvcPrice}
+                  onChange={(e) => setNewSvcPrice(e.target.value)}
+                  style={{ width: 110 }}
+                  min={0}
+                />
+                <button
+                  className="primary small"
+                  onClick={() => {
+                    const id = newSvcId.trim();
+                    const label = newSvcLabel.trim();
+                    if (!id || !label) { notify("Ingresa código y nombre"); return; }
+                    if (serviceTypes.some((s) => s.id === id)) { notify(`El código "${id}" ya existe`); return; }
+                    setServiceTypes((p) => [...p, { id, label, defaultPrice: Number(newSvcPrice) || 0 }]);
+                    setNewSvcId(""); setNewSvcLabel(""); setNewSvcPrice("");
+                  }}
+                ><Plus size={14} />Agregar</button>
+              </div>
             </div>
           </div>
         </div>
@@ -2117,7 +2199,7 @@ function ProductsModule({
           <span style={{ fontSize: 12, color: "#94a3b8" }}>Se usan en el glosario de la cotización</span>
         </div>
         <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-          {serviceTypes.filter((st) => st.id !== "VS").map((st) => {
+          {serviceTypes.map((st) => {
             const plantilla = plantillas.find((p) => p.codigo === st.id || p.codigo === `GENERAL:${st.id}`);
             const localVal = descTemplates[`GENERAL:${st.id}`] || descTemplates[st.id] || "";
             const current = plantilla?.descripcion_larga || localVal;
