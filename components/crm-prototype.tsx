@@ -1868,14 +1868,7 @@ function CotizadorPreview({
   );
 }
 
-const PROD_SVC_DEFAULTS = [
-  { id: "MP", label: "Mantención Preventiva" },
-  { id: "MC", label: "Mantención Correctiva" },
-  { id: "BS", label: "Bloque de Servicio" },
-  { id: "EV", label: "Evaluación Diagnóstica" },
-  { id: "VS", label: "Visita Técnica" },
-  { id: "RS", label: "Repuesto/Insumo" },
-];
+const SERVICE_TYPES = Object.entries(CAT_LABELS).map(([id, label]) => ({ id, label }));
 const EQUIP_CAT_DEFAULTS = ["Médico", "Dental", "Estético", "Otro"];
 
 function DescripcionEditor({ codigo, label, value, plantillaId, onSave }: {
@@ -1943,16 +1936,13 @@ function ProductsModule({
   onUpsertPlantilla: (existingId: string | null, codigo: string, descripcion: string) => void;
   notify: (msg: string) => void;
 }) {
-  const [serviceTypes, setServiceTypes] = useState<{ id: string; label: string }[]>(() => {
-    try { const s = localStorage.getItem("crm_svc_types"); return s ? JSON.parse(s) : PROD_SVC_DEFAULTS; } catch { return PROD_SVC_DEFAULTS; }
-  });
+  const serviceTypes = SERVICE_TYPES;
   const [equipCats, setEquipCats] = useState<string[]>(() => {
     try { const s = localStorage.getItem("crm_equip_cats"); return s ? JSON.parse(s) : EQUIP_CAT_DEFAULTS; } catch { return EQUIP_CAT_DEFAULTS; }
   });
   const [descTemplates, setDescTemplates] = useState<Record<string, string>>(() => {
     try { const s = localStorage.getItem("crm_desc_templates"); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
-  useEffect(() => { try { localStorage.setItem("crm_svc_types", JSON.stringify(serviceTypes)); } catch {} }, [serviceTypes]);
   useEffect(() => { try { localStorage.setItem("crm_equip_cats", JSON.stringify(equipCats)); } catch {} }, [equipCats]);
   useEffect(() => { try { localStorage.setItem("crm_desc_templates", JSON.stringify(descTemplates)); } catch {} }, [descTemplates]);
 
@@ -1963,7 +1953,6 @@ function ProductsModule({
   const [modal, setModal] = useState<"product" | null>(null);
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [newSvcType, setNewSvcType] = useState({ id: "", label: "" });
   const [newEquipCat, setNewEquipCat] = useState("");
   const [prodForm, setProdForm] = useState<{
     nombre: string;
@@ -2105,38 +2094,17 @@ function ProductsModule({
       {/* Settings panel */}
       {settingsOpen && (
         <div className="panel" style={{ padding: 16, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-            <div>
-              <strong style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#64748b" }}>Tipos de servicio</strong>
-              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-                {serviceTypes.map((st) => (
-                  <div key={st.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                    <span className="tag navy" style={{ minWidth: 44, textAlign: "center", fontSize: 11 }}>{st.id}</span>
-                    <span style={{ flex: 1, color: "#475569" }}>{st.label}</span>
-                    <button onClick={() => { if (window.confirm(`¿Eliminar "${st.label}"?`)) setServiceTypes((p) => p.filter((s) => s.id !== st.id)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}><Trash2 size={13} /></button>
-                  </div>
-                ))}
-                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                  <input placeholder="ID" value={newSvcType.id} onChange={(e) => setNewSvcType((p) => ({ ...p, id: e.target.value.toUpperCase().slice(0, 8) }))} style={{ width: 64 }} maxLength={8} />
-                  <input placeholder="Nombre del servicio" value={newSvcType.label} onChange={(e) => setNewSvcType((p) => ({ ...p, label: e.target.value }))} style={{ flex: 1 }} maxLength={60} />
-                  <button className="primary small" onClick={() => { if (!newSvcType.id || !newSvcType.label) return; if (serviceTypes.some((s) => s.id === newSvcType.id)) { notify("Ya existe ese código"); return; } setServiceTypes((p) => [...p, { ...newSvcType }]); setNewSvcType({ id: "", label: "" }); }}><Plus size={14} /></button>
-                </div>
+          <strong style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#64748b" }}>Categorías de equipo</strong>
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6, maxWidth: 320 }}>
+            {equipCats.map((cat) => (
+              <div key={cat} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                <span style={{ flex: 1, color: "#475569" }}>{cat}</span>
+                <button onClick={() => { if (window.confirm(`¿Eliminar categoría "${cat}"?`)) setEquipCats((p) => p.filter((c) => c !== cat)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}><Trash2 size={13} /></button>
               </div>
-            </div>
-            <div>
-              <strong style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#64748b" }}>Categorías de equipo</strong>
-              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-                {equipCats.map((cat) => (
-                  <div key={cat} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                    <span style={{ flex: 1, color: "#475569" }}>{cat}</span>
-                    <button onClick={() => { if (window.confirm(`¿Eliminar categoría "${cat}"?`)) setEquipCats((p) => p.filter((c) => c !== cat)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}><Trash2 size={13} /></button>
-                  </div>
-                ))}
-                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                  <input placeholder="Nueva categoría" value={newEquipCat} onChange={(e) => setNewEquipCat(e.target.value)} style={{ flex: 1 }} maxLength={40} />
-                  <button className="primary small" onClick={() => { if (!newEquipCat.trim()) return; if (equipCats.includes(newEquipCat.trim())) { notify("Ya existe"); return; } setEquipCats((p) => [...p, newEquipCat.trim()]); setNewEquipCat(""); }}><Plus size={14} /></button>
-                </div>
-              </div>
+            ))}
+            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              <input placeholder="Nueva categoría" value={newEquipCat} onChange={(e) => setNewEquipCat(e.target.value)} style={{ flex: 1 }} maxLength={40} />
+              <button className="primary small" onClick={() => { if (!newEquipCat.trim()) return; if (equipCats.includes(newEquipCat.trim())) { notify("Ya existe"); return; } setEquipCats((p) => [...p, newEquipCat.trim()]); setNewEquipCat(""); }}><Plus size={14} /></button>
             </div>
           </div>
         </div>
