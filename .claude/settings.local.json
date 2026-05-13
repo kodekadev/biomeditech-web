@@ -8,7 +8,8 @@
       "PowerShell(python -c \"import openpyxl; print\\('openpyxl ok'\\)\")",
       "PowerShell(pip install openpyxl --quiet)",
       "PowerShell(head -200)",
-      "PowerShell(python -c \"from google.cloud import bigquery; print\\('OK'\\)\")"
+      "PowerShell(python -c \"from google.cloud import bigquery; print\\('OK'\\)\")",
+      "Bash(findstr /n \"marca\\\\|MARCA\\\\|capitalize\\\\|toUpperCase\" components/crm-prototype.tsx)"
     ]
   }
 }

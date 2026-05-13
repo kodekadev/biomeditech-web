@@ -116,6 +116,7 @@ export interface CotizacionDetalle {
   forma_pago: string;
   validez_dias: number;
   notas_cliente: string;
+  notas_internas?: string;
   emitida_en: string;
   pdf_url?: string;
   items: CotizacionItem[];
@@ -168,6 +169,7 @@ export type CotizacionForm = {
   notas_cliente: string;
   forma_pago: string;
   validez_dias: number;
+  notas_internas?: string;
   items: CotizacionItemForm[];
 };
 
@@ -313,9 +315,14 @@ function mapProducto(value: unknown): Producto {
 
 function mapCotizacion(value: unknown): Cotizacion {
   const raw = value as RawRecord;
-  const estado = str(raw.estado);
+  const rawEstado = str(raw.estado);
+  const norm = rawEstado.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "_");
   const estadoLabel =
-    estado === "aprobada" ? "Aprobada" : estado === "en_revision" ? "En revisión" : "Pendiente";
+    norm === "aprobada" ? "Aprobada" :
+    norm === "rechazada" ? "Rechazada" :
+    norm === "en_revision" ? "En revisión" :
+    (norm === "pendiente" || norm === "emitida") ? "Pendiente" :
+    rawEstado || "Pendiente";
   return {
     id: str(raw.id),
     nro: str(raw.numero || raw.id),
@@ -623,6 +630,7 @@ export async function fetchCotizacionDetalle(id: string): Promise<CotizacionDeta
     forma_pago: str(raw.forma_pago),
     validez_dias: num(raw.validez_dias) || 30,
     notas_cliente: str(raw.notas_cliente),
+    notas_internas: str(raw.notas_internas),
     emitida_en: str(raw.emitida_en),
     pdf_url: raw.pdf_url ? str(raw.pdf_url) : undefined,
     items,
@@ -645,6 +653,7 @@ export async function createCotizacionMulti(form: CotizacionForm): Promise<Cotiz
     total_con_iva: subtotal + iva,
     moneda: "CLP",
     notas_cliente: form.notas_cliente,
+    notas_internas: form.notas_internas ?? "",
     forma_pago: form.forma_pago,
     validez_dias: form.validez_dias,
     diagnostico_incluido: true,
@@ -709,6 +718,7 @@ export async function createCotizacionMulti(form: CotizacionForm): Promise<Cotiz
     forma_pago: str(raw.forma_pago) || form.forma_pago,
     validez_dias: num(raw.validez_dias) || form.validez_dias,
     notas_cliente: str(raw.notas_cliente),
+    notas_internas: str(raw.notas_internas),
     emitida_en: str(raw.emitida_en),
     pdf_url: raw.pdf_url ? str(raw.pdf_url) : undefined,
     items,

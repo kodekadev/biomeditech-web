@@ -228,6 +228,7 @@ export default function CRMPrototype() {
   const [leadFilter, setLeadFilter] = useState<"todos" | LeadStatus>("todos");
   const [leadAnio, setLeadAnio] = useState(0);
   const [leadMes, setLeadMes] = useState(0);
+  const [leadQuery, setLeadQuery] = useState("");
   const [clientQuery, setClientQuery] = useState("");
   const [clientSearchField, setClientSearchField] = useState<"todos" | "rut" | "nombre" | "contacto" | "correo">("todos");
   const [productQuery, setProductQuery] = useState("");
@@ -245,6 +246,7 @@ export default function CRMPrototype() {
   const [cotizClienteId, setCotizClienteId] = useState("");
   const [cotizNotas, setCotizNotas] = useState("");
   const [cotizFormaPago, setCotizFormaPago] = useState("50% inicio - 50% entrega");
+  const [cotizGarantia, setCotizGarantia] = useState("");
   const [cotizItems, setCotizItems] = useState<CotizacionItemForm[]>([]);
   const DEFAULT_CONDICIONES = [
     "Valores expresados en pesos chilenos",
@@ -311,13 +313,25 @@ export default function CRMPrototype() {
 
   // All hooks must be called before any conditional return
   const noGestionados = useMemo(() => leads.filter((l) => l.estado === "no-gestionado"), [leads]);
+  const debouncedLeadQuery = useDebounce(leadQuery, 250);
   const visibleLeads = useMemo(() => {
+    const q = debouncedLeadQuery.toLowerCase();
+    const qRut = normalizeRut(debouncedLeadQuery);
     const list = leads.filter((l) => {
       if (leadFilter !== "todos" && l.estado !== leadFilter) return false;
       if ((leadAnio || leadMes) && l.creado_en) {
         const d = new Date(l.creado_en);
         if (leadAnio && d.getFullYear() !== leadAnio) return false;
         if (leadMes && d.getMonth() + 1 !== leadMes) return false;
+      }
+      if (q) {
+        return (
+          (qRut.length > 3 && normalizeRut(l.rut ?? "").includes(qRut)) ||
+          l.nombre.toLowerCase().includes(q) ||
+          l.empresa.toLowerCase().includes(q) ||
+          l.email.toLowerCase().includes(q) ||
+          l.tel.includes(q)
+        );
       }
       return true;
     });
@@ -331,7 +345,7 @@ export default function CRMPrototype() {
       const bv = String((b as unknown as Record<string,unknown>)[leadSort.key] ?? "").toLowerCase();
       return leadSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
     });
-  }, [leads, leadFilter, leadAnio, leadMes, leadSort]);
+  }, [leads, leadFilter, leadAnio, leadMes, leadSort, debouncedLeadQuery]);
   const debouncedClientQuery = useDebounce(clientQuery, 250);
   const debouncedProductQuery = useDebounce(productQuery, 250);
   const filteredClients = useMemo(() => {
@@ -484,7 +498,7 @@ export default function CRMPrototype() {
         correo: form.email,
         rubro: "Médico",
         estado: "activo",
-        direccion: "",
+        direccion: form.direccion || "",
         ciudad: "",
         comuna: "",
       };
@@ -618,6 +632,7 @@ export default function CRMPrototype() {
       cliente_id: cotizClienteId,
       notas_cliente: cotizNotas,
       forma_pago: cotizFormaPago,
+      notas_internas: cotizGarantia,
       validez_dias: 30,
       items: cotizItems,
     });
@@ -701,7 +716,7 @@ export default function CRMPrototype() {
       header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #007a4e}
       header img{height:40px}
       header .right{text-align:right}
-      header .right strong{display:block;font-size:20px;color:#007a4e}
+      header .right strong{display:block;font-size:20px;color:#dc2626}
       h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
       .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
       .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:8px;font-weight:700}
@@ -743,6 +758,7 @@ export default function CRMPrototype() {
           <dt>Empresa</dt><dd>${clienteObj?.nombre ?? det.cliente_id}</dd>
           <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
           <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
+          <dt>Correo</dt><dd>${clienteObj?.correo || "—"}</dd>
           <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
           <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
         </dl>
@@ -750,6 +766,7 @@ export default function CRMPrototype() {
       <div class="data-block">
         <h4>Biomeditech SpA</h4>
         <dl>
+          <dt>Razón social</dt><dd>GVA SpA</dd>
           <dt>RUT</dt><dd>78.200.394-1</dd>
           <dt>Dirección</dt><dd>Pedro Torres 798, Ñuñoa</dd>
           <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
@@ -770,10 +787,12 @@ export default function CRMPrototype() {
     </table>
     <div class="conditions">
       <strong>Condiciones Comerciales</strong>
-      <ul style="margin:6px 0 0 16px;padding:0">${
+      ${det.forma_pago ? `<p style="margin:4px 0 6px;font-size:12px"><strong style="color:#0f2340">Forma de pago:</strong> ${det.forma_pago}</p>` : ""}
+      <ul style="margin:4px 0 0 16px;padding:0">${
         (() => { try { return (localStorage.getItem("crm_condiciones") || "").split("\n").filter(Boolean).map((l: string) => `<li>${l}</li>`).join(""); } catch { return ""; } })()
       }</ul>
     </div>
+    ${det.notas_internas ? `<div class="conditions" style="background:#fff7ed;border-left-color:#f97316"><strong style="color:#c2410c">Condiciones de Garantía</strong><p style="margin-top:6px;white-space:pre-line">${det.notas_internas}</p></div>` : ""}
     <div class="transfer">
       <strong>Datos de transferencia</strong>
       <dl>
@@ -1064,7 +1083,17 @@ export default function CRMPrototype() {
                     Sin gestionar <span>{noGestionados.length}</span>
                   </button>
                 </div>
-                <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+                <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f8fafc", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 10px", minWidth: 220 }}>
+                    <Search size={14} style={{ color: "#94a3b8", flexShrink: 0 }} />
+                    <input
+                      placeholder="Buscar por RUT, nombre, empresa o correo..."
+                      value={leadQuery}
+                      onChange={(e) => setLeadQuery(e.target.value)}
+                      style={{ flex: 1, minHeight: 26, fontSize: 13, border: "none", background: "transparent", outline: "none" }}
+                    />
+                    {leadQuery && <button onClick={() => setLeadQuery("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 0 }}><X size={13} /></button>}
+                  </div>
                   <PeriodoPicker anio={leadAnio} mes={leadMes} fechas={leads.map((l) => l.creado_en || "")} onAnio={setLeadAnio} onMes={setLeadMes} />
                   <div className="segmented">
                     <button className={leadView === "iconos" ? "selected" : ""} onClick={() => setLeadView("iconos")} title="Vista tarjetas">
@@ -1193,7 +1222,7 @@ export default function CRMPrototype() {
               title="Clientes"
               search={clientQuery}
               setSearch={setClientQuery}
-              searchPlaceholder="Buscar clientes..."
+              searchPlaceholder="Buscar por RUT, nombre, contacto o correo..."
               onAdd={() => setModal("cliente")}
               filterEl={
                 <select
@@ -1592,7 +1621,7 @@ function serviceLabel(value: string): string {
 }
 
 function catalogoDescription(item: CatalogoItem): string {
-  return `${item.servicio} - ${item.equipo}`.trim().replace(/\s*-\s*$/, "");
+  return `${item.servicio} - ${item.equipo.toUpperCase()}`.trim().replace(/\s*-\s*$/, "");
 }
 
 function normCat(cat: string): string {
@@ -2556,9 +2585,12 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
   const [mesFilter, setMesFilter] = useState(0);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "fecha", dir: "desc" });
 
+  function getCliente(clienteId: string) {
+    return clientes.find((c) => c.id === clienteId || c.nombre === clienteId);
+  }
+
   function getClienteName(clienteId: string) {
-    const found = clientes.find((c) => c.id === clienteId || c.nombre === clienteId);
-    return found?.nombre ?? clienteId;
+    return getCliente(clienteId)?.nombre ?? clienteId;
   }
 
   function toggleSort(key: string) {
@@ -2567,6 +2599,7 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
 
   const visible = useMemo(() => {
     const q = search.toLowerCase();
+    const qRut = search.replace(/[.\-\s]/g, "").toLowerCase();
     const list = cotizaciones.filter((cot) => {
       if (estadoFilter && cot.estado !== estadoFilter) return false;
       if ((anioFilter || mesFilter) && cot.fecha) {
@@ -2575,9 +2608,12 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
         if (mesFilter && d.getMonth() + 1 !== mesFilter) return false;
       }
       if (!q) return true;
+      const c = getCliente(cot.cliente);
       return (
         cot.nro.toLowerCase().includes(q) ||
-        getClienteName(cot.cliente).toLowerCase().includes(q)
+        (c?.nombre ?? "").toLowerCase().includes(q) ||
+        (qRut.length > 3 && (c?.rut ?? "").replace(/[.\-\s]/g, "").toLowerCase().includes(qRut)) ||
+        (c?.correo ?? "").toLowerCase().includes(q)
       );
     });
     return [...list].sort((a, b) => {
@@ -2605,7 +2641,7 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 200, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 10px" }}>
           <Search size={14} style={{ color: "#94a3b8", flexShrink: 0 }} />
           <input
-            placeholder="Buscar por N° cotización o cliente..."
+            placeholder="Buscar por N° cotización, RUT, nombre o correo..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ flex: 1, minHeight: 28, fontSize: 13, border: "none", background: "transparent", outline: "none" }}
