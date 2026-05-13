@@ -687,7 +687,7 @@ export default function CRMPrototype() {
           ${glossaryEntries.map((e) => `<div class="gloss-item"><p>${e.desc}</p></div>`).join("")}
         </div>`
       : "";
-    const win = window.open("", "_blank", "width=920,height=750");
+    const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización ${det.numero}</title>
     <style>
@@ -796,7 +796,7 @@ export default function CRMPrototype() {
       </div>
     </div>
     </body></html>`);
-    win.document.close();
+    win.document.title = `Cotización ${det.numero}`;
     win.focus();
   }
 
@@ -837,7 +837,7 @@ export default function CRMPrototype() {
           ${glossaryEntries.map((e) => `<div class="gloss-item"><p>${e.desc}</p></div>`).join("")}
         </div>`
       : "";
-    const win = window.open("", "_blank", "width=920,height=750");
+    const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Borrador Cotización</title>
     <style>
@@ -945,7 +945,7 @@ export default function CRMPrototype() {
       </div>
     </div>
     </body></html>`);
-    win.document.close();
+    win.document.title = `Cotización ${det.numero}`;
     win.focus();
   }
 
