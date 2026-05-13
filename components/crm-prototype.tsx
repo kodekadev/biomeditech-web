@@ -796,7 +796,7 @@ export default function CRMPrototype() {
       </div>
     </div>
     </body></html>`);
-    win.document.title = `Cotización ${det.numero}`;
+    win.document.title = "Borrador Cotización";
     win.focus();
   }
 
@@ -945,7 +945,7 @@ export default function CRMPrototype() {
       </div>
     </div>
     </body></html>`);
-    win.document.title = `Cotización ${det.numero}`;
+    win.document.title = "Borrador Cotización";
     win.focus();
   }
 
