@@ -684,7 +684,7 @@ export default function CRMPrototype() {
     const glossaryHtml = glossaryEntries.length > 0
       ? `<div class="glossary">
           <h3>Descripción de servicios</h3>
-          ${glossaryEntries.map((e) => `<div class="gloss-item"><strong>${e.label}</strong><p>${e.desc}</p></div>`).join("")}
+          ${glossaryEntries.map((e) => `<div class="gloss-item"><p>${e.desc}</p></div>`).join("")}
         </div>`
       : "";
     const win = window.open("", "_blank", "width=920,height=750");
@@ -834,7 +834,7 @@ export default function CRMPrototype() {
     const glossaryHtml = glossaryEntries.length > 0
       ? `<div class="glossary">
           <h3>Descripción de servicios</h3>
-          ${glossaryEntries.map((e) => `<div class="gloss-item"><strong>${e.label}</strong><p>${e.desc}</p></div>`).join("")}
+          ${glossaryEntries.map((e) => `<div class="gloss-item"><p>${e.desc}</p></div>`).join("")}
         </div>`
       : "";
     const win = window.open("", "_blank", "width=920,height=750");
