@@ -1941,7 +1941,7 @@ function CotizadorPreview({
             <dt>Diagnóstico</dt><dd>Incluido si acepta el presupuesto</dd>
           </dl>
         </section>
-        <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 30 días</footer>
+        <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 15 días</footer>
       </div>
     </article>
   );
