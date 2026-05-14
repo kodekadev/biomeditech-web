@@ -37,7 +37,7 @@ import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, Cli
 import { money, formatRut, normalizeRut, isValidEmail, validateRut, isValidPhone, isActivo, fmtActivityDate } from "@/lib/utils";
 
 type ModuleId = "dashboard" | "leads" | "clientes" | "productos" | "cotizaciones" | "historial" | "protocolos";
-type LeadStatus = "gestionado" | "no-gestionado";
+type LeadStatus = "cotizado" | "no-cotizado" | "aprobado" | "rechazado";
 type LeadChannel = "wsp" | "email";
 type QuoteService = "diagnostico" | "reparacion" | "mantencion" | "instalacion" | "mixto" | "";
 
@@ -247,6 +247,7 @@ export default function CRMPrototype() {
   const [cotizNotas, setCotizNotas] = useState("");
   const [cotizFormaPago, setCotizFormaPago] = useState("50% inicio - 50% entrega");
   const [cotizGarantia, setCotizGarantia] = useState("");
+  const [cotizValidez, setCotizValidez] = useState(30);
   const [cotizItems, setCotizItems] = useState<CotizacionItemForm[]>([]);
   const DEFAULT_CONDICIONES = [
     "Valores expresados en pesos chilenos",
@@ -312,7 +313,7 @@ export default function CRMPrototype() {
   }, [loggedIn]);
 
   // All hooks must be called before any conditional return
-  const noGestionados = useMemo(() => leads.filter((l) => l.estado === "no-gestionado"), [leads]);
+  const noCotizados = useMemo(() => leads.filter((l) => l.estado === "no-cotizado"), [leads]);
   const debouncedLeadQuery = useDebounce(leadQuery, 250);
   const visibleLeads = useMemo(() => {
     const q = debouncedLeadQuery.toLowerCase();
@@ -393,16 +394,14 @@ export default function CRMPrototype() {
   }
 
   // --- Lead actions ---
-  async function handleToggleGestionar(id: string) {
+  async function handleSetLeadEstado(id: string, estado: LeadStatus) {
     const lead = leads.find((l) => l.id === id);
     if (!lead) return;
-    const newEstado = lead.estado === "gestionado" ? "no-gestionado" : "gestionado";
-    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, estado: newEstado } : l)));
-    await api.updateLead(id, { estado: newEstado });
-    if (newEstado === "gestionado") {
-      api.logActivity("gestion", "Lead gestionado", `${lead.nombre} (${lead.empresa}) marcado como gestionado`, id, "lead");
+    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, estado } : l)));
+    await api.updateLead(id, { estado });
+    if (estado === "cotizado") {
+      api.logActivity("gestion", "Lead cotizado", `${lead.nombre} (${lead.empresa}) marcado como cotizado`, id, "lead");
     }
-    notify(newEstado === "gestionado" ? "Lead marcado como gestionado" : "Lead desmarcado");
   }
 
   async function handleDeleteLead(id: string) {
@@ -469,7 +468,7 @@ export default function CRMPrototype() {
 
   async function handleSaveLead(form: LeadForm, items: CotizacionItemForm[] = []) {
     const tempId = `temp-${Date.now()}`;
-    const tempLead: Lead = { id: tempId, ...form, canal: form.canal as LeadChannel, estado: "no-gestionado", tiempo: "Justo ahora" };
+    const tempLead: Lead = { id: tempId, ...form, canal: form.canal as LeadChannel, estado: "no-cotizado", tiempo: "Justo ahora" };
     setLeads((prev) => [tempLead, ...prev]);
     if (items.length > 0) setLeadPreItems((prev) => ({ ...prev, [tempId]: items }));
     closeModal();
@@ -628,12 +627,22 @@ export default function CRMPrototype() {
     const tempCot: Cotizacion = { id: tempId, nro: "—", cliente: cotizClienteId, monto: tempTotal, estado: "Pendiente", fecha: new Date().toISOString().slice(0, 10) };
     setCotizaciones((prev) => [tempCot, ...prev]);
 
+    // Find matching lead before creating cotizacion so we can pass lead_id
+    const rutCliente = normalizeRut(clienteObj?.rut ?? "");
+    const matchLead = leads.find((l) =>
+      l.estado === "no-cotizado" && (
+        (rutCliente.length > 4 && normalizeRut(l.rut ?? "") === rutCliente) ||
+        clienteObj?.nombre.toLowerCase().trim() === l.empresa.toLowerCase().trim()
+      )
+    );
+
     const result = await api.createCotizacionMulti({
       cliente_id: cotizClienteId,
+      lead_id: matchLead?.id,
       notas_cliente: cotizNotas,
       forma_pago: cotizFormaPago,
       notas_internas: cotizGarantia,
-      validez_dias: 30,
+      validez_dias: cotizValidez,
       items: cotizItems,
     });
     const total = result?.total_con_iva ?? tempTotal;
@@ -641,6 +650,7 @@ export default function CRMPrototype() {
       id: result?.id ?? String(Date.now()),
       nro: result?.numero ?? "",
       cliente: clienteObj?.id ?? cotizClienteId,
+      lead_id: matchLead?.id,
       monto: total,
       estado: "Pendiente",
       fecha: new Date().toISOString().slice(0, 10),
@@ -649,17 +659,9 @@ export default function CRMPrototype() {
     setCotizaciones((prev) => prev.map((c) => c.id === tempId ? cot : c));
     api.logActivity("cotizacion_emitida", `Cotización ${cot.nro} emitida`, `${clienteObj?.nombre ?? cotizClienteId} — ${money(total)} CLP`, cot.id, "cotizacion", currentUser?.email);
 
-    // Mark matching no-gestionado lead as gestionado
-    const rutCliente = normalizeRut(clienteObj?.rut ?? "");
-    const matchLead = leads.find((l) =>
-      l.estado === "no-gestionado" && (
-        (rutCliente.length > 4 && normalizeRut(l.rut ?? "") === rutCliente) ||
-        clienteObj?.nombre.toLowerCase().trim() === l.empresa.toLowerCase().trim()
-      )
-    );
     if (matchLead) {
-      setLeads((prev) => prev.map((l) => l.id === matchLead.id ? { ...l, estado: "gestionado" } : l));
-      api.updateLead(matchLead.id, { estado: "gestionado" });
+      setLeads((prev) => prev.map((l) => l.id === matchLead.id ? { ...l, estado: "cotizado" } : l));
+      api.updateLead(matchLead.id, { estado: "cotizado" });
     }
 
     setEmitiendo(false);
@@ -669,14 +671,15 @@ export default function CRMPrototype() {
     if (result) handlePrintDetalle(result);
   }
 
-  function handlePrintDetalle(det: import("@/lib/api").CotizacionDetalle) {
+  function handlePrintDetalle(det: import("@/lib/api").CotizacionDetalle, autoDownload = false) {
     const clienteObj = clientes.find((c) => c.id === det.cliente_id);
     const fechaStr = new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
     const rowsHtml = det.items.map((it, i) => {
       const disc = it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : "";
+      const glosaHtml = it.glosa ? `<br/><span style="font-size:11px;color:#64748b;white-space:pre-line">${it.glosa}</span>` : "";
       return `<tr>
         <td>${i + 1}</td>
-        <td>${it.descripcion}${disc}</td>
+        <td>${it.descripcion}${disc}${glosaHtml}</td>
         <td>${it.cantidad}</td>
         <td>${money(it.precio_unitario)}</td>
         <td><strong>${money(it.subtotal)}</strong></td>
@@ -764,7 +767,7 @@ export default function CRMPrototype() {
         </dl>
       </div>
       <div class="data-block">
-        <h4>Biomeditech SpA</h4>
+        <h4>Biomeditech</h4>
         <dl>
           <dt>Razón social</dt><dd>GVA SpA</dd>
           <dt>RUT</dt><dd>78.200.394-1</dd>
@@ -814,8 +817,9 @@ export default function CRMPrototype() {
         <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
       </div>
     </div>
+    ${autoDownload ? '<scr' + 'ipt>window.onload=function(){window.print();}</' + 'script>' : ''}
     </body></html>`);
-    win.document.title = "Borrador Cotización";
+    win.document.title = autoDownload ? `Descargar-${det.numero}` : `Cotización ${det.numero}`;
     win.focus();
   }
 
@@ -828,9 +832,10 @@ export default function CRMPrototype() {
     const rowsHtml = cotizItems.map((it, i) => {
       const sub = Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100));
       const disc = it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : "";
+      const glosaHtml = it.glosa ? `<br/><span style="font-size:11px;color:#64748b;white-space:pre-line">${it.glosa}</span>` : "";
       return `<tr>
         <td>${i + 1}</td>
-        <td>${it.descripcion}${disc}</td>
+        <td>${it.descripcion}${disc}${glosaHtml}</td>
         <td>${it.cantidad}</td>
         <td>${money(it.precio_unitario)}</td>
         <td><strong>${money(sub)}</strong></td>
@@ -919,7 +924,7 @@ export default function CRMPrototype() {
         </dl>
       </div>
       <div class="data-block">
-        <h4>Biomeditech SpA</h4>
+        <h4>Biomeditech</h4>
         <dl>
           <dt>Razón social</dt><dd>GVA SpA</dd>
           <dt>RUT</dt><dd>78.200.394-1</dd>
@@ -959,7 +964,7 @@ export default function CRMPrototype() {
     </div>
     ${cotizNotas ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${cotizNotas}</em></p>` : ""}
     ${glossaryHtml}
-    <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 15 días desde emisión</footer>
+    <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por ${cotizValidez} días desde emisión</footer>
     <div class="action-bar">
       <span>Borrador de Cotización</span>
       <div style="display:flex;gap:8px">
@@ -978,9 +983,22 @@ export default function CRMPrototype() {
     handlePrintDetalle(det);
   }
 
+  async function handleDescargarCotizacion(id: string) {
+    const det = await api.fetchCotizacionDetalle(id);
+    if (!det) { notify("No se pudo cargar el detalle de la cotización"); return; }
+    handlePrintDetalle(det, true);
+  }
+
   function handleUpdateCotizacionEstado(id: string, estado: string) {
     setCotizaciones((prev) => prev.map((c) => c.id === id ? { ...c, estado } : c));
     api.updateCotizacion(id, { estado });
+    if (estado === "Aprobada") {
+      const cot = cotizaciones.find((c) => c.id === id);
+      if (cot?.lead_id) {
+        setLeads((prev) => prev.map((l) => l.id === cot.lead_id ? { ...l, estado: "aprobado" } : l));
+        api.updateLead(cot.lead_id, { estado: "aprobado" });
+      }
+    }
   }
 
   function handleUpsertPlantilla(existingId: string | null, codigo: string, descripcion: string) {
@@ -1012,7 +1030,7 @@ export default function CRMPrototype() {
             <p>{group}</p>
             {NAV_ITEMS.filter((item) => item.group === group).map((item) => {
               const Icon = item.icon;
-              const count = item.id === "leads" ? noGestionados.length : undefined;
+              const count = item.id === "leads" ? noCotizados.length : undefined;
               return (
                 <button key={item.id} className={`nav-item ${active === item.id ? "active" : ""}`} onClick={() => goTo(item.id)}>
                   <Icon size={18} />
@@ -1070,7 +1088,7 @@ export default function CRMPrototype() {
 
         <section className="content">
           {active === "dashboard" && (
-            <Dashboard noGestionados={noGestionados} goTo={goTo} notify={notify} stats={stats} cotizaciones={cotizaciones} />
+            <Dashboard noCotizados={noCotizados} goTo={goTo} notify={notify} stats={stats} cotizaciones={cotizaciones} />
           )}
 
           {active === "leads" && (
@@ -1080,11 +1098,17 @@ export default function CRMPrototype() {
                   <button className={leadFilter === "todos" ? "selected" : ""} onClick={() => setLeadFilter("todos")}>
                     Todos <span>{leads.length}</span>
                   </button>
-                  <button className={leadFilter === "gestionado" ? "selected" : ""} onClick={() => setLeadFilter("gestionado")}>
-                    Gestionados <span>{leads.filter((l) => l.estado === "gestionado").length}</span>
+                  <button className={leadFilter === "no-cotizado" ? "selected" : ""} onClick={() => setLeadFilter("no-cotizado")}>
+                    No cotizados <span>{noCotizados.length}</span>
                   </button>
-                  <button className={leadFilter === "no-gestionado" ? "selected" : ""} onClick={() => setLeadFilter("no-gestionado")}>
-                    Sin gestionar <span>{noGestionados.length}</span>
+                  <button className={leadFilter === "cotizado" ? "selected" : ""} onClick={() => setLeadFilter("cotizado")}>
+                    Cotizados <span>{leads.filter((l) => l.estado === "cotizado").length}</span>
+                  </button>
+                  <button className={leadFilter === "aprobado" ? "selected" : ""} onClick={() => setLeadFilter("aprobado")}>
+                    Aprobados <span>{leads.filter((l) => l.estado === "aprobado").length}</span>
+                  </button>
+                  <button className={leadFilter === "rechazado" ? "selected" : ""} onClick={() => setLeadFilter("rechazado")}>
+                    Rechazados <span>{leads.filter((l) => l.estado === "rechazado").length}</span>
                   </button>
                 </div>
                 <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexWrap: "wrap", alignItems: "center" }}>
@@ -1127,8 +1151,8 @@ export default function CRMPrototype() {
                         </div>
                         <div className="lead-badges">
                           <span className={lead.canal}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span>
-                          <span className={lead.estado === "gestionado" ? "ok" : "pending"}>
-                            {lead.estado === "gestionado" ? "Gestionado" : "Sin gestionar"}
+                          <span className={`tag ${leadEstadoMeta(lead.estado).tagClass}`} style={{ fontSize: 11 }}>
+                            {leadEstadoMeta(lead.estado).label}
                           </span>
                         </div>
                       </div>
@@ -1140,7 +1164,17 @@ export default function CRMPrototype() {
                       </dl>
                       <div className="card-actions">
                         <button className="primary small" title="Crear cotización para este lead" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} />Cotizar</button>
-                        <button className="ghost small" title={lead.estado === "gestionado" ? "Marcar como sin gestionar" : "Marcar como gestionado"} onClick={() => handleToggleGestionar(lead.id)}><Check size={15} />{lead.estado === "gestionado" ? "Desmarcar" : "Gestionar"}</button>
+                        <select
+                          value={lead.estado}
+                          onChange={(e) => handleSetLeadEstado(lead.id, e.target.value as LeadStatus)}
+                          style={{ fontSize: 11, padding: "3px 6px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#f8fafc", cursor: "pointer", minHeight: 28 }}
+                          title="Cambiar estado"
+                        >
+                          <option value="no-cotizado">No cotizado</option>
+                          <option value="cotizado">Cotizado</option>
+                          <option value="aprobado">Aprobado</option>
+                          <option value="rechazado">Rechazado</option>
+                        </select>
                         <button className="ghost small card-icon-btn" aria-label="Editar" title="Editar lead" onClick={() => handleEditLead(lead)}><Edit3 size={14} /></button>
                         <button className="ghost small card-icon-btn danger" aria-label="Eliminar" title="Eliminar lead" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={14} /></button>
                       </div>
@@ -1171,12 +1205,22 @@ export default function CRMPrototype() {
                           <td className="mono" style={{ fontSize: 12 }}>{lead.rut || "—"}</td>
                           <td><span className={`tag ${lead.canal === "wsp" ? "green" : "navy"}`}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span></td>
                           <td>{serviceLabel(lead.servicio)}</td>
-                          <td><span className={`tag ${lead.estado === "gestionado" ? "green" : "amber"}`}>{lead.estado === "gestionado" ? "Gestionado" : "Sin gestionar"}</span></td>
+                          <td><span className={`tag ${leadEstadoMeta(lead.estado).tagClass}`}>{leadEstadoMeta(lead.estado).label}</span></td>
                           <td style={{ color: "#64748b", fontSize: 12 }}>{lead.tiempo}</td>
                           <td>
                             <div className="row-actions">
                               <button aria-label="Cotizar" title="Crear cotización" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} /></button>
-                              <button aria-label="Gestionar" title="Cambiar estado de gestión" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} /></button>
+                              <select
+                                value={lead.estado}
+                                onChange={(e) => handleSetLeadEstado(lead.id, e.target.value as LeadStatus)}
+                                style={{ fontSize: 11, padding: "2px 4px", borderRadius: 5, border: "1px solid #e2e8f0", background: "#f8fafc", cursor: "pointer" }}
+                                title="Estado"
+                              >
+                                <option value="no-cotizado">No cotizado</option>
+                                <option value="cotizado">Cotizado</option>
+                                <option value="aprobado">Aprobado</option>
+                                <option value="rechazado">Rechazado</option>
+                              </select>
                               <button aria-label="Editar" title="Editar lead" onClick={() => handleEditLead(lead)}><Edit3 size={15} /></button>
                               <button aria-label="Eliminar" title="Eliminar lead" className="danger" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={15} /></button>
                             </div>
@@ -1198,7 +1242,7 @@ export default function CRMPrototype() {
                             <strong style={{ fontSize: 15 }}>{lead.nombre}</strong>
                             <span style={{ color: "#64748b", fontSize: 13 }}>— {lead.empresa}</span>
                             <span className={`tag ${lead.canal === "wsp" ? "green" : "navy"}`} style={{ fontSize: 11 }}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span>
-                            <span className={`tag ${lead.estado === "gestionado" ? "green" : "amber"}`} style={{ fontSize: 11 }}>{lead.estado === "gestionado" ? "Gestionado" : "Sin gestionar"}</span>
+                            <span className={`tag ${leadEstadoMeta(lead.estado).tagClass}`} style={{ fontSize: 11 }}>{leadEstadoMeta(lead.estado).label}</span>
                           </div>
                           <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#64748b", flexWrap: "wrap" }}>
                             <span><MessageCircle size={12} style={{ display: "inline", marginRight: 4 }} />{lead.tel}</span>
@@ -1209,7 +1253,17 @@ export default function CRMPrototype() {
                         </div>
                         <div className="card-actions" style={{ flexShrink: 0 }}>
                           <button className="primary small" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} />Cotizar</button>
-                          <button className="ghost small" onClick={() => handleToggleGestionar(lead.id)}><Check size={15} />{lead.estado === "gestionado" ? "Desmarcar" : "Gestionar"}</button>
+                          <select
+                            value={lead.estado}
+                            onChange={(e) => handleSetLeadEstado(lead.id, e.target.value as LeadStatus)}
+                            style={{ fontSize: 11, padding: "3px 6px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#f8fafc", cursor: "pointer", minHeight: 28 }}
+                            title="Estado"
+                          >
+                            <option value="no-cotizado">No cotizado</option>
+                            <option value="cotizado">Cotizado</option>
+                            <option value="aprobado">Aprobado</option>
+                            <option value="rechazado">Rechazado</option>
+                          </select>
                           <button className="ghost small card-icon-btn" aria-label="Editar" onClick={() => handleEditLead(lead)}><Edit3 size={14} /></button>
                           <button className="ghost small card-icon-btn danger" aria-label="Eliminar" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={14} /></button>
                         </div>
@@ -1342,6 +1396,8 @@ export default function CRMPrototype() {
                     setCondiciones={setCotizCondiciones}
                     garantia={cotizGarantia}
                     setGarantia={setCotizGarantia}
+                    validez={cotizValidez}
+                    setValidez={setCotizValidez}
                     items={cotizItems}
                     setItems={setCotizItems}
                     onEmitir={handleEmitirCotizacion}
@@ -1349,14 +1405,14 @@ export default function CRMPrototype() {
                     emitiendo={emitiendo}
                   />
                 </div>
-                {noGestionados.length > 0 && (
+                {noCotizados.length > 0 && (
                   <div className="panel">
                     <div className="panel-head">
                       <div className="panel-title"><Activity size={18} />Leads por cotizar</div>
-                      <span className="tag amber">{noGestionados.length} pendiente{noGestionados.length !== 1 ? "s" : ""}</span>
+                      <span className="tag amber">{noCotizados.length} pendiente{noCotizados.length !== 1 ? "s" : ""}</span>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 4 }}>
-                      {noGestionados.slice(0, 6).map((lead) => (
+                      {noCotizados.slice(0, 6).map((lead) => (
                         <div key={lead.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8fafc", borderRadius: 6, gap: 12 }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 600, fontSize: 13, color: "#0f2340", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.empresa || lead.nombre}</div>
@@ -1385,6 +1441,7 @@ export default function CRMPrototype() {
                   notas={cotizNotas}
                   formaPago={cotizFormaPago}
                   fecha={fecha}
+                  validez={cotizValidez}
                 />
               </div>
             </section>
@@ -1392,7 +1449,7 @@ export default function CRMPrototype() {
 
           {active === "historial" && (
             <section className="stack">
-              <HistorialModule cotizaciones={cotizaciones} clientes={clientes} onVerCotizacion={handleVerCotizacion} onUpdateEstado={handleUpdateCotizacionEstado} />
+              <HistorialModule cotizaciones={cotizaciones} clientes={clientes} onVerCotizacion={handleVerCotizacion} onUpdateEstado={handleUpdateCotizacionEstado} onDescargarCotizacion={handleDescargarCotizacion} />
             </section>
           )}
 
@@ -1432,19 +1489,19 @@ export default function CRMPrototype() {
 }
 
 function Dashboard({
-  noGestionados,
+  noCotizados,
   goTo,
   notify,
   stats,
   cotizaciones,
 }: {
-  noGestionados: Lead[];
+  noCotizados: Lead[];
   goTo: (id: ModuleId) => void;
   notify: (message: string) => void;
   stats: DashboardStats | null;
   cotizaciones: Cotizacion[];
 }) {
-  const leadsValue = stats ? String(stats.leadsPendientes) : String(noGestionados.length);
+  const leadsValue = stats ? String(stats.leadsPendientes) : String(noCotizados.length);
   const clientesValue = stats ? String(stats.clientesActivos) : "—";
   const totalCotizaciones = cotizaciones.length;
   const totalMonto = cotizaciones.reduce((s, c) => s + (c.monto || 0), 0);
@@ -1456,7 +1513,7 @@ function Dashboard({
   return (
     <section className="stack">
       <div className="kpi-row">
-        <Kpi icon={Activity} label="Leads pendientes" value={leadsValue} delta="Sin gestionar" tone="amber" />
+        <Kpi icon={Activity} label="Leads pendientes" value={leadsValue} delta="No cotizados" tone="amber" />
         <Kpi icon={BriefcaseMedical} label="Clientes activos" value={clientesValue} delta="En base de datos" tone="green" />
         <Kpi icon={ClipboardList} label="Total cotizaciones" value={cotizacionesValue} delta={totalMonto > 0 ? `$${totalMonto.toLocaleString("es-CL")} CLP emitidos` : "Emitidas / en revisión"} tone="amber" />
         <Kpi icon={FileText} label="Monto total" value={montoStr} delta="CLP acumulado" tone="green" />
@@ -1502,9 +1559,9 @@ function Dashboard({
         <div className="panel pending-panel">
           <div className="panel-head">
             <div className="panel-title"><Bell size={18} />Leads sin gestionar</div>
-            <span className="tag amber">{noGestionados.length} pendientes</span>
+            <span className="tag amber">{noCotizados.length} pendientes</span>
           </div>
-          {noGestionados.slice(0, 4).map((lead) => (
+          {noCotizados.slice(0, 4).map((lead) => (
             <button className="compact-lead" key={lead.id} onClick={() => goTo("leads")}>
               <span className={lead.canal} />
               <div>
@@ -1655,6 +1712,7 @@ function catalogoToCotizacionItem(item: CatalogoItem, plantillas: Plantilla[]): 
     precio_unitario: item.precio_neto,
     cantidad: 1,
     descuento_pct: 0,
+    glosa: "",
   };
 }
 
@@ -1675,6 +1733,16 @@ function resolveCotizacionItemDesc(
 
 const FORMAS_PAGO = ["50% inicio - 50% entrega", "Crédito a 30 días", "Contra entrega"];
 
+const LEAD_ESTADO_META: Record<string, { label: string; tagClass: string }> = {
+  "no-cotizado": { label: "No cotizado", tagClass: "amber" },
+  cotizado:      { label: "Cotizado",    tagClass: "navy"  },
+  aprobado:      { label: "Aprobado",    tagClass: "green" },
+  rechazado:     { label: "Rechazado",   tagClass: "red"   },
+};
+function leadEstadoMeta(estado: string) {
+  return LEAD_ESTADO_META[estado] ?? { label: estado, tagClass: "amber" };
+}
+
 function CotizadorForm({
   clientes, catalogo, plantillas,
   clienteId, setClienteId,
@@ -1682,6 +1750,7 @@ function CotizadorForm({
   formaPago, setFormaPago,
   condiciones, setCondiciones,
   garantia, setGarantia,
+  validez, setValidez,
   items, setItems,
   onEmitir, onDescargarPDF, emitiendo = false,
 }: {
@@ -1698,6 +1767,8 @@ function CotizadorForm({
   setCondiciones: (v: string) => void;
   garantia: string;
   setGarantia: (v: string) => void;
+  validez: number;
+  setValidez: (v: number) => void;
   items: CotizacionItemForm[];
   setItems: React.Dispatch<React.SetStateAction<CotizacionItemForm[]>>;
   onEmitir: () => void;
@@ -1795,6 +1866,10 @@ function CotizadorForm({
         <select value={FORMAS_PAGO.includes(formaPago) ? formaPago : "otro"} onChange={(e) => setFormaPago(e.target.value)}>
           {FORMAS_PAGO.map((f) => <option key={f} value={f}>{f}</option>)}
         </select>
+      </label>
+      <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+        <span style={{ flex: "0 0 auto" }}>Validez (días)</span>
+        <input type="number" min={1} max={365} value={validez} onChange={(e) => setValidez(Math.max(1, Number(e.target.value)))} style={{ width: 80 }} />
       </label>
 
       {/* Condiciones comerciales */}
@@ -1899,14 +1974,23 @@ function CotizadorForm({
             <span />
           </div>
           {items.map((it, idx) => (
-            <div key={idx} style={{ minWidth: 360, display: "grid", gridTemplateColumns: "1fr 48px 90px 58px 24px", gap: "4px 6px", alignItems: "center", marginBottom: 6, fontSize: 12 }}>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingTop: 2 }} title={it.descripcion}>{it.descripcion}</span>
-              <input type="number" min={1} value={it.cantidad} onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) })} style={{ textAlign: "center", padding: "4px 4px", minHeight: 30 }} />
-              <input type="number" min={0} value={it.precio_unitario} onChange={(e) => updateItem(idx, { precio_unitario: Number(e.target.value) })} style={{ padding: "4px 6px", minHeight: 30 }} />
-              <input type="number" min={0} max={100} value={it.descuento_pct} onChange={(e) => updateItem(idx, { descuento_pct: Number(e.target.value) })} style={{ textAlign: "center", padding: "4px 4px", minHeight: 30 }} />
-              <button onClick={() => removeItem(idx)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0, display: "flex", alignItems: "center" }}>
-                <X size={14} />
-              </button>
+            <div key={idx} style={{ minWidth: 360, marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid #f1f5f9" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 48px 90px 58px 24px", gap: "4px 6px", alignItems: "center", fontSize: 12 }}>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingTop: 2 }} title={it.descripcion}>{it.descripcion}</span>
+                <input type="number" min={1} value={it.cantidad} onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) })} style={{ textAlign: "center", padding: "4px 4px", minHeight: 30 }} />
+                <input type="number" min={0} value={it.precio_unitario} onChange={(e) => updateItem(idx, { precio_unitario: Number(e.target.value) })} style={{ padding: "4px 6px", minHeight: 30 }} />
+                <input type="number" min={0} max={100} value={it.descuento_pct} onChange={(e) => updateItem(idx, { descuento_pct: Number(e.target.value) })} style={{ textAlign: "center", padding: "4px 4px", minHeight: 30 }} />
+                <button onClick={() => removeItem(idx)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 0, display: "flex", alignItems: "center" }}>
+                  <X size={14} />
+                </button>
+              </div>
+              <textarea
+                placeholder="Glosa adicional (opcional)..."
+                value={it.glosa ?? ""}
+                onChange={(e) => updateItem(idx, { glosa: e.target.value })}
+                rows={1}
+                style={{ marginTop: 4, width: "100%", fontSize: 11, color: "#475569", resize: "vertical", borderRadius: 4, border: "1px solid #e2e8f0", padding: "4px 8px", lineHeight: 1.5, minHeight: 28 }}
+              />
             </div>
           ))}
           <div style={{ textAlign: "right", fontWeight: 700, fontSize: 13, marginTop: 10, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
@@ -1941,7 +2025,7 @@ function CotizadorForm({
 
 
 function CotizadorPreview({
-  clientes, clienteId, items, notas, formaPago, fecha,
+  clientes, clienteId, items, notas, formaPago, fecha, validez,
 }: {
   clientes: Cliente[];
   clienteId: string;
@@ -1949,6 +2033,7 @@ function CotizadorPreview({
   notas: string;
   formaPago: string;
   fecha: string;
+  validez: number;
 }) {
   const clienteObj = clientes.find((c) => c.id === clienteId);
   const subtotal = items.reduce((s, it) => s + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100)), 0);
@@ -2004,11 +2089,11 @@ function CotizadorPreview({
           <h3>Condiciones</h3>
           <dl className="quote-data">
             <dt>Forma de pago</dt><dd>{formaPago}</dd>
-            <dt>Validez</dt><dd>30 días desde emisión</dd>
+            <dt>Validez</dt><dd>{validez} días desde emisión</dd>
             <dt>Diagnóstico</dt><dd>Incluido si acepta el presupuesto</dd>
           </dl>
         </section>
-        <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por 15 días</footer>
+        <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por {validez} días</footer>
       </div>
     </article>
   );
@@ -2611,11 +2696,12 @@ function PeriodoPicker({ anio, mes, fechas, onAnio, onMes }: {
 
 const COT_ESTADOS = ["Pendiente", "En revisión", "Aprobada", "Rechazada"];
 
-function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEstado }: {
+function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEstado, onDescargarCotizacion }: {
   cotizaciones: Cotizacion[];
   clientes: Cliente[];
   onVerCotizacion: (id: string) => void;
   onUpdateEstado: (id: string, estado: string) => void;
+  onDescargarCotizacion: (id: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("");
@@ -2738,7 +2824,7 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
                       <button onClick={() => onVerCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#007a4e", fontWeight: 600, background: "none", border: "1px solid #bbf7d0", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}>
                         <FileText size={13} />Ver
                       </button>
-                      <button onClick={() => onVerCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0f2340", fontWeight: 600, background: "none", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}>
+                      <button onClick={() => onDescargarCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0f2340", fontWeight: 600, background: "none", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}>
                         <Download size={13} />Descargar
                       </button>
                     </div>

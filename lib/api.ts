@@ -61,7 +61,7 @@ export interface Lead {
   tel: string;
   email: string;
   canal: "wsp" | "email";
-  estado: "gestionado" | "no-gestionado";
+  estado: "cotizado" | "no-cotizado" | "aprobado" | "rechazado";
   servicio: string;
   tiempo: string;
   equipo: string;
@@ -98,6 +98,7 @@ export interface Cotizacion {
   id: string;
   nro: string;
   cliente: string;
+  lead_id?: string;
   monto: number;
   estado: string;
   fecha: string;
@@ -132,6 +133,7 @@ export interface CotizacionItem {
   cantidad: number;
   descuento_pct: number;
   subtotal: number;
+  glosa?: string;
 }
 
 export interface CatalogoItem {
@@ -162,10 +164,12 @@ export type CotizacionItemForm = {
   precio_unitario: number;
   cantidad: number;
   descuento_pct: number;
+  glosa?: string;
 };
 
 export type CotizacionForm = {
   cliente_id: string;
+  lead_id?: string;
   notas_cliente: string;
   forma_pago: string;
   validez_dias: number;
@@ -274,7 +278,14 @@ function mapLead(value: unknown): Lead {
     tel: str(raw.telefono),
     email: str(raw.email),
     canal: raw.canal === "email" ? "email" : "wsp",
-    estado: estado === "gestionado" ? "gestionado" : "no-gestionado",
+    estado: ((): Lead["estado"] => {
+      const n = estado.toLowerCase().replace(/[^a-z]/g, "");
+      if (n === "cotizado") return "cotizado";
+      if (n === "aprobado") return "aprobado";
+      if (n === "rechazado") return "rechazado";
+      if (n === "gestionado") return "cotizado";
+      return "no-cotizado";
+    })(),
     servicio: str(raw.servicio_interes),
     tiempo: raw.creado_en ? relativeTime(str(raw.creado_en)) : "",
     equipo: str(raw.notas),
@@ -327,6 +338,7 @@ function mapCotizacion(value: unknown): Cotizacion {
     id: str(raw.id),
     nro: str(raw.numero || raw.id),
     cliente: str(raw.cliente_id),
+    lead_id: raw.lead_id ? str(raw.lead_id) : undefined,
     monto: num((raw.total_con_iva ?? raw.subtotal_neto) as unknown),
     estado: estadoLabel,
     fecha: raw.creado_en ? str(raw.creado_en).slice(0, 10) : "",
@@ -387,10 +399,10 @@ export async function createLead(form: LeadForm): Promise<Lead | null> {
   return r?.data ? mapLead(r.data) : null;
 }
 
-export async function updateLead(id: string, patch: { estado: "gestionado" | "no-gestionado" }): Promise<Lead | null> {
-  const backendEstado = patch.estado === "gestionado" ? "gestionado" : "no_gestionado";
-  const body: Record<string, unknown> = { estado: backendEstado };
-  if (patch.estado === "gestionado") body.gestionado_en = new Date().toISOString();
+export async function updateLead(id: string, patch: { estado: Lead["estado"] }): Promise<Lead | null> {
+  const dbEstado = patch.estado.replace("-", "_");
+  const body: Record<string, unknown> = { estado: dbEstado };
+  if (patch.estado === "cotizado") body.gestionado_en = new Date().toISOString();
   const r = await apiMutate<{ data: unknown }>("PATCH", `/api/leads/${id}`, body);
   return r?.data ? mapLead(r.data) : null;
 }
@@ -647,6 +659,7 @@ export async function createCotizacionMulti(form: CotizacionForm): Promise<Cotiz
   const r = await apiMutate<{ data: unknown }>("POST", "/api/cotizaciones", {
     numero,
     cliente_id: form.cliente_id,
+    lead_id: form.lead_id ?? null,
     estado: "emitida",
     subtotal_neto: subtotal,
     iva,

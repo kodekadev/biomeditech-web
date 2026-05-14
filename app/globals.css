@@ -602,6 +602,11 @@ button {
   color: var(--amber);
 }
 
+.tag.red {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 .module-toolbar {
   justify-content: space-between;
   flex-wrap: wrap;
@@ -678,8 +683,16 @@ button {
   content: "";
 }
 
-.lead-card.no-gestionado::before {
+.lead-card.no-cotizado::before {
   background: var(--amber);
+}
+
+.lead-card.aprobado::before {
+  background: var(--bio-green);
+}
+
+.lead-card.rechazado::before {
+  background: #dc2626;
 }
 
 .lead-card-head {
