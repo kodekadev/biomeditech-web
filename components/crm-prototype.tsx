@@ -1524,7 +1524,7 @@ export default function CRMPrototype() {
             </section>
           )}
 
-          {active === "protocolos" && <Protocols />}
+          {active === "protocolos" && <ProtocolosModule clientes={clientes} notify={notify} />}
         </section>
       </main>
 
@@ -2992,19 +2992,547 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
   );
 }
 
-function Protocols() {
+const PROTOCOL_TYPES = [
+  {
+    id: "anestesia",
+    label: "Máquina de Anestesia",
+    items: [
+      "Inspección visual de mangueras y conexiones de gas",
+      "Verificación de válvulas de retención y reguladores de presión",
+      "Prueba de estanqueidad del sistema de gas (leak test)",
+      "Revisión y calibración del vaporizador",
+      "Verificación del sistema de absorción de CO₂ (cal soda)",
+      "Control de presiones de gas (O₂, N₂O, aire)",
+      "Revisión del circuito paciente (mangueras, mascarilla, bolsa reservorio)",
+      "Prueba del sistema de ventilación manual y mecánico",
+      "Verificación de alarmas de alta y baja presión",
+      "Revisión de monitores integrados (SpO₂, capnografía)",
+      "Limpieza y desinfección del circuito paciente",
+      "Prueba funcional general del equipo",
+    ],
+  },
+  {
+    id: "monitor",
+    label: "Monitor Multiparámetro",
+    items: [
+      "Inspección visual del equipo, pantalla y carcasa",
+      "Revisión de cables y electrodos ECG",
+      "Verificación del módulo SpO₂ (oximetría de pulso)",
+      "Verificación del módulo NIBP (presión arterial no invasiva)",
+      "Verificación del módulo de temperatura",
+      "Revisión y prueba de batería / sistema de carga",
+      "Prueba de alarmas sonoras y visuales",
+      "Verificación de fecha y hora del sistema",
+      "Limpieza de pantalla táctil y superficie del equipo",
+      "Prueba funcional completa con paciente simulado",
+    ],
+  },
+  {
+    id: "impedancia",
+    label: "Analizador Corporal por Impedancia",
+    items: [
+      "Inspección visual del equipo y accesorios",
+      "Revisión de electrodos y cables de medición",
+      "Verificación de calibración interna",
+      "Prueba de reproducibilidad de mediciones",
+      "Revisión de la plataforma de pesaje integrada",
+      "Actualización de software si corresponde",
+      "Limpieza y desinfección de electrodos y superficie",
+      "Prueba funcional general del equipo",
+    ],
+  },
+  {
+    id: "balanza",
+    label: "Balanza",
+    items: [
+      "Inspección visual del equipo y plataforma",
+      "Verificación de nivelación (burbuja de nivel)",
+      "Encendido y periodo de calentamiento",
+      "Prueba de cero / tara",
+      "Calibración con pesas patrón certificadas",
+      "Verificación de repetibilidad (3 pesadas con misma carga)",
+      "Prueba con carga máxima",
+      "Revisión del indicador digital y display",
+      "Limpieza de plataforma y estructura del equipo",
+      "Prueba funcional general",
+    ],
+  },
+  {
+    id: "ecg",
+    label: "Electrocardiógrafo",
+    items: [
+      "Inspección visual del equipo y accesorios",
+      "Revisión de cables de derivaciones y electrodos",
+      "Verificación de calibración de señal (1 mV = 10 mm)",
+      "Verificación de velocidad de papel (25 mm/s)",
+      "Prueba de todas las derivaciones (I, II, III, aVR, aVL, aVF, V1-V6)",
+      "Revisión de filtros (60 Hz, EMG)",
+      "Verificación de impresora y papel de registro",
+      "Revisión de batería y sistema de carga",
+      "Limpieza de electrodos y superficies del equipo",
+      "Prueba funcional general del equipo",
+    ],
+  },
+  {
+    id: "espirometro",
+    label: "Espirómetro",
+    items: [
+      "Inspección visual del equipo, turbina y accesorios",
+      "Revisión del sensor de flujo / turbina",
+      "Calibración con jeringa de 3L (±3.5%)",
+      "Verificación de prueba FVC (Capacidad Vital Forzada)",
+      "Verificación de prueba FEV1",
+      "Verificación de prueba PEF (Flujo espiratorio máximo)",
+      "Revisión de software e interfaz de usuario",
+      "Verificación de impresora o conectividad de exportación",
+      "Revisión de batería y sistema de carga",
+      "Limpieza y desinfección de turbina y boquillas",
+      "Prueba funcional general del equipo",
+    ],
+  },
+  {
+    id: "calorico",
+    label: "Estimulador Calórico",
+    items: [
+      "Inspección visual del equipo y accesorios (cánulas, tubing)",
+      "Revisión y limpieza del depósito de agua",
+      "Verificación del sistema de calentamiento (temperatura 44°C)",
+      "Verificación del sistema de enfriamiento (temperatura 30°C)",
+      "Control de presión y caudal de irrigación",
+      "Prueba de ciclo completo (caliente / frío / aire)",
+      "Revisión de alarmas y protecciones de seguridad",
+      "Calibración del temporizador de irrigación",
+      "Limpieza y desinfección de cánulas y accesorios",
+      "Prueba funcional general del equipo",
+    ],
+  },
+  {
+    id: "optotipos",
+    label: "Proyector de Optotipos",
+    items: [
+      "Inspección visual del equipo, lentes y espejo de proyección",
+      "Verificación de uniformidad de iluminación en pantalla",
+      "Revisión del motor y mecanismo de rotación de optotipos",
+      "Prueba de todos los optotipos disponibles (letras, números, símbolos)",
+      "Verificación de la distancia focal de proyección (5 o 6 metros)",
+      "Control del nivel de contraste de imágenes proyectadas",
+      "Revisión del panel de control / control remoto",
+      "Limpieza de lentes, espejo y superficie del equipo",
+      "Prueba funcional general del equipo",
+    ],
+  },
+];
+
+type ProtocolCheckItem = { label: string; estado: "ok" | "observacion" | "na" | ""; nota: string };
+
+function buildProtocolHtml(params: {
+  protocolLabel: string;
+  cliente: Cliente;
+  marca: string;
+  modelo: string;
+  anio: string;
+  serie: string;
+  servicio: string;
+  tecnico: string;
+  fecha: string;
+  checklist: ProtocolCheckItem[];
+  observaciones: string;
+  photos: string[];
+  signature: string;
+}): string {
+  const { protocolLabel, cliente, marca, modelo, anio, serie, servicio, tecnico, fecha, checklist, observaciones, photos, signature } = params;
+  const checkRows = checklist.map((item, i) => `
+    <tr>
+      <td style="text-align:center;color:#94a3b8;font-size:11px">${i + 1}</td>
+      <td>${item.label}</td>
+      <td style="text-align:center">${item.estado === "ok" ? '<span style="color:#16a34a;font-weight:700">✓</span>' : ""}</td>
+      <td style="text-align:center">${item.estado === "observacion" ? '<span style="color:#d97706;font-weight:700">⚠</span>' : ""}</td>
+      <td style="text-align:center">${item.estado === "na" ? '<span style="color:#94a3b8;font-size:11px">N/A</span>' : ""}</td>
+      <td style="font-size:11px;color:#475569">${item.nota || ""}</td>
+    </tr>`).join("");
+  const photosHtml = photos.length > 0
+    ? `<div style="margin-top:16px"><h3>Evidencia fotográfica</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">${photos.map((p) => `<img src="${p}" style="width:100%;height:150px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;-webkit-print-color-adjust:exact;print-color-adjust:exact"/>`).join("")}</div></div>`
+    : "";
+  const sigBlock = (label: string, src?: string, name?: string) =>
+    `<div><div style="min-height:60px;border-bottom:1px solid #1e293b;display:flex;align-items:flex-end;margin-bottom:4px">${src ? `<img src="${src}" style="max-height:56px;max-width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact"/>` : ""}</div><p style="font-size:11px;color:#64748b">${label}${name ? `: <strong>${name}</strong>` : ""}</p><p style="font-size:11px;color:#64748b">Fecha: ${fecha}</p></div>`;
+  const sigHtml = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px">${sigBlock("Firma del técnico", signature, tecnico)}${sigBlock("Firma del cliente / responsable")}</div>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${protocolLabel}</title><style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    @page{margin:0;size:A4}
+    body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
+    header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0e948b}
+    h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
+    .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#0e948b;margin-bottom:8px;font-weight:700}
+    .data-block dl{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px;align-items:baseline}
+    .data-block dt{color:#64748b;font-size:12px;white-space:nowrap}
+    .data-block dt::after{content:":"}
+    .data-block dd{font-size:12px;font-weight:500}
+    table{width:100%;border-collapse:collapse;margin-bottom:16px}
+    thead th{background:#0e948b;color:#fff;padding:8px 10px;text-align:left;font-size:11px}
+    td{padding:6px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;font-size:12px}
+    .obs-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;margin-bottom:16px;font-size:12px;color:#475569;white-space:pre-wrap;line-height:1.5}
+    footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
+  </style></head><body>
+  <header>
+    <div><img src="${LOGO_B64}" alt="BIOMEDITECH" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
+    <div style="text-align:right"><strong style="display:block;font-size:16px;color:#0f2340">${protocolLabel}</strong><span style="font-size:11px;color:#64748b">Protocolo de Mantención · BIOMEDITECH</span></div>
+  </header>
+  <div style="display:grid;grid-template-columns:max-content 1fr 1fr;gap:16px;margin-bottom:16px;align-items:start">
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;padding-top:3px;border-right:2px solid #e2e8f0;padding-right:12px;white-space:nowrap">Información</div>
+    <div class="data-block">
+      <h4>Cliente</h4>
+      <dl>
+        <dt>Empresa</dt><dd>${cliente.nombre}</dd>
+        <dt>RUT</dt><dd>${cliente.rut || "—"}</dd>
+        <dt>Contacto</dt><dd>${cliente.contacto || "—"}</dd>
+        <dt>Teléfono</dt><dd>${cliente.telefono || "—"}</dd>
+        <dt>Dirección</dt><dd>${[cliente.direccion, cliente.ciudad].filter(Boolean).join(", ") || "—"}</dd>
+      </dl>
+    </div>
+    <div class="data-block">
+      <h4>Equipo</h4>
+      <dl>
+        <dt>Tipo</dt><dd>${protocolLabel}</dd>
+        <dt>Marca</dt><dd>${marca || "—"}</dd>
+        <dt>Modelo</dt><dd>${modelo || "—"}</dd>
+        <dt>Año</dt><dd>${anio || "—"}</dd>
+        <dt>N° serie</dt><dd>${serie || "—"}</dd>
+        <dt>Servicio</dt><dd>${servicio || "—"}</dd>
+        <dt>Fecha</dt><dd>${fecha}</dd>
+        <dt>Técnico</dt><dd>${tecnico || "—"}</dd>
+      </dl>
+    </div>
+  </div>
+  <h3>Lista de verificación</h3>
+  <table>
+    <thead><tr><th style="width:28px">#</th><th>Ítem de verificación</th><th style="width:40px;text-align:center">OK</th><th style="width:52px;text-align:center">Obs.</th><th style="width:40px;text-align:center">N/A</th><th>Nota / Observación</th></tr></thead>
+    <tbody>${checkRows}</tbody>
+  </table>
+  ${observaciones ? `<h3>Observaciones generales</h3><div class="obs-box">${observaciones}</div>` : ""}
+  ${photosHtml}
+  ${sigHtml}
+  <footer>contacto@Biomeditech.cl · Biomeditech.cl · WhatsApp: +56 9 5989 0781</footer>
+  </body></html>`;
+}
+
+function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (msg: string) => void }) {
+  const [protocolId, setProtocolId] = useState("");
+  const [clienteQuery, setClienteQuery] = useState("");
+  const [clienteOpen, setClienteOpen] = useState(false);
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [marca, setMarca] = useState("");
+  const [modelo, setModelo] = useState("");
+  const [anio, setAnio] = useState("");
+  const [serie, setSerie] = useState("");
+  const [servicio, setServicio] = useState("");
+  const [tecnico, setTecnico] = useState("");
+  const [checklist, setChecklist] = useState<ProtocolCheckItem[]>([]);
+  const [observaciones, setObservaciones] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const signatureRef = useRef<HTMLCanvasElement>(null);
+  const isDrawingRef = useRef(false);
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const proto = PROTOCOL_TYPES.find((p) => p.id === protocolId);
+    if (proto) {
+      setChecklist(proto.items.map((label) => ({ label, estado: "" as ProtocolCheckItem["estado"], nota: "" })));
+    } else {
+      setChecklist([]);
+    }
+  }, [protocolId]);
+
+  function getCanvasPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if ("touches" in e) {
+      return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+    }
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+  }
+
+  function startDraw(e: React.MouseEvent | React.TouchEvent) {
+    e.preventDefault();
+    const canvas = signatureRef.current;
+    if (!canvas) return;
+    isDrawingRef.current = true;
+    lastPosRef.current = getCanvasPos(e, canvas);
+  }
+
+  function drawSignature(e: React.MouseEvent | React.TouchEvent) {
+    e.preventDefault();
+    if (!isDrawingRef.current) return;
+    const canvas = signatureRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const pos = getCanvasPos(e, canvas);
+    const last = lastPosRef.current ?? pos;
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+    lastPosRef.current = pos;
+  }
+
+  function stopDraw() {
+    isDrawingRef.current = false;
+    lastPosRef.current = null;
+  }
+
+  function clearSignature() {
+    const canvas = signatureRef.current;
+    if (!canvas) return;
+    canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function getSignatureDataUrl(): string {
+    const canvas = signatureRef.current;
+    if (!canvas) return "";
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const hasContent = Array.from(data).some((v, i) => i % 4 === 3 && v > 0);
+    return hasContent ? canvas.toDataURL("image/png") : "";
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    const results: string[] = [];
+    for (const file of files) {
+      const url = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result as string);
+        reader.readAsDataURL(file);
+      });
+      results.push(url);
+    }
+    setPhotos((prev) => [...prev, ...results]);
+    if (e.target) e.target.value = "";
+  }
+
+  async function handleDownload() {
+    if (!protocolId) { notify("Selecciona un tipo de protocolo"); return; }
+    if (!selectedCliente) { notify("Selecciona un cliente"); return; }
+    const proto = PROTOCOL_TYPES.find((p) => p.id === protocolId)!;
+    setGenerating(true);
+    notify("Generando PDF…");
+    const fecha = new Date().toLocaleDateString("es-CL");
+    try {
+      const html = buildProtocolHtml({
+        protocolLabel: proto.label,
+        cliente: selectedCliente,
+        marca, modelo, anio, serie, servicio, tecnico,
+        fecha, checklist, observaciones, photos,
+        signature: getSignatureDataUrl(),
+      });
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      const iframe = document.createElement("iframe");
+      iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;height:1122px;border:none;visibility:hidden;";
+      document.body.appendChild(iframe);
+      await new Promise<void>((resolve) => { iframe.onload = () => resolve(); iframe.srcdoc = html; });
+      await new Promise((r) => setTimeout(r, 600));
+      const iDoc = iframe.contentDocument;
+      if (!iDoc) { document.body.removeChild(iframe); return; }
+      const canvas = await html2canvas(iDoc.body, { useCORS: true, scale: 2, backgroundColor: "#ffffff", windowWidth: 794 });
+      document.body.removeChild(iframe);
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = pdf.internal.pageSize.getHeight();
+      const totalH = canvas.height * (pdfW / canvas.width);
+      let pos = 0;
+      let remaining = totalH;
+      pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+      remaining -= pdfH;
+      while (remaining > 0) {
+        pos -= pdfH;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+        remaining -= pdfH;
+      }
+      const fechaSlug = new Date().toISOString().slice(0, 10);
+      const clienteSlug = selectedCliente.nombre.replace(/\s+/g, "-").slice(0, 30);
+      pdf.save(`protocolo-${proto.id}-${clienteSlug}-${fechaSlug}.pdf`);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  const filteredClientes = clienteQuery.length >= 2
+    ? clientes.filter((c) =>
+        c.nombre.toLowerCase().includes(clienteQuery.toLowerCase()) ||
+        c.rut.toLowerCase().includes(clienteQuery.toLowerCase()) ||
+        (c.contacto ?? "").toLowerCase().includes(clienteQuery.toLowerCase())
+      ).slice(0, 8)
+    : [];
+
+  const selectedProto = PROTOCOL_TYPES.find((p) => p.id === protocolId) ?? null;
+
   return (
     <section className="stack">
-      <div className="protocol-hero">
-        <FileArchive size={52} />
-        <h2>Protocolos de Mantención</h2>
-        <p>Módulo reservado para programar mantenciones preventivas, asociar protocolos técnicos por equipo y generar informes de seguimiento.</p>
-        <button><Bell size={16} />Notificar cuando esté listo</button>
-      </div>
-      <div className="protocol-grid">
-        <article><CalendarDays size={30} /><strong>Agenda de mantenciones</strong><span>Próximamente</span></article>
-        <article><FileText size={30} /><strong>Documentos técnicos</strong><span>Próximamente</span></article>
-        <article><Activity size={30} /><strong>Informes de seguimiento</strong><span>Próximamente</span></article>
+      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 20, alignItems: "start" }}>
+        {/* Left column: protocol + client + equipment */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="panel">
+            <div className="panel-title" style={{ marginBottom: 12 }}><FileArchive size={16} />Tipo de protocolo</div>
+            <select value={protocolId} onChange={(e) => setProtocolId(e.target.value)} style={{ width: "100%" }}>
+              <option value="">— Selecciona un protocolo —</option>
+              {PROTOCOL_TYPES.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="panel">
+            <div className="panel-title" style={{ marginBottom: 12 }}><Search size={16} />Cliente</div>
+            <div style={{ position: "relative" }}>
+              <input
+                value={selectedCliente ? selectedCliente.nombre : clienteQuery}
+                onChange={(e) => { setClienteQuery(e.target.value); setSelectedCliente(null); setClienteOpen(true); }}
+                onFocus={() => { if (!selectedCliente) setClienteOpen(true); }}
+                onBlur={() => setTimeout(() => setClienteOpen(false), 150)}
+                placeholder="Buscar por nombre o RUT..."
+                style={{ width: "100%", paddingRight: selectedCliente ? 32 : undefined }}
+              />
+              {selectedCliente && (
+                <button onClick={() => { setSelectedCliente(null); setClienteQuery(""); }}
+                  style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 4 }}>
+                  <X size={14} />
+                </button>
+              )}
+              {clienteOpen && filteredClientes.length > 0 && !selectedCliente && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,.1)", zIndex: 100, maxHeight: 220, overflowY: "auto" }}>
+                  {filteredClientes.map((c) => (
+                    <button key={c.id} onMouseDown={() => { setSelectedCliente(c); setClienteQuery(""); setClienteOpen(false); }}
+                      style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer" }}>
+                      <strong style={{ fontSize: 13 }}>{c.nombre}</strong>
+                      <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 8 }}>{c.rut}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {selectedCliente && (
+              <div style={{ marginTop: 8, fontSize: 12, color: "#475569", background: "#f0fdf4", borderRadius: 6, padding: "8px 12px", border: "1px solid #bbf7d0" }}>
+                <strong>{selectedCliente.nombre}</strong>{selectedCliente.rut ? ` · RUT ${selectedCliente.rut}` : ""}
+                {selectedCliente.direccion && <div style={{ marginTop: 2, color: "#64748b" }}>{selectedCliente.direccion}{selectedCliente.ciudad ? `, ${selectedCliente.ciudad}` : ""}</div>}
+              </div>
+            )}
+          </div>
+
+          <div className="panel">
+            <div className="panel-title" style={{ marginBottom: 12 }}><Wrench size={16} />Datos del equipo</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label style={{ fontSize: 12 }}>Marca<input value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Ej: Mindray" style={{ marginTop: 3, display: "block", width: "100%" }} /></label>
+              <label style={{ fontSize: 12 }}>Modelo<input value={modelo} onChange={(e) => setModelo(e.target.value)} placeholder="Ej: BS-380" style={{ marginTop: 3, display: "block", width: "100%" }} /></label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <label style={{ fontSize: 12 }}>Año<input value={anio} onChange={(e) => setAnio(e.target.value)} placeholder="2019" maxLength={4} style={{ marginTop: 3, display: "block", width: "100%" }} /></label>
+                <label style={{ fontSize: 12 }}>N° serie<input value={serie} onChange={(e) => setSerie(e.target.value)} placeholder="S/N" style={{ marginTop: 3, display: "block", width: "100%" }} /></label>
+              </div>
+              <label style={{ fontSize: 12 }}>Servicio documentado<input value={servicio} onChange={(e) => setServicio(e.target.value)} placeholder="Ej: Mantención preventiva anual" style={{ marginTop: 3, display: "block", width: "100%" }} /></label>
+              <label style={{ fontSize: 12 }}>Nombre del técnico<input value={tecnico} onChange={(e) => setTecnico(e.target.value)} placeholder="Nombre completo" style={{ marginTop: 3, display: "block", width: "100%" }} /></label>
+            </div>
+          </div>
+        </div>
+
+        {/* Right column: checklist + obs + photos + signature + download */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {checklist.length > 0 ? (
+            <div className="panel">
+              <div className="panel-title" style={{ marginBottom: 12 }}><ClipboardList size={16} />Lista de verificación — {selectedProto?.label}</div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                      <th style={{ textAlign: "left", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, width: 28, fontSize: 11 }}>#</th>
+                      <th style={{ textAlign: "left", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, fontSize: 11 }}>Ítem</th>
+                      <th style={{ textAlign: "center", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, width: 48, fontSize: 11, color: "#16a34a" }}>OK</th>
+                      <th style={{ textAlign: "center", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, width: 56, fontSize: 11, color: "#d97706" }}>Obs.</th>
+                      <th style={{ textAlign: "center", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, width: 48, fontSize: 11, color: "#94a3b8" }}>N/A</th>
+                      <th style={{ textAlign: "left", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, fontSize: 11 }}>Nota</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {checklist.map((item, i) => (
+                      <tr key={i} style={{ borderBottom: "1px solid var(--border)", background: i % 2 === 0 ? "transparent" : "var(--bg)" }}>
+                        <td style={{ padding: "6px 8px", color: "var(--muted)", textAlign: "center", fontSize: 11 }}>{i + 1}</td>
+                        <td style={{ padding: "6px 8px" }}>{item.label}</td>
+                        <td style={{ textAlign: "center", padding: "6px 8px" }}>
+                          <input type="radio" name={`check-${i}`} checked={item.estado === "ok"} onChange={() => setChecklist((prev) => prev.map((it, idx) => idx === i ? { ...it, estado: "ok" as const } : it))} />
+                        </td>
+                        <td style={{ textAlign: "center", padding: "6px 8px" }}>
+                          <input type="radio" name={`check-${i}`} checked={item.estado === "observacion"} onChange={() => setChecklist((prev) => prev.map((it, idx) => idx === i ? { ...it, estado: "observacion" as const } : it))} />
+                        </td>
+                        <td style={{ textAlign: "center", padding: "6px 8px" }}>
+                          <input type="radio" name={`check-${i}`} checked={item.estado === "na"} onChange={() => setChecklist((prev) => prev.map((it, idx) => idx === i ? { ...it, estado: "na" as const } : it))} />
+                        </td>
+                        <td style={{ padding: "6px 8px" }}>
+                          <input value={item.nota} onChange={(e) => setChecklist((prev) => prev.map((it, idx) => idx === i ? { ...it, nota: e.target.value } : it))}
+                            placeholder="Observación..." style={{ width: "100%", fontSize: 11, padding: "3px 6px" }} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="panel" style={{ textAlign: "center", color: "var(--muted)", padding: 40 }}>
+              <FileArchive size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+              <p style={{ fontSize: 13 }}>Selecciona un protocolo para ver la lista de verificación</p>
+            </div>
+          )}
+
+          <div className="panel">
+            <div className="panel-title" style={{ marginBottom: 12 }}><FileText size={16} />Observaciones generales</div>
+            <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Notas adicionales del servicio..." rows={4} style={{ width: "100%", resize: "vertical" }} />
+          </div>
+
+          <div className="panel">
+            <div className="panel-title" style={{ marginBottom: photos.length > 0 ? 12 : 0 }}><FileText size={16} />Fotos de evidencia</div>
+            <input ref={photoInputRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handlePhotoUpload} />
+            <button onClick={() => photoInputRef.current?.click()} style={{ marginTop: 12, marginBottom: photos.length > 0 ? 12 : 0 }}>
+              <Plus size={14} style={{ marginRight: 4 }} />Agregar fotos
+            </button>
+            {photos.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                {photos.map((p, i) => (
+                  <div key={i} style={{ position: "relative" }}>
+                    <img src={p} alt={`foto ${i + 1}`} style={{ width: "100%", height: 90, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)", display: "block" }} />
+                    <button onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                      style={{ position: "absolute", top: 3, right: 3, background: "rgba(0,0,0,.55)", border: "none", borderRadius: 4, cursor: "pointer", color: "#fff", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="panel">
+            <div className="panel-title" style={{ marginBottom: 12 }}><Edit3 size={16} />Firma del técnico</div>
+            <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "#fafafa", userSelect: "none", touchAction: "none" }}>
+              <canvas ref={signatureRef} width={700} height={160} style={{ width: "100%", height: 160, cursor: "crosshair", display: "block" }}
+                onMouseDown={startDraw} onMouseMove={drawSignature} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+                onTouchStart={startDraw} onTouchMove={drawSignature} onTouchEnd={stopDraw}
+              />
+            </div>
+            <button onClick={clearSignature} style={{ marginTop: 8, fontSize: 12, background: "none", border: "1px solid var(--border)", color: "var(--muted)" }}>Limpiar firma</button>
+          </div>
+
+          <button onClick={handleDownload} disabled={generating}
+            style={{ background: "#0e948b", color: "#fff", padding: "12px 24px", borderRadius: 8, fontSize: 14, fontWeight: 700, border: "none", cursor: generating ? "not-allowed" : "pointer", opacity: generating ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Download size={16} />{generating ? "Generando PDF…" : "Descargar protocolo PDF"}
+          </button>
+        </div>
       </div>
     </section>
   );
