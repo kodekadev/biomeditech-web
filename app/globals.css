@@ -1096,6 +1096,44 @@ textarea:focus {
   line-height: 1.45;
 }
 
+.quote-conditions {
+  font-size: 12px;
+  color: #475569;
+  background: #f0faf9;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border-left: 3px solid var(--bio-green);
+}
+
+.quote-conditions strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--bio-green);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.quote-garantia {
+  font-size: 12px;
+  color: #7c2d12;
+  background: #fff7ed;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border-left: 3px solid #f97316;
+}
+
+.quote-garantia strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #c2410c;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
 .quote-preview footer {
   border-top: 1px solid var(--border);
   padding: 12px 20px;

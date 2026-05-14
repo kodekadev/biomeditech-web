@@ -668,12 +668,11 @@ export default function CRMPrototype() {
     setCotizItems([]);
     setCotizNotas("");
     notify(`Cotización ${cot.nro} emitida`);
-    if (result) handlePrintDetalle(result);
+    if (result) await downloadCotizacionAsPDF(result);
   }
 
-  function handlePrintDetalle(det: import("@/lib/api").CotizacionDetalle, autoDownload = false) {
+  function buildCotizHtml(det: import("@/lib/api").CotizacionDetalle): string {
     const clienteObj = clientes.find((c) => c.id === det.cliente_id);
-    const fechaStr = new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
     const rowsHtml = det.items.map((it, i) => {
       const disc = it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : "";
       const glosaHtml = it.glosa ? `<br/><span style="font-size:11px;color:#64748b;white-space:pre-line">${it.glosa}</span>` : "";
@@ -705,17 +704,10 @@ export default function CRMPrototype() {
           ${glossaryEntries.map((e) => `<div class="gloss-item"><p>${e.desc}</p></div>`).join("")}
         </div>`
       : "";
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización ${det.numero}</title>
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización ${det.numero}</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-      body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:72px 40px 36px}
-      .action-bar{position:fixed;top:0;left:0;right:0;background:#0f2340;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;z-index:999;gap:12px}
-      .action-bar span{font-weight:600;font-size:14px}
-      .action-bar .btn-print{background:#0e948b;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
-      .action-bar .btn-close{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px}
-      @media print{.action-bar{display:none}body{padding:36px 40px}}
+      body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
       header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0e948b}
       header img{height:40px}
       header .right{text-align:right}
@@ -743,9 +735,7 @@ export default function CRMPrototype() {
       .transfer dd{font-weight:500}
       .glossary{margin-top:32px;padding-top:20px;border-top:2px solid #0e948b}
       .glossary h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:12px}
-      @media print{.glossary{page-break-before:always;margin-top:0;padding-top:24px}}
       .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #0e948b}
-      .gloss-item strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#0e948b;margin-bottom:4px}
       .gloss-item p{font-size:12px;color:#475569;white-space:pre-line;line-height:1.6}
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
@@ -810,17 +800,63 @@ export default function CRMPrototype() {
     ${det.notas_cliente ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${det.notas_cliente}</em></p>` : ""}
     ${glossaryHtml}
     <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por ${det.validez_dias} días desde emisión</footer>
-    <div class="action-bar">
-      <span>Cotización ${det.numero}</span>
-      <div style="display:flex;gap:8px">
-        <button class="btn-print" onclick="window.print()">🖨 Imprimir / Descargar PDF</button>
-        <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
+    </body></html>`;
+  }
+
+  function handlePrintDetalle(det: import("@/lib/api").CotizacionDetalle) {
+    const base = buildCotizHtml(det);
+    const html = base.replace("</body></html>",
+      `<style>.action-bar{position:fixed;top:0;left:0;right:0;background:#0f2340;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;z-index:999;gap:12px}.action-bar span{font-weight:600;font-size:14px}.action-bar .btn-print{background:#0e948b;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}.action-bar .btn-close{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px}body{padding-top:72px!important}@media print{.action-bar{display:none}body{padding-top:36px!important}}</style>
+      <div class="action-bar">
+        <span>Cotización ${det.numero}</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn-print" onclick="window.print()">🖨 Imprimir / Descargar PDF</button>
+          <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
+        </div>
       </div>
-    </div>
-    ${autoDownload ? '<scr' + 'ipt>window.onload=function(){window.print();}</' + 'script>' : ''}
-    </body></html>`);
-    win.document.title = autoDownload ? `Descargar-${det.numero}` : `Cotización ${det.numero}`;
+      </body></html>`
+    );
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.title = `Cotización ${det.numero}`;
     win.focus();
+  }
+
+  async function downloadCotizacionAsPDF(det: import("@/lib/api").CotizacionDetalle) {
+    notify("Generando PDF…");
+    const html = buildCotizHtml(det);
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ]);
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;height:1122px;border:none;visibility:hidden;";
+    document.body.appendChild(iframe);
+    await new Promise<void>((resolve) => { iframe.onload = () => resolve(); iframe.srcdoc = html; });
+    await new Promise((r) => setTimeout(r, 500));
+    const iDoc = iframe.contentDocument;
+    if (!iDoc) { document.body.removeChild(iframe); return; }
+    const canvas = await html2canvas(iDoc.body, { useCORS: true, scale: 2, backgroundColor: "#ffffff", windowWidth: 794 });
+    document.body.removeChild(iframe);
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pdfW = pdf.internal.pageSize.getWidth();
+    const pdfH = pdf.internal.pageSize.getHeight();
+    const totalH = canvas.height * (pdfW / canvas.width);
+    let pos = 0;
+    let remaining = totalH;
+    pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+    remaining -= pdfH;
+    while (remaining > 0) {
+      pos -= pdfH;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+      remaining -= pdfH;
+    }
+    const clienteObj = clientes.find((c) => c.id === det.cliente_id);
+    const fecha = new Date().toISOString().slice(0, 10);
+    pdf.save(`cotizacion-${det.numero}-${(clienteObj?.nombre ?? "cliente").replace(/\s+/g, "-")}-${fecha}.pdf`);
   }
 
   function handlePrintQuote() {
@@ -977,6 +1013,36 @@ export default function CRMPrototype() {
     win.focus();
   }
 
+  async function handleDownloadPreviewPDF() {
+    if (cotizItems.length === 0) { notify("Agrega al menos un ítem antes de descargar"); return; }
+    const el = document.getElementById("quote-preview-content");
+    if (!el) return;
+    notify("Generando PDF…");
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ]);
+    const canvas = await html2canvas(el, { useCORS: true, scale: 2, backgroundColor: "#ffffff" });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pdfW = pdf.internal.pageSize.getWidth();
+    const pdfH = pdf.internal.pageSize.getHeight();
+    const totalH = canvas.height * (pdfW / canvas.width);
+    let pos = 0;
+    let remaining = totalH;
+    pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+    remaining -= pdfH;
+    while (remaining > 0) {
+      pos -= pdfH;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+      remaining -= pdfH;
+    }
+    const cliente = clientes.find((c) => c.id === cotizClienteId);
+    const fecha = new Date().toISOString().slice(0, 10);
+    pdf.save(`cotizacion-${(cliente?.nombre ?? "borrador").replace(/\s+/g, "-")}-${fecha}.pdf`);
+  }
+
   async function handleVerCotizacion(id: string) {
     const det = await api.fetchCotizacionDetalle(id);
     if (!det) { notify("No se pudo cargar el detalle de la cotización"); return; }
@@ -986,7 +1052,7 @@ export default function CRMPrototype() {
   async function handleDescargarCotizacion(id: string) {
     const det = await api.fetchCotizacionDetalle(id);
     if (!det) { notify("No se pudo cargar el detalle de la cotización"); return; }
-    handlePrintDetalle(det, true);
+    await downloadCotizacionAsPDF(det);
   }
 
   function handleUpdateCotizacionEstado(id: string, estado: string) {
@@ -1401,7 +1467,7 @@ export default function CRMPrototype() {
                     items={cotizItems}
                     setItems={setCotizItems}
                     onEmitir={handleEmitirCotizacion}
-                    onDescargarPDF={handlePrintQuote}
+                    onDescargarPDF={handleDownloadPreviewPDF}
                     emitiendo={emitiendo}
                   />
                 </div>
@@ -1442,6 +1508,8 @@ export default function CRMPrototype() {
                   formaPago={cotizFormaPago}
                   fecha={fecha}
                   validez={cotizValidez}
+                  garantia={cotizGarantia}
+                  condiciones={cotizCondiciones}
                 />
               </div>
             </section>
@@ -2025,7 +2093,7 @@ function CotizadorForm({
 
 
 function CotizadorPreview({
-  clientes, clienteId, items, notas, formaPago, fecha, validez,
+  clientes, clienteId, items, notas, formaPago, fecha, validez, garantia, condiciones,
 }: {
   clientes: Cliente[];
   clienteId: string;
@@ -2034,11 +2102,14 @@ function CotizadorPreview({
   formaPago: string;
   fecha: string;
   validez: number;
+  garantia: string;
+  condiciones: string;
 }) {
   const clienteObj = clientes.find((c) => c.id === clienteId);
   const subtotal = items.reduce((s, it) => s + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100)), 0);
   const iva = Math.round(subtotal * 0.19);
   const total = subtotal + iva;
+  const condLines = condiciones.split("\n").filter(Boolean);
 
   return (
     <article className="quote-preview">
@@ -2056,7 +2127,9 @@ function CotizadorPreview({
             <dt>Empresa</dt><dd>{clienteObj?.nombre ?? "—"}</dd>
             <dt>RUT</dt><dd>{clienteObj?.rut ?? "—"}</dd>
             <dt>Contacto</dt><dd>{clienteObj?.contacto ?? "—"}</dd>
+            <dt>Correo</dt><dd>{clienteObj?.correo || "—"}</dd>
             <dt>Teléfono</dt><dd>{clienteObj?.telefono || "—"}</dd>
+            <dt>Dirección</dt><dd>{clienteObj?.direccion || "—"}</dd>
           </dl>
           <h3>Detalle del servicio</h3>
           <table className="quote-table">
@@ -2070,7 +2143,10 @@ function CotizadorPreview({
                 return (
                   <tr key={i}>
                     <td>{i + 1}</td>
-                    <td>{it.descripcion}{it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : ""}</td>
+                    <td>
+                      {it.descripcion}{it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : ""}
+                      {it.glosa && <div style={{ fontSize: 10, color: "#64748b", marginTop: 2, whiteSpace: "pre-wrap" }}>{it.glosa}</div>}
+                    </td>
                     <td>{it.cantidad}</td>
                     <td>{money(it.precio_unitario)}</td>
                     <td><strong>{money(sub)}</strong></td>
@@ -2087,11 +2163,22 @@ function CotizadorPreview({
           )}
           {notas ? <p className="quote-note">{notas}</p> : null}
           <h3>Condiciones</h3>
-          <dl className="quote-data">
-            <dt>Forma de pago</dt><dd>{formaPago}</dd>
-            <dt>Validez</dt><dd>{validez} días desde emisión</dd>
-            <dt>Diagnóstico</dt><dd>Incluido si acepta el presupuesto</dd>
-          </dl>
+          <div className="quote-conditions">
+            <strong>Condiciones Comerciales</strong>
+            {formaPago && <p style={{ fontSize: 11, margin: "4px 0" }}><strong>Forma de pago:</strong> {formaPago}</p>}
+            <p style={{ fontSize: 11, margin: "4px 0" }}><strong>Validez:</strong> {validez} días desde emisión</p>
+            {condLines.length > 0 && (
+              <ul style={{ margin: "4px 0 0 14px", padding: 0, fontSize: 11 }}>
+                {condLines.map((l, i) => <li key={i}>{l}</li>)}
+              </ul>
+            )}
+          </div>
+          {garantia && (
+            <div className="quote-garantia">
+              <strong>Condiciones de Garantía</strong>
+              <p style={{ marginTop: 4, fontSize: 11, whiteSpace: "pre-wrap" }}>{garantia}</p>
+            </div>
+          )}
         </section>
         <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por {validez} días</footer>
       </div>
@@ -2228,6 +2315,10 @@ function ProductsModule({
   useEffect(() => { try { localStorage.setItem("crm_svc_types", JSON.stringify(serviceTypes)); } catch {} }, [serviceTypes]);
   useEffect(() => { try { localStorage.setItem("crm_equip_cats", JSON.stringify(equipCats)); } catch {} }, [equipCats]);
   useEffect(() => { try { localStorage.setItem("crm_desc_templates", JSON.stringify(descTemplates)); } catch {} }, [descTemplates]);
+  const [catServiceMap, setCatServiceMap] = useState<Record<string, string[]>>(() => {
+    try { const s = localStorage.getItem("crm_cat_svc_map"); return s ? JSON.parse(s) : {}; } catch { return {}; }
+  });
+  useEffect(() => { try { localStorage.setItem("crm_cat_svc_map", JSON.stringify(catServiceMap)); } catch {} }, [catServiceMap]);
 
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -2262,6 +2353,12 @@ function ProductsModule({
     return byGeneral?.descripcion_larga || descTemplates[genKey] || "";
   }
 
+  function getAllowedServices(cat: string): string[] {
+    const mapped = catServiceMap[cat];
+    if (!mapped || mapped.length === 0) return serviceTypes.map((st) => st.id);
+    return mapped;
+  }
+
   function nextCode(svcId: string): string {
     const nums = catalogo
       .filter((c) => c.categoria === svcId && new RegExp(`^${svcId}\\d+$`).test(c.codigo))
@@ -2283,19 +2380,21 @@ function ProductsModule({
   }, [catalogo, catFilter, search]);
 
   function openAdd() {
-    // If already adding a new item with data, just focus the open modal
     if (modal === "product" && !editingGroup) return;
     setEditingGroup(null);
-    setProdForm({ nombre: "", equipCat: equipCats[0] || "Médico", servicios: serviceTypes.map((st) => ({ id: st.id, precio: st.defaultPrice > 0 ? String(st.defaultPrice) : "", descripcion: "", enabled: false })) });
+    const cat = equipCats[0] || "Médico";
+    const allowed = getAllowedServices(cat);
+    setProdForm({ nombre: "", equipCat: cat, servicios: serviceTypes.filter((st) => allowed.includes(st.id)).map((st) => ({ id: st.id, precio: st.defaultPrice > 0 ? String(st.defaultPrice) : "", descripcion: "", enabled: false })) });
     setModal("product");
   }
 
   function openEdit(equipName: string, items: CatalogoItem[], equipCat: string) {
     setEditingGroup(equipName);
+    const allowed = getAllowedServices(equipCat);
     setProdForm({
       nombre: equipName,
       equipCat,
-      servicios: serviceTypes.map((st) => {
+      servicios: serviceTypes.filter((st) => allowed.includes(st.id)).map((st) => {
         const ex = items.find((i) => i.categoria === st.id);
         return { id: st.id, precio: ex ? String(ex.precio_neto) : "", descripcion: ex?.descripcion_larga || "", enabled: !!ex };
       }),
@@ -2477,6 +2576,44 @@ function ProductsModule({
               </div>
             </div>
           </div>
+
+          {/* Servicios por categoría */}
+          <div style={{ marginTop: 20, borderTop: "1px solid #e2e8f0", paddingTop: 16 }}>
+            <strong style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#64748b" }}>Servicios por categoría</strong>
+            <p style={{ fontSize: 11, color: "#94a3b8", margin: "4px 0 10px" }}>Define qué tipos de servicio aparecen al crear o editar un ítem de cada categoría</p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {equipCats.map((cat) => {
+                const catAllowed = catServiceMap[cat];
+                return (
+                  <div key={cat} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", minWidth: 200 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#0f2340", marginBottom: 8 }}>{cat}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {serviceTypes.map((st) => {
+                        const checked = !catAllowed || catAllowed.length === 0 || catAllowed.includes(st.id);
+                        return (
+                          <label key={st.id} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, cursor: "pointer", padding: "3px 8px", borderRadius: 6, background: checked ? "#e6f4f3" : "#f8fafc", border: `1px solid ${checked ? "#0e948b" : "#e2e8f0"}`, userSelect: "none" as const }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              style={{ width: 13, height: 13, margin: 0, minHeight: 0 }}
+                              onChange={(e) => {
+                                setCatServiceMap((prev) => {
+                                  const current = (prev[cat] && prev[cat].length > 0) ? prev[cat] : serviceTypes.map((s) => s.id);
+                                  const updated = e.target.checked ? [...current.filter((id) => id !== st.id), st.id] : current.filter((id) => id !== st.id);
+                                  return { ...prev, [cat]: updated.length === serviceTypes.length ? [] : updated };
+                                });
+                              }}
+                            />
+                            <span className="tag navy" style={{ fontSize: 10, padding: "1px 5px" }}>{st.id}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Descripciones de servicios */}
@@ -2610,7 +2747,20 @@ function ProductsModule({
               </label>
               <label>
                 Categoría *
-                <select value={prodForm.equipCat} onChange={(e) => setProdForm((f) => ({ ...f, equipCat: e.target.value }))}>
+                <select value={prodForm.equipCat} onChange={(e) => {
+                  const newCat = e.target.value;
+                  const allowed = getAllowedServices(newCat);
+                  setProdForm((f) => ({
+                    ...f,
+                    equipCat: newCat,
+                    servicios: serviceTypes.filter((st) => allowed.includes(st.id)).map((st) => ({
+                      id: st.id,
+                      precio: st.defaultPrice > 0 ? String(st.defaultPrice) : "",
+                      descripcion: "",
+                      enabled: false,
+                    })),
+                  }));
+                }}>
                   {equipCats.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </label>
