@@ -713,44 +713,44 @@ export default function CRMPrototype() {
       body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:72px 40px 36px}
       .action-bar{position:fixed;top:0;left:0;right:0;background:#0f2340;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;z-index:999;gap:12px}
       .action-bar span{font-weight:600;font-size:14px}
-      .action-bar .btn-print{background:#007a4e;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+      .action-bar .btn-print{background:#0e948b;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
       .action-bar .btn-close{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px}
       @media print{.action-bar{display:none}body{padding:36px 40px}}
-      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #007a4e}
+      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0e948b}
       header img{height:40px}
       header .right{text-align:right}
       header .right strong{display:block;font-size:20px;color:#dc2626}
       h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
       .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-      .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:8px;font-weight:700}
+      .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#0e948b;margin-bottom:8px;font-weight:700}
       .data-block dl{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px;align-items:baseline}
       .data-block dt{color:#64748b;font-size:12px;white-space:nowrap}
       .data-block dt::after{content:":"}
       .data-block dd{font-size:12px;font-weight:500}
       table{width:100%;border-collapse:collapse;margin-bottom:20px}
-      thead th{background:#007a4e;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
+      thead th{background:#0e948b;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
       td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
       .totals{width:320px;margin-left:auto;margin-bottom:16px}
       .totals tr td{padding:5px 12px}
-      .totals tr:last-child{font-weight:700;font-size:15px;border-top:2px solid #007a4e}
-      .conditions{font-size:12px;color:#475569;background:#f0faf5;padding:12px;border-radius:6px;margin-bottom:16px;border-left:3px solid #007a4e}
-      .conditions strong{display:block;margin-bottom:4px;color:#007a4e}
+      .totals tr:last-child{font-weight:700;font-size:15px;border-top:2px solid #0e948b}
+      .conditions{font-size:12px;color:#475569;background:#f0faf5;padding:12px;border-radius:6px;margin-bottom:16px;border-left:3px solid #0e948b}
+      .conditions strong{display:block;margin-bottom:4px;color:#0e948b}
       .transfer{font-size:12px;color:#1e293b;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:16px}
-      .transfer strong{display:block;margin-bottom:6px;color:#007a4e;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+      .transfer strong{display:block;margin-bottom:6px;color:#0e948b;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
       .transfer dl{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px}
       .transfer dt{color:#64748b;white-space:nowrap}
       .transfer dt::after{content:":"}
       .transfer dd{font-weight:500}
-      .glossary{margin-top:32px;padding-top:20px;border-top:2px solid #007a4e}
+      .glossary{margin-top:32px;padding-top:20px;border-top:2px solid #0e948b}
       .glossary h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:12px}
       @media print{.glossary{page-break-before:always;margin-top:0;padding-top:24px}}
-      .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #007a4e}
-      .gloss-item strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:4px}
+      .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #0e948b}
+      .gloss-item strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#0e948b;margin-bottom:4px}
       .gloss-item p{font-size:12px;color:#475569;white-space:pre-line;line-height:1.6}
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
     <header>
-      <div style="display:flex;align-items:center;gap:12px"><div style="background:#007a4e;border-radius:8px;padding:8px 14px;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="background:#0e948b;border-radius:8px;padding:8px 14px;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
       <div class="right"><strong>${det.numero}</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
@@ -869,45 +869,45 @@ export default function CRMPrototype() {
       body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:72px 40px 36px}
       .action-bar{position:fixed;top:0;left:0;right:0;background:#0f2340;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;z-index:999;gap:12px}
       .action-bar span{font-weight:600;font-size:14px}
-      .action-bar .btn-print{background:#007a4e;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+      .action-bar .btn-print{background:#0e948b;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
       .action-bar .btn-close{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px}
       @media print{.action-bar{display:none}body{padding:36px 40px}}
-      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #007a4e}
+      header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0e948b}
       header img{height:40px}
       header .right{text-align:right}
       header .right strong{display:block;font-size:20px;color:#dc2626}
       h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
       .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-      .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:8px;font-weight:700}
+      .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#0e948b;margin-bottom:8px;font-weight:700}
       .data-block dl{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px;align-items:baseline}
       .data-block dt{color:#64748b;font-size:12px;white-space:nowrap}
       .data-block dt::after{content:":"}
       .data-block dd{font-size:12px;font-weight:500}
       table{width:100%;border-collapse:collapse;margin-bottom:20px}
-      thead th{background:#007a4e;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
+      thead th{background:#0e948b;color:#fff;padding:9px 12px;text-align:left;font-size:12px}
       td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
       .totals{width:320px;margin-left:auto;margin-bottom:16px}
       .totals tr td{padding:5px 12px}
-      .totals tr:last-child{font-weight:700;font-size:15px;border-top:2px solid #007a4e}
-      .conditions{font-size:12px;color:#475569;background:#f0faf5;padding:12px;border-radius:6px;margin-bottom:16px;border-left:3px solid #007a4e}
-      .conditions strong{display:block;margin-bottom:4px;color:#007a4e}
+      .totals tr:last-child{font-weight:700;font-size:15px;border-top:2px solid #0e948b}
+      .conditions{font-size:12px;color:#475569;background:#f0faf5;padding:12px;border-radius:6px;margin-bottom:16px;border-left:3px solid #0e948b}
+      .conditions strong{display:block;margin-bottom:4px;color:#0e948b}
       .transfer{font-size:12px;color:#1e293b;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:16px}
-      .transfer strong{display:block;margin-bottom:6px;color:#007a4e;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+      .transfer strong{display:block;margin-bottom:6px;color:#0e948b;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
       .transfer dl{display:grid;grid-template-columns:max-content 1fr;gap:3px 12px}
       .transfer dt{color:#64748b;white-space:nowrap}
       .transfer dt::after{content:":"}
       .transfer dd{font-weight:500}
-      .glossary{margin-top:32px;padding-top:20px;border-top:2px solid #007a4e}
+      .glossary{margin-top:32px;padding-top:20px;border-top:2px solid #0e948b}
       .glossary h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:12px}
       @media print{.glossary{page-break-before:always;margin-top:0;padding-top:24px}}
-      .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #007a4e}
-      .gloss-item strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:4px}
+      .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #0e948b}
+      .gloss-item strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#0e948b;margin-bottom:4px}
       .gloss-item p{font-size:12px;color:#475569;white-space:pre-line;line-height:1.6}
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
       .draft-badge{display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
     </style></head><body>
     <header>
-      <div style="display:flex;align-items:center;gap:12px"><div style="background:#007a4e;border-radius:8px;padding:8px 14px;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="background:#0e948b;border-radius:8px;padding:8px 14px;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
       <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
     <h3>Información</h3>
@@ -1830,7 +1830,7 @@ function CotizadorForm({
               <X size={13} style={{ color: "#94a3b8", cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); setClienteId(""); }} />
             </div>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid #007a4e", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid #0e948b", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
               <Search size={13} style={{ color: "#94a3b8", flexShrink: 0 }} />
               <input
                 autoFocus
@@ -2141,7 +2141,7 @@ function DescripcionEditor({ codigo, label, value, plantillaId, onSave }: {
   }
 
   return (
-    <div style={{ padding: "12px 14px", background: "#fff", borderRadius: 8, border: "2px solid #007a4e" }}>
+    <div style={{ padding: "12px 14px", background: "#fff", borderRadius: 8, border: "2px solid #0e948b" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span className="tag navy" style={{ fontSize: 11 }}>{codigo}</span>
@@ -2518,7 +2518,7 @@ function ProductsModule({
                   return (
                     <div key={catKey}>
                       <div style={{ padding: "6px 12px", background: "#f0faf5", borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: "#007a4e", textTransform: "uppercase", letterSpacing: ".06em" }}>{catKey}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "#0e948b", textTransform: "uppercase", letterSpacing: ".06em" }}>{catKey}</span>
                         <button
                           onClick={() => { if (window.confirm(`¿Eliminar plantilla "${catKey}"?`)) setDescTemplates((p) => { const n = { ...p }; delete n[catKey]; return n; }); }}
                           style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}
@@ -2821,7 +2821,7 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
               <td>
                 {cot.id && !cot.id.startsWith("cot-temp-")
                   ? <div style={{ display: "flex", gap: 5 }}>
-                      <button onClick={() => onVerCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#007a4e", fontWeight: 600, background: "none", border: "1px solid #bbf7d0", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}>
+                      <button onClick={() => onVerCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0e948b", fontWeight: 600, background: "none", border: "1px solid #bbf7d0", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}>
                         <FileText size={13} />Ver
                       </button>
                       <button onClick={() => onDescargarCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0f2340", fontWeight: 600, background: "none", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}>
@@ -3146,7 +3146,7 @@ function Modal({
                             <td style={{ padding: "4px 8px", textAlign: "right", color: "#64748b" }}>{money(c.precio_neto)}</td>
                             <td style={{ padding: "4px 8px" }}>
                               <button
-                                style={{ padding: "2px 8px", fontSize: 11, background: leadItems.some(i => i.producto_id === c.id) ? "#00a86b" : "#0f172a", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
+                                style={{ padding: "2px 8px", fontSize: 11, background: leadItems.some(i => i.producto_id === c.id) ? "#0e948b" : "#0f172a", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
                                 onClick={() => {
                                   if (leadItems.some(i => i.producto_id === c.id)) {
                                     setLeadItems((prev) => prev.filter(i => i.producto_id !== c.id));
@@ -3172,7 +3172,7 @@ function Modal({
                     </div>
                   )}
                   {leadItems.length > 0 && (
-                    <p style={{ padding: "6px 10px", fontSize: 12, color: "#00a86b", fontWeight: 600, borderTop: "1px solid #e2e8f0", margin: 0 }}>
+                    <p style={{ padding: "6px 10px", fontSize: 12, color: "#0e948b", fontWeight: 600, borderTop: "1px solid #e2e8f0", margin: 0 }}>
                       {leadItems.length} ítem{leadItems.length > 1 ? "s" : ""} seleccionado{leadItems.length > 1 ? "s" : ""} — se pre-cargarán al cotizar
                     </p>
                   )}
