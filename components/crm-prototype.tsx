@@ -106,8 +106,8 @@ function getPrice(productId: string, service: QuoteService, productos: Producto[
 
 // Utility functions are imported from @/lib/utils
 
-const LEAD_FORM_INIT: LeadForm = { rut: "", nombre: "", empresa: "", tel: "+56 ", email: "", canal: "wsp", servicio: "", equipo: "", direccion: "" };
-const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", tel: "+56 ", correo: "", rubro: "Médico", estado: "activo", direccion: "", ciudad: "", comuna: "" };
+const LEAD_FORM_INIT: LeadForm = { rut: "", nombre: "", empresa: "", tel: "+56 ", email: "", canal: "wsp", servicio: "", equipo: "", direccion: "", tipo_entidad: "" };
+const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", tel: "+56 ", correo: "", rubro: "Médico", estado: "activo", direccion: "", ciudad: "", comuna: "", tipo_entidad: "" };
 const CATALOGO_FORM_INIT: CatalogoItemForm = { codigo: "", categoria: "MP", servicio: "", equipo: "", unidad: "Servicio", precio_neto: "", texto_base_key: "", descripcion_larga: "" };
 const PRODUCTO_FORM_INIT: ProductoForm = { nombre: "", cat: "Equipos médicos", marca: "", diag: "", rep: "", mant: "", inst: "" };
 
@@ -743,9 +743,10 @@ export default function CRMPrototype() {
     </style></head><body>
     <header>
       <div><img src="${LOGO_B64}" alt="Biomeditech" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
-      <div class="right"><strong>${det.numero}</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
+      <div class="right"><strong>${det.numero}</strong><br/><span style="color:#64748b">Biomeditech.cl</span></div>
     </header>
-    <div class="two-col">
+    <div style="display:grid;grid-template-columns:max-content 1fr 1fr;gap:16px;margin-bottom:16px;align-items:start">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;padding-top:3px;border-right:2px solid #e2e8f0;padding-right:12px;white-space:nowrap">Información</div>
       <div class="data-block">
         <h4>Cliente</h4>
         <dl>
@@ -758,14 +759,14 @@ export default function CRMPrototype() {
         </dl>
       </div>
       <div class="data-block">
-        <h4>Biomeditech</h4>
+        <h4>BIOMEDITECH</h4>
         <dl>
           <dt>Razón social</dt><dd>GVA SpA</dd>
           <dt>RUT</dt><dd>78.200.394-1</dd>
           <dt>Dirección</dt><dd>Pedro Torres 798, Ñuñoa</dd>
-          <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
+          <dt>Contacto</dt><dd>contacto@Biomeditech.cl</dd>
           <dt>Teléfono</dt><dd>+56 9 5989 0781</dd>
-          <dt>Web</dt><dd>biomeditech.cl</dd>
+          <dt>Web</dt><dd>Biomeditech.cl</dd>
         </dl>
       </div>
     </div>
@@ -946,9 +947,10 @@ export default function CRMPrototype() {
     </style></head><body>
     <header>
       <div><img src="${LOGO_B64}" alt="Biomeditech" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
-      <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
+      <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><br/><span style="color:#64748b">Biomeditech.cl</span></div>
     </header>
-    <div class="two-col">
+    <div style="display:grid;grid-template-columns:max-content 1fr 1fr;gap:16px;margin-bottom:16px;align-items:start">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;padding-top:3px;border-right:2px solid #e2e8f0;padding-right:12px;white-space:nowrap">Información</div>
       <div class="data-block">
         <h4>Cliente</h4>
         <dl>
@@ -961,14 +963,14 @@ export default function CRMPrototype() {
         </dl>
       </div>
       <div class="data-block">
-        <h4>Biomeditech</h4>
+        <h4>BIOMEDITECH</h4>
         <dl>
           <dt>Razón social</dt><dd>GVA SpA</dd>
           <dt>RUT</dt><dd>78.200.394-1</dd>
           <dt>Dirección</dt><dd>Pedro Torres 798, Ñuñoa</dd>
-          <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
+          <dt>Contacto</dt><dd>contacto@Biomeditech.cl</dd>
           <dt>Teléfono</dt><dd>+56 9 5989 0781</dd>
-          <dt>Web</dt><dd>biomeditech.cl</dd>
+          <dt>Web</dt><dd>Biomeditech.cl</dd>
         </dl>
       </div>
     </div>
@@ -3102,10 +3104,11 @@ function Modal({
         servicio: editingLead.servicio,
         equipo: editingLead.equipo,
         direccion: editingLead.direccion ?? (matchingClient ? [matchingClient.direccion, matchingClient.ciudad].filter(Boolean).join(", ") : ""),
+        tipo_entidad: editingLead.tipo_entidad ?? "",
       });
       setLeadItems(leadPreItems[editingLead.id] ?? []);
     } else if (kind === "cliente" && editingCliente) {
-      setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, tel: editingCliente.telefono || "+56 ", correo: editingCliente.correo, rubro: editingCliente.rubro, estado: editingCliente.estado || "activo", direccion: editingCliente.direccion || "", ciudad: editingCliente.ciudad || "", comuna: editingCliente.comuna || "" });
+      setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, tel: editingCliente.telefono || "+56 ", correo: editingCliente.correo, rubro: editingCliente.rubro, estado: editingCliente.estado || "activo", direccion: editingCliente.direccion || "", ciudad: editingCliente.ciudad || "", comuna: editingCliente.comuna || "", tipo_entidad: editingCliente.tipo_entidad ?? "" });
     } else if (kind === "cliente" && clientePrefill) {
       setClienteForm({ ...CLIENTE_FORM_INIT, ...clientePrefill });
     } else if (kind === "producto" && editingProducto) {
@@ -3255,6 +3258,15 @@ function Modal({
                 />
               </label>
               <label>
+                Tipo de entidad
+                <select value={leadForm.tipo_entidad ?? ""} onChange={(e) => setLeadForm((f) => ({ ...f, tipo_entidad: e.target.value }))}>
+                  <option value="">— Sin especificar —</option>
+                  <option value="publica">Entidad pública</option>
+                  <option value="privada">Empresa privada</option>
+                  <option value="persona_natural">Persona natural</option>
+                </select>
+              </label>
+              <label>
                 Canal
                 <select value={leadForm.canal} onChange={(e) => setLeadForm((f) => ({ ...f, canal: e.target.value }))}>
                   <option value="wsp">WhatsApp</option>
@@ -3381,6 +3393,15 @@ function Modal({
                   <option>Estético</option>
                   <option>Veterinario</option>
                   <option>Otro</option>
+                </select>
+              </label>
+              <label>
+                Tipo de entidad
+                <select value={clienteForm.tipo_entidad ?? ""} onChange={(e) => setClienteForm((f) => ({ ...f, tipo_entidad: e.target.value }))}>
+                  <option value="">— Sin especificar —</option>
+                  <option value="publica">Entidad pública</option>
+                  <option value="privada">Empresa privada</option>
+                  <option value="persona_natural">Persona natural</option>
                 </select>
               </label>
               <label>

@@ -66,6 +66,7 @@ export interface Lead {
   tiempo: string;
   equipo: string;
   direccion?: string;
+  tipo_entidad?: string;
   creado_por?: string;
   creado_en?: string;
 }
@@ -82,6 +83,7 @@ export interface Cliente {
   direccion: string;
   ciudad: string;
   comuna: string;
+  tipo_entidad?: string;
 }
 
 export interface Producto {
@@ -197,6 +199,7 @@ export type LeadForm = {
   servicio: string;
   equipo: string;
   direccion?: string;
+  tipo_entidad?: string;
 };
 
 export type ClienteForm = {
@@ -210,6 +213,7 @@ export type ClienteForm = {
   direccion: string;
   ciudad: string;
   comuna: string;
+  tipo_entidad?: string;
 };
 
 export type CatalogoItemForm = {
@@ -290,6 +294,7 @@ function mapLead(value: unknown): Lead {
     tiempo: raw.creado_en ? relativeTime(str(raw.creado_en)) : "",
     equipo: str(raw.notas),
     direccion: str(raw.direccion) || undefined,
+    tipo_entidad: str(raw.tipo_entidad) || undefined,
     creado_en: raw.creado_en ? str(raw.creado_en).slice(0, 10) : undefined,
   };
 }
@@ -308,6 +313,7 @@ function mapCliente(value: unknown): Cliente {
     direccion: str(raw.direccion),
     ciudad: str(raw.ciudad),
     comuna: str(raw.comuna),
+    tipo_entidad: str(raw.tipo_entidad) || undefined,
   };
 }
 
@@ -394,6 +400,7 @@ export async function createLead(form: LeadForm): Promise<Lead | null> {
     notas: form.equipo,
     rut: form.rut,
     direccion: form.direccion,
+    tipo_entidad: form.tipo_entidad || null,
     creado_por,
   });
   return r?.data ? mapLead(r.data) : null;
@@ -428,6 +435,7 @@ export async function createCliente(form: ClienteForm): Promise<Cliente | null> 
     direccion: form.direccion,
     ciudad: form.ciudad,
     comuna: form.comuna,
+    tipo_entidad: form.tipo_entidad || null,
   });
   return r?.data ? mapCliente(r.data) : null;
 }
@@ -517,6 +525,7 @@ export async function saveLead(id: string, form: LeadForm): Promise<Lead | null>
     notas: form.equipo,
     rut: form.rut,
     direccion: form.direccion,
+    tipo_entidad: form.tipo_entidad || null,
   });
   return r?.data ? mapLead(r.data) : null;
 }
@@ -533,6 +542,7 @@ export async function saveCliente(id: string, form: ClienteForm): Promise<Client
     direccion: form.direccion,
     ciudad: form.ciudad,
     comuna: form.comuna,
+    tipo_entidad: form.tipo_entidad || null,
   });
   return r?.data ? mapCliente(r.data) : null;
 }
