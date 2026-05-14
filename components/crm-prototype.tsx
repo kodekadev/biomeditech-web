@@ -870,7 +870,7 @@ export default function CRMPrototype() {
       header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #007a4e}
       header img{height:40px}
       header .right{text-align:right}
-      header .right strong{display:block;font-size:20px;color:#007a4e}
+      header .right strong{display:block;font-size:20px;color:#dc2626}
       h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
       .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
       .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#007a4e;margin-bottom:8px;font-weight:700}
@@ -913,6 +913,7 @@ export default function CRMPrototype() {
           <dt>Empresa</dt><dd>${clienteObj?.nombre ?? "—"}</dd>
           <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
           <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
+          <dt>Correo</dt><dd>${clienteObj?.correo || "—"}</dd>
           <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
           <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
         </dl>
@@ -920,6 +921,7 @@ export default function CRMPrototype() {
       <div class="data-block">
         <h4>Biomeditech SpA</h4>
         <dl>
+          <dt>Razón social</dt><dd>GVA SpA</dd>
           <dt>RUT</dt><dd>78.200.394-1</dd>
           <dt>Dirección</dt><dd>Pedro Torres 798, Ñuñoa</dd>
           <dt>Contacto</dt><dd>contacto@biomeditech.cl</dd>
@@ -940,8 +942,10 @@ export default function CRMPrototype() {
     </table>
     <div class="conditions">
       <strong>Condiciones Comerciales</strong>
-      <ul style="margin:6px 0 0 16px;padding:0">${cotizCondiciones.split("\n").filter(Boolean).map((l) => `<li>${l}</li>`).join("")}</ul>
+      ${cotizFormaPago ? `<p style="margin:4px 0 6px;font-size:12px"><strong style="color:#0f2340">Forma de pago:</strong> ${cotizFormaPago}</p>` : ""}
+      <ul style="margin:4px 0 0 16px;padding:0">${cotizCondiciones.split("\n").filter(Boolean).map((l) => `<li>${l}</li>`).join("")}</ul>
     </div>
+    ${cotizGarantia ? `<div class="conditions" style="background:#fff7ed;border-left-color:#f97316"><strong style="color:#c2410c">Condiciones de Garantía</strong><p style="margin-top:6px;white-space:pre-line">${cotizGarantia}</p></div>` : ""}
     <div class="transfer">
       <strong>Datos de transferencia</strong>
       <dl>
@@ -1336,6 +1340,8 @@ export default function CRMPrototype() {
                     setFormaPago={setCotizFormaPago}
                     condiciones={cotizCondiciones}
                     setCondiciones={setCotizCondiciones}
+                    garantia={cotizGarantia}
+                    setGarantia={setCotizGarantia}
                     items={cotizItems}
                     setItems={setCotizItems}
                     onEmitir={handleEmitirCotizacion}
@@ -1667,12 +1673,15 @@ function resolveCotizacionItemDesc(
   return plantillas.find((p) => p.codigo === generalKey)?.descripcion_larga ?? "";
 }
 
+const FORMAS_PAGO = ["50% inicio - 50% entrega", "Crédito a 30 días", "Contra entrega"];
+
 function CotizadorForm({
   clientes, catalogo, plantillas,
   clienteId, setClienteId,
   notas, setNotas,
   formaPago, setFormaPago,
   condiciones, setCondiciones,
+  garantia, setGarantia,
   items, setItems,
   onEmitir, onDescargarPDF, emitiendo = false,
 }: {
@@ -1687,6 +1696,8 @@ function CotizadorForm({
   setFormaPago: (v: string) => void;
   condiciones: string;
   setCondiciones: (v: string) => void;
+  garantia: string;
+  setGarantia: (v: string) => void;
   items: CotizacionItemForm[];
   setItems: React.Dispatch<React.SetStateAction<CotizacionItemForm[]>>;
   onEmitir: () => void;
@@ -1696,6 +1707,7 @@ function CotizadorForm({
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
   const [condOpen, setCondOpen] = useState(false);
+  const [garantOpen, setGarantOpen] = useState(false);
   const [clienteSearch, setClienteSearch] = useState("");
   const [showClienteDrop, setShowClienteDrop] = useState(false);
 
@@ -1780,7 +1792,9 @@ function CotizadorForm({
         </div>
       </label>
       <label>Forma de pago
-        <input value={formaPago} onChange={(e) => setFormaPago(e.target.value)} maxLength={80} />
+        <select value={FORMAS_PAGO.includes(formaPago) ? formaPago : "otro"} onChange={(e) => setFormaPago(e.target.value)}>
+          {FORMAS_PAGO.map((f) => <option key={f} value={f}>{f}</option>)}
+        </select>
       </label>
 
       {/* Condiciones comerciales */}
@@ -1801,6 +1815,30 @@ function CotizadorForm({
               value={condiciones}
               onChange={(e) => setCondiciones(e.target.value)}
               style={{ width: "100%", fontSize: 12, lineHeight: 1.6, resize: "vertical", borderRadius: 6, border: "1px solid #e2e8f0", padding: "8px 10px" }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Condiciones de garantía */}
+      <div style={{ border: "1px solid #fed7aa", borderRadius: 8, overflow: "hidden" }}>
+        <button
+          type="button"
+          onClick={() => setGarantOpen((v) => !v)}
+          style={{ width: "100%", background: "#fff7ed", border: "none", padding: "10px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, fontWeight: 600, color: "#9a3412" }}
+        >
+          <span>Condiciones de garantía</span>
+          {garantOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+        {garantOpen && (
+          <div style={{ padding: 12 }}>
+            <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6 }}>Aparece como sección separada en el PDF si tiene contenido.</p>
+            <textarea
+              rows={4}
+              value={garantia}
+              onChange={(e) => setGarantia(e.target.value)}
+              placeholder="Ej: Garantía de 3 meses por mano de obra. Repuestos con garantía de fábrica..."
+              style={{ width: "100%", fontSize: 12, lineHeight: 1.6, resize: "vertical", borderRadius: 6, border: "1px solid #fed7aa", padding: "8px 10px" }}
             />
           </div>
         )}
@@ -2696,9 +2734,14 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
               <td style={{ color: "#64748b", fontSize: 12 }}>{cot.fecha}</td>
               <td>
                 {cot.id && !cot.id.startsWith("cot-temp-")
-                  ? <button onClick={() => onVerCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "#007a4e", fontWeight: 600, background: "none", border: "1px solid #bbf7d0", borderRadius: 6, cursor: "pointer", padding: "4px 10px" }}>
-                      <Download size={13} />Ver / Descargar
-                    </button>
+                  ? <div style={{ display: "flex", gap: 5 }}>
+                      <button onClick={() => onVerCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#007a4e", fontWeight: 600, background: "none", border: "1px solid #bbf7d0", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}>
+                        <FileText size={13} />Ver
+                      </button>
+                      <button onClick={() => onVerCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0f2340", fontWeight: 600, background: "none", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}>
+                        <Download size={13} />Descargar
+                      </button>
+                    </div>
                   : <span style={{ color: "#cbd5e0", fontSize: 12 }}>emitiendo…</span>
                 }
               </td>
