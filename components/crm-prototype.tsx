@@ -707,6 +707,7 @@ export default function CRMPrototype() {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotización ${det.numero}</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+      @page{margin:0;size:A4}
       body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
       header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0e948b}
       header img{height:40px}
@@ -902,6 +903,7 @@ export default function CRMPrototype() {
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Borrador Cotización</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+      @page{margin:0;size:A4}
       body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:72px 40px 36px}
       .action-bar{position:fixed;top:0;left:0;right:0;background:#0f2340;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;z-index:999;gap:12px}
       .action-bar span{font-weight:600;font-size:14px}
@@ -1467,7 +1469,7 @@ export default function CRMPrototype() {
                     items={cotizItems}
                     setItems={setCotizItems}
                     onEmitir={handleEmitirCotizacion}
-                    onDescargarPDF={handleDownloadPreviewPDF}
+                    onDescargarPDF={handlePrintQuote}
                     emitiendo={emitiendo}
                   />
                 </div>
