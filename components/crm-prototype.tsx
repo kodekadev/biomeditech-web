@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as api from "@/lib/api";
+import { LOGO_B64 } from "@/lib/logo-b64";
 import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, CatalogoItemForm, Plantilla, CotizacionItemForm } from "@/lib/api";
 import { money, formatRut, normalizeRut, isValidEmail, validateRut, isValidPhone, isActivo, fmtActivityDate } from "@/lib/utils";
 
@@ -741,10 +742,9 @@ export default function CRMPrototype() {
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
     <header>
-      <div style="display:flex;align-items:center;gap:12px"><div style="background:#0e948b;border-radius:8px;padding:8px 14px;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
+      <div><img src="${LOGO_B64}" alt="Biomeditech" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
       <div class="right"><strong>${det.numero}</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
-    <h3>Información</h3>
     <div class="two-col">
       <div class="data-block">
         <h4>Cliente</h4>
@@ -800,7 +800,7 @@ export default function CRMPrototype() {
     </div>
     ${det.notas_cliente ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${det.notas_cliente}</em></p>` : ""}
     ${glossaryHtml}
-    <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por ${det.validez_dias} días desde emisión</footer>
+    <footer>contacto@biomeditech.cl · biomeditech.cl · WhatsApp: +56 9 5989 0781</footer>
     </body></html>`;
   }
 
@@ -945,10 +945,9 @@ export default function CRMPrototype() {
       .draft-badge{display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
     </style></head><body>
     <header>
-      <div style="display:flex;align-items:center;gap:12px"><div style="background:#0e948b;border-radius:8px;padding:8px 14px;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"><img src="https://biomeditech.cl/wp-content/uploads/2021/07/logo_w.png" alt="Biomeditech" style="height:40px"/></div><p style="color:#64748b;font-size:12px;margin:0">Reparación y mantención<br/>de equipos médicos</p></div>
+      <div><img src="${LOGO_B64}" alt="Biomeditech" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
       <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><br/><span style="color:#64748b">biomeditech.cl</span></div>
     </header>
-    <h3>Información</h3>
     <div class="two-col">
       <div class="data-block">
         <h4>Cliente</h4>
@@ -1002,7 +1001,7 @@ export default function CRMPrototype() {
     </div>
     ${cotizNotas ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${cotizNotas}</em></p>` : ""}
     ${glossaryHtml}
-    <footer>contacto@biomeditech.cl · biomeditech.cl · Válida por ${cotizValidez} días desde emisión</footer>
+    <footer>contacto@biomeditech.cl · biomeditech.cl · WhatsApp: +56 9 5989 0781</footer>
     <div class="action-bar">
       <span>Borrador de Cotización</span>
       <div style="display:flex;gap:8px">
