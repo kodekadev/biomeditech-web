@@ -2994,110 +2994,182 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
 
 // ── Tipos Protocolos ──────────────────────────────────────────────────────────
 
-type ProtoOption = { id: string; label: string };
-type ProtoSubItem = { id: string; label: string; options: ProtoOption[] };
+type ProtoSubItem = { id: string; label: string };
 type ProtoItem = { id: string; label: string; subItems: ProtoSubItem[] };
 type ProtoTemplate = { id: string; label: string; items: ProtoItem[]; conclusions: string[] };
-type ItemFill = { estado: "ok" | "observacion" | "na" | ""; nota: string; subItems: Record<string, string> };
+type SubFill = { pasa: "si" | "no" | ""; obs: string };
 
 function pId() { return Math.random().toString(36).slice(2, 9); }
 
-const DEFAULT_PROTO_DATA: { id: string; label: string; itemLabels: string[] }[] = [
-  { id: "anestesia", label: "Máquina de Anestesia", itemLabels: [
-    "Inspección visual de mangueras y conexiones de gas",
-    "Verificación de válvulas de retención y reguladores de presión",
-    "Prueba de estanqueidad del sistema de gas (leak test)",
-    "Revisión y calibración del vaporizador",
-    "Verificación del sistema de absorción de CO₂ (cal soda)",
-    "Control de presiones de gas (O₂, N₂O, aire)",
-    "Revisión del circuito paciente (mangueras, mascarilla, bolsa reservorio)",
-    "Prueba del sistema de ventilación manual y mecánico",
-    "Verificación de alarmas de alta y baja presión",
-    "Revisión de monitores integrados (SpO₂, capnografía)",
-    "Limpieza y desinfección del circuito paciente",
-    "Prueba funcional general del equipo",
+const DEFAULT_PROTO_DATA: { id: string; label: string; sections: { label: string; subItems: string[] }[] }[] = [
+  { id: "anestesia", label: "Máquina de Anestesia", sections: [
+    { label: "VERIFICACIÓN DE COMPONENTES E INSPECCIÓN VISUAL", subItems: [
+      "Estado general del equipo",
+      "Limpieza externa",
+      "Pantalla y panel de control",
+      "Perillas y controles",
+      "Conectores y mangueras",
+      "Sistema de ruedas y frenos",
+      "Cable de alimentación",
+      "Etiquetas y señaléticas",
+    ]},
+    { label: "SISTEMA DE GASES", subItems: [
+      "Conexión a red de gases (O₂, N₂O, Aire)",
+      "Estado de mangueras de gases",
+      "Fugas en conexiones",
+      "Funcionamiento de manómetros",
+      "Funcionamiento de flujómetros",
+      "Sistema de seguridad de oxígeno (fail-safe)",
+    ]},
+    { label: "VAPORIZADORES", subItems: [
+      "Instalación y fijación correcta",
+      "Nivel de agente anestésico",
+      "Funcionamiento del mecanismo de bloqueo",
+      "Prueba de estanqueidad del vaporizador",
+    ]},
+    { label: "CIRCUITO PACIENTE", subItems: [
+      "Estado de mangueras y conexiones",
+      "Sistema de absorción de CO₂ (cal sodada)",
+      "Bolsa reservorio",
+      "Mascarilla facial",
+    ]},
+    { label: "VENTILACIÓN Y ALARMAS", subItems: [
+      "Prueba de ventilación manual",
+      "Prueba de ventilación mecánica",
+      "Alarmas de alta y baja presión",
+      "Alarmas de volumen tidal",
+    ]},
+    { label: "MONITORES Y PRUEBA FUNCIONAL", subItems: [
+      "Revisión de monitores integrados (SpO₂, capnografía)",
+      "Limpieza y desinfección del circuito paciente",
+      "Prueba funcional general del equipo",
+    ]},
   ]},
-  { id: "monitor", label: "Monitor Multiparámetro", itemLabels: [
-    "Inspección visual del equipo, pantalla y carcasa",
-    "Revisión de cables y electrodos ECG",
-    "Verificación del módulo SpO₂ (oximetría de pulso)",
-    "Verificación del módulo NIBP (presión arterial no invasiva)",
-    "Verificación del módulo de temperatura",
-    "Revisión y prueba de batería / sistema de carga",
-    "Prueba de alarmas sonoras y visuales",
-    "Verificación de fecha y hora del sistema",
-    "Limpieza de pantalla táctil y superficie del equipo",
-    "Prueba funcional completa con paciente simulado",
+  { id: "monitor", label: "Monitor Multiparámetro", sections: [
+    { label: "VERIFICACIÓN VISUAL Y COMPONENTES", subItems: [
+      "Inspección visual del equipo, pantalla y carcasa",
+      "Revisión de cables y electrodos ECG",
+      "Limpieza de pantalla táctil y superficie del equipo",
+    ]},
+    { label: "MÓDULOS CLÍNICOS", subItems: [
+      "Módulo SpO₂ (oximetría de pulso)",
+      "Módulo NIBP (presión arterial no invasiva)",
+      "Módulo de temperatura",
+    ]},
+    { label: "SISTEMA Y ALARMAS", subItems: [
+      "Batería y sistema de carga",
+      "Fecha y hora del sistema",
+      "Prueba de alarmas sonoras y visuales",
+    ]},
+    { label: "PRUEBA FUNCIONAL", subItems: [
+      "Prueba funcional completa con paciente simulado",
+    ]},
   ]},
-  { id: "impedancia", label: "Analizador Corporal por Impedancia", itemLabels: [
-    "Inspección visual del equipo y accesorios",
-    "Revisión de electrodos y cables de medición",
-    "Verificación de calibración interna",
-    "Prueba de reproducibilidad de mediciones",
-    "Revisión de la plataforma de pesaje integrada",
-    "Actualización de software si corresponde",
-    "Limpieza y desinfección de electrodos y superficie",
-    "Prueba funcional general del equipo",
+  { id: "impedancia", label: "Analizador Corporal por Impedancia", sections: [
+    { label: "VERIFICACIÓN VISUAL Y COMPONENTES", subItems: [
+      "Inspección visual del equipo y accesorios",
+      "Revisión de electrodos y cables de medición",
+      "Limpieza y desinfección de electrodos y superficie",
+    ]},
+    { label: "CALIBRACIÓN Y FUNCIONAMIENTO", subItems: [
+      "Verificación de calibración interna",
+      "Prueba de reproducibilidad de mediciones",
+      "Revisión de la plataforma de pesaje integrada",
+      "Actualización de software si corresponde",
+    ]},
+    { label: "PRUEBA FUNCIONAL", subItems: [
+      "Prueba funcional general del equipo",
+    ]},
   ]},
-  { id: "balanza", label: "Balanza", itemLabels: [
-    "Inspección visual del equipo y plataforma",
-    "Verificación de nivelación (burbuja de nivel)",
-    "Encendido y periodo de calentamiento",
-    "Prueba de cero / tara",
-    "Calibración con pesas patrón certificadas",
-    "Verificación de repetibilidad (3 pesadas con misma carga)",
-    "Prueba con carga máxima",
-    "Revisión del indicador digital y display",
-    "Limpieza de plataforma y estructura del equipo",
-    "Prueba funcional general",
+  { id: "balanza", label: "Balanza", sections: [
+    { label: "VERIFICACIÓN VISUAL Y NIVELACIÓN", subItems: [
+      "Inspección visual del equipo y plataforma",
+      "Verificación de nivelación (burbuja de nivel)",
+      "Revisión del indicador digital y display",
+    ]},
+    { label: "CALIBRACIÓN", subItems: [
+      "Encendido y período de calentamiento",
+      "Prueba de cero / tara",
+      "Calibración con pesas patrón certificadas",
+      "Verificación de repetibilidad (3 pesadas con misma carga)",
+      "Prueba con carga máxima",
+    ]},
+    { label: "PRUEBA FUNCIONAL", subItems: [
+      "Limpieza de plataforma y estructura del equipo",
+      "Prueba funcional general",
+    ]},
   ]},
-  { id: "ecg", label: "Electrocardiógrafo", itemLabels: [
-    "Inspección visual del equipo y accesorios",
-    "Revisión de cables de derivaciones y electrodos",
-    "Verificación de calibración de señal (1 mV = 10 mm)",
-    "Verificación de velocidad de papel (25 mm/s)",
-    "Prueba de todas las derivaciones (I, II, III, aVR, aVL, aVF, V1-V6)",
-    "Revisión de filtros (60 Hz, EMG)",
-    "Verificación de impresora y papel de registro",
-    "Revisión de batería y sistema de carga",
-    "Limpieza de electrodos y superficies del equipo",
-    "Prueba funcional general del equipo",
+  { id: "ecg", label: "Electrocardiógrafo", sections: [
+    { label: "VERIFICACIÓN VISUAL Y COMPONENTES", subItems: [
+      "Inspección visual del equipo y accesorios",
+      "Revisión de cables de derivaciones y electrodos",
+      "Verificación de impresora y papel de registro",
+      "Revisión de batería y sistema de carga",
+    ]},
+    { label: "CALIBRACIÓN Y SEÑAL", subItems: [
+      "Verificación de calibración de señal (1 mV = 10 mm)",
+      "Verificación de velocidad de papel (25 mm/s)",
+      "Prueba de todas las derivaciones (I, II, III, aVR, aVL, aVF, V1–V6)",
+      "Revisión de filtros (60 Hz, EMG)",
+    ]},
+    { label: "PRUEBA FUNCIONAL", subItems: [
+      "Limpieza de electrodos y superficies del equipo",
+      "Prueba funcional general del equipo",
+    ]},
   ]},
-  { id: "espirometro", label: "Espirómetro", itemLabels: [
-    "Inspección visual del equipo, turbina y accesorios",
-    "Revisión del sensor de flujo / turbina",
-    "Calibración con jeringa de 3L (±3.5%)",
-    "Verificación de prueba FVC (Capacidad Vital Forzada)",
-    "Verificación de prueba FEV1",
-    "Verificación de prueba PEF (Flujo espiratorio máximo)",
-    "Revisión de software e interfaz de usuario",
-    "Verificación de impresora o conectividad de exportación",
-    "Revisión de batería y sistema de carga",
-    "Limpieza y desinfección de turbina y boquillas",
-    "Prueba funcional general del equipo",
+  { id: "espirometro", label: "Espirómetro", sections: [
+    { label: "VERIFICACIÓN VISUAL Y COMPONENTES", subItems: [
+      "Inspección visual del equipo, turbina y accesorios",
+      "Revisión del sensor de flujo / turbina",
+      "Verificación de impresora o conectividad de exportación",
+      "Revisión de batería y sistema de carga",
+    ]},
+    { label: "CALIBRACIÓN", subItems: [
+      "Calibración con jeringa de 3 L (±3.5%)",
+      "Verificación de prueba FVC (Capacidad Vital Forzada)",
+      "Verificación de prueba FEV1",
+      "Verificación de prueba PEF (Flujo espiratorio máximo)",
+    ]},
+    { label: "SOFTWARE Y PRUEBA FUNCIONAL", subItems: [
+      "Revisión de software e interfaz de usuario",
+      "Limpieza y desinfección de turbina y boquillas",
+      "Prueba funcional general del equipo",
+    ]},
   ]},
-  { id: "calorico", label: "Estimulador Calórico", itemLabels: [
-    "Inspección visual del equipo y accesorios (cánulas, tubing)",
-    "Revisión y limpieza del depósito de agua",
-    "Verificación del sistema de calentamiento (44°C)",
-    "Verificación del sistema de enfriamiento (30°C)",
-    "Control de presión y caudal de irrigación",
-    "Prueba de ciclo completo (caliente / frío / aire)",
-    "Revisión de alarmas y protecciones de seguridad",
-    "Calibración del temporizador de irrigación",
-    "Limpieza y desinfección de cánulas y accesorios",
-    "Prueba funcional general del equipo",
+  { id: "calorico", label: "Estimulador Calórico", sections: [
+    { label: "VERIFICACIÓN VISUAL Y COMPONENTES", subItems: [
+      "Inspección visual del equipo y accesorios (cánulas, tubing)",
+      "Revisión y limpieza del depósito de agua",
+      "Revisión de alarmas y protecciones de seguridad",
+    ]},
+    { label: "SISTEMA TÉRMICO", subItems: [
+      "Verificación del sistema de calentamiento (44°C)",
+      "Verificación del sistema de enfriamiento (30°C)",
+      "Control de presión y caudal de irrigación",
+      "Calibración del temporizador de irrigación",
+    ]},
+    { label: "PRUEBA FUNCIONAL", subItems: [
+      "Prueba de ciclo completo (caliente / frío / aire)",
+      "Limpieza y desinfección de cánulas y accesorios",
+      "Prueba funcional general del equipo",
+    ]},
   ]},
-  { id: "optotipos", label: "Proyector de Optotipos", itemLabels: [
-    "Inspección visual del equipo, lentes y espejo de proyección",
-    "Verificación de uniformidad de iluminación en pantalla",
-    "Revisión del motor y mecanismo de rotación de optotipos",
-    "Prueba de todos los optotipos disponibles (letras, números, símbolos)",
-    "Verificación de la distancia focal de proyección (5 o 6 metros)",
-    "Control del nivel de contraste de imágenes proyectadas",
-    "Revisión del panel de control / control remoto",
-    "Limpieza de lentes, espejo y superficie del equipo",
-    "Prueba funcional general del equipo",
+  { id: "optotipos", label: "Proyector de Optotipos", sections: [
+    { label: "VERIFICACIÓN VISUAL Y COMPONENTES", subItems: [
+      "Inspección visual del equipo, lentes y espejo de proyección",
+      "Revisión del motor y mecanismo de rotación de optotipos",
+      "Revisión del panel de control / control remoto",
+    ]},
+    { label: "VERIFICACIÓN ÓPTICA", subItems: [
+      "Verificación de uniformidad de iluminación en pantalla",
+      "Prueba de todos los optotipos disponibles (letras, números, símbolos)",
+      "Verificación de la distancia focal de proyección (5 o 6 metros)",
+      "Control del nivel de contraste de imágenes proyectadas",
+    ]},
+    { label: "PRUEBA FUNCIONAL", subItems: [
+      "Limpieza de lentes, espejo y superficie del equipo",
+      "Prueba funcional general del equipo",
+    ]},
   ]},
 ];
 
@@ -3105,7 +3177,11 @@ function defaultProtoTemplates(): ProtoTemplate[] {
   return DEFAULT_PROTO_DATA.map((p) => ({
     id: p.id,
     label: p.label,
-    items: p.itemLabels.map((label, i) => ({ id: `${p.id}_${i}`, label, subItems: [] })),
+    items: p.sections.map((s, si) => ({
+      id: `${p.id}_s${si}`,
+      label: s.label,
+      subItems: s.subItems.map((label, j) => ({ id: `${p.id}_s${si}_${j}`, label })),
+    })),
     conclusions: [],
   }));
 }
@@ -3126,12 +3202,10 @@ function persistTemplates(t: ProtoTemplate[]) {
   try { localStorage.setItem(PROTO_KEY, JSON.stringify(t)); } catch {}
 }
 
-function initFill(tpl: ProtoTemplate): Record<string, ItemFill> {
-  const f: Record<string, ItemFill> = {};
+function initSubFill(tpl: ProtoTemplate): Record<string, SubFill> {
+  const f: Record<string, SubFill> = {};
   tpl.items.forEach((item) => {
-    const subItems: Record<string, string> = {};
-    item.subItems.forEach((s) => { subItems[s.id] = ""; });
-    f[item.id] = { estado: "", nota: "", subItems };
+    item.subItems.forEach((s) => { f[s.id] = { pasa: "", obs: "" }; });
   });
   return f;
 }
@@ -3160,49 +3234,65 @@ function buildProtocolHtml(params: {
   template: ProtoTemplate;
   cliente: Cliente;
   marca: string; modelo: string; anio: string; serie: string; servicio: string; tecnico: string; fecha: string;
-  itemFill: Record<string, ItemFill>;
+  subFill: Record<string, SubFill>;
   conclusionFill: Record<string, boolean>;
   observaciones: string;
   photos: string[];
   signature: string;
 }): string {
-  const { template, cliente, marca, modelo, anio, serie, servicio, tecnico, fecha, itemFill, conclusionFill, observaciones, photos, signature } = params;
+  const { template, cliente, marca, modelo, anio, serie, servicio, tecnico, fecha, subFill, conclusionFill, observaciones, photos, signature } = params;
 
-  const itemsHtml = template.items.map((item) => {
-    const fill = itemFill[item.id] ?? { estado: "", nota: "", subItems: {} };
-    const badge = fill.estado === "ok"
-      ? `<span style="color:#16a34a;font-weight:700;padding:2px 7px;background:#dcfce7;border-radius:4px;font-size:10px;flex-shrink:0">✓ OK</span>`
-      : fill.estado === "observacion"
-      ? `<span style="color:#d97706;font-weight:700;padding:2px 7px;background:#fef3c7;border-radius:4px;font-size:10px;flex-shrink:0">⚠ Obs.</span>`
-      : fill.estado === "na"
-      ? `<span style="color:#94a3b8;padding:2px 7px;background:#f1f5f9;border-radius:4px;font-size:10px;flex-shrink:0">N/A</span>`
-      : `<span style="color:#cbd5e1;padding:2px 7px;background:#f8fafc;border-radius:4px;font-size:10px;flex-shrink:0">—</span>`;
-    const subHtml = item.subItems.map((sub) => {
-      const selId = fill.subItems[sub.id] ?? "";
-      const optsHtml = sub.options.map((o) =>
-        `<span style="font-size:10px;padding:1px 7px;border-radius:10px;${o.id === selId ? "background:#0e948b;color:#fff;font-weight:700" : "background:#f1f5f9;color:#64748b"}">${o.label}</span>`
-      ).join("");
-      return `<div style="display:flex;align-items:center;gap:6px;margin-top:3px;padding-left:20px;font-size:11px;color:#475569">
-        <span style="color:#cbd5e1">└</span>
-        <span style="min-width:100px">${sub.label}</span>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">${optsHtml}</div>
+  const W_NUM = "34px";
+  const W_CHECK = "42px";
+  const W_OBS = "27%";
+  const borderC = "#d1d5db";
+  const cell = `padding:5px 6px;border-right:1px solid ${borderC};border-bottom:1px solid ${borderC};font-size:11px;line-height:1.4;vertical-align:middle`;
+
+  let rowNum = 0;
+  const sectionsHtml = template.items.map((item) => {
+    const rowsHtml = item.subItems.map((sub) => {
+      rowNum++;
+      const fill = subFill[sub.id] ?? { pasa: "", obs: "" };
+      const checkSi = fill.pasa === "si"
+        ? `<span style="color:#0e948b;font-weight:900;font-size:13px;line-height:1">&#10003;</span>` : "";
+      const checkNo = fill.pasa === "no"
+        ? `<span style="color:#dc2626;font-weight:900;font-size:13px;line-height:1">&#10003;</span>` : "";
+      const bg = rowNum % 2 === 0 ? "#f9fafb" : "#ffffff";
+      return `<div style="display:flex;align-items:stretch;background:${bg}!important;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+        <div style="${cell};width:${W_NUM};min-width:${W_NUM};flex-shrink:0;text-align:center;color:#94a3b8;font-size:10px">${rowNum}</div>
+        <div style="${cell};flex:1">${sub.label}</div>
+        <div style="${cell};width:${W_CHECK};min-width:${W_CHECK};flex-shrink:0;text-align:center">${checkSi}</div>
+        <div style="${cell};width:${W_CHECK};min-width:${W_CHECK};flex-shrink:0;text-align:center">${checkNo}</div>
+        <div style="${cell};width:${W_OBS};min-width:${W_OBS};flex-shrink:0;border-right:none;color:#475569;font-size:10px;white-space:pre-wrap">${fill.obs || ""}</div>
       </div>`;
     }).join("");
-    return `<div class="avoid-break" style="padding:7px 10px;border-bottom:1px solid #f1f5f9">
-      <div style="display:flex;align-items:center;gap:10px">
-        ${badge}
-        <span style="font-size:12px;flex:1">${item.label}</span>
-        ${fill.nota ? `<span style="font-size:10px;color:#64748b;font-style:italic">(${fill.nota})</span>` : ""}
-      </div>
-      ${subHtml}
+    return `<div class="avoid-break">
+      <div style="background:#0e948b!important;color:#fff!important;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:10px;padding:5px 8px;border-bottom:1px solid #0c7a73;-webkit-print-color-adjust:exact;print-color-adjust:exact">${item.label}</div>
+      ${rowsHtml}
     </div>`;
   }).join("");
+
+  const tableHtml = `<div style="border:1px solid ${borderC};border-radius:4px;overflow:hidden;margin-bottom:16px">
+    <div style="display:flex;background:#0f2340!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+      <div style="width:${W_NUM};min-width:${W_NUM};flex-shrink:0;padding:7px 4px;text-align:center;border-right:1px solid rgba(255,255,255,.15);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">No.</div>
+      <div style="flex:1;padding:7px 8px;border-right:1px solid rgba(255,255,255,.15);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Verificación de Componentes</div>
+      <div style="display:flex;flex-direction:column;width:calc(${W_CHECK} * 2);min-width:calc(${W_CHECK} * 2);flex-shrink:0;border-right:1px solid rgba(255,255,255,.15)">
+        <div style="text-align:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.15);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">PASA</div>
+        <div style="display:flex;flex:1">
+          <div style="flex:1;text-align:center;padding:3px 0;border-right:1px solid rgba(255,255,255,.15);font-size:9px;font-weight:700">SI</div>
+          <div style="flex:1;text-align:center;padding:3px 0;font-size:9px;font-weight:700">NO</div>
+        </div>
+      </div>
+      <div style="width:${W_OBS};min-width:${W_OBS};flex-shrink:0;padding:7px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Observaciones</div>
+    </div>
+    ${sectionsHtml}
+  </div>`;
 
   const conclusionsHtml = template.conclusions.length > 0
     ? `<div class="avoid-break"><h3>Conclusiones</h3><div style="padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
         ${template.conclusions.map((c) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px">
-          <span style="width:14px;height:14px;border:1.5px solid ${conclusionFill[c] ? "#0e948b" : "#94a3b8"};border-radius:2px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:${conclusionFill[c] ? "#0e948b" : "transparent"}">
-            ${conclusionFill[c] ? '<span style="color:#fff;font-size:9px;font-weight:700">✓</span>' : ""}
+          <span style="width:14px;height:14px;border:1.5px solid ${conclusionFill[c] ? "#0e948b" : "#94a3b8"};border-radius:2px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:${conclusionFill[c] ? "#0e948b" : "transparent"}!important;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+            ${conclusionFill[c] ? '<span style="color:#fff;font-size:9px;font-weight:700">&#10003;</span>' : ""}
           </span>
           <span style="${conclusionFill[c] ? "font-weight:600" : "color:#475569"}">${c}</span>
         </div>`).join("")}
@@ -3235,8 +3325,6 @@ function buildProtocolHtml(params: {
     .data-block dt{color:#64748b;font-size:12px;white-space:nowrap}
     .data-block dt::after{content:":"}
     .data-block dd{font-size:12px;font-weight:500}
-    .check-wrap{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:16px}
-    .check-hdr{background:#0e948b;color:#fff;padding:8px 10px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
     footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
   </style></head><body>
   <header>
@@ -3269,7 +3357,7 @@ function buildProtocolHtml(params: {
       </dl>
     </div>
   </div>
-  <div class="check-wrap"><div class="check-hdr">Lista de verificación</div>${itemsHtml}</div>
+  ${tableHtml}
   ${obsHtml}
   ${conclusionsHtml}
   ${photosHtml}
@@ -3286,7 +3374,7 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
   const [activeTplId, setActiveTplId] = useState("");
   const [designMode, setDesignMode] = useState(false);
   const [workingTpl, setWorkingTpl] = useState<ProtoTemplate | null>(null);
-  const [itemFill, setItemFill] = useState<Record<string, ItemFill>>({});
+  const [subFill, setSubFill] = useState<Record<string, SubFill>>({});
   const [conclusionFill, setConclusionFill] = useState<Record<string, boolean>>({});
   const [observaciones, setObservaciones] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
@@ -3309,11 +3397,11 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
     const tpl = templates.find((t) => t.id === activeTplId) ?? null;
     if (tpl) {
       setWorkingTpl(JSON.parse(JSON.stringify(tpl)));
-      setItemFill(initFill(tpl));
+      setSubFill(initSubFill(tpl));
       setConclusionFill(initCFill(tpl));
     } else {
       setWorkingTpl(null);
-      setItemFill({});
+      setSubFill({});
       setConclusionFill({});
     }
     setDesignMode(false);
@@ -3394,7 +3482,7 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
     notify("Generando PDF…");
     const fecha = new Date().toLocaleDateString("es-CL");
     try {
-      const html = buildProtocolHtml({ template: workingTpl, cliente: selectedCliente, marca, modelo, anio, serie, servicio, tecnico, fecha, itemFill, conclusionFill, observaciones, photos, signature: getSignatureUrl() });
+      const html = buildProtocolHtml({ template: workingTpl, cliente: selectedCliente, marca, modelo, anio, serie, servicio, tecnico, fecha, subFill, conclusionFill, observaciones, photos, signature: getSignatureUrl() });
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
       const iframe = document.createElement("iframe");
       iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;height:1122px;border:none;visibility:hidden;";
@@ -3438,7 +3526,7 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
       setTemplates(updated); persistTemplates(updated);
       if (activeTplId === editingTpl.id) {
         setWorkingTpl(JSON.parse(JSON.stringify(editingTpl)));
-        setItemFill(initFill(editingTpl));
+        setSubFill(initSubFill(editingTpl));
         setConclusionFill(initCFill(editingTpl));
       }
     }
@@ -3472,7 +3560,9 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
                     <tr key={tpl.id} style={{ borderBottom: "1px solid var(--border)" }}>
                       <td style={{ padding: "10px 4px" }}>
                         <strong>{tpl.label}</strong>
-                        <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 8 }}>{tpl.items.length} ítems · {tpl.conclusions.length} conclusiones</span>
+                        <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 8 }}>
+                          {tpl.items.length} secciones · {tpl.items.reduce((a, it) => a + it.subItems.length, 0)} ítems · {tpl.conclusions.length} conclusiones
+                        </span>
                       </td>
                       <td style={{ width: 80, textAlign: "right", padding: "10px 4px" }}>
                         <button onClick={() => { setEditingTpl(JSON.parse(JSON.stringify(tpl))); setIsNewTpl(false); }} style={{ marginRight: 4, fontSize: 12 }}><Edit3 size={13} /></button>
@@ -3503,37 +3593,27 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
 
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700 }}>Ítems de verificación</span>
-                <button onClick={() => tplSet((t) => ({ ...t, items: [...t.items, { id: pId(), label: "Nuevo ítem", subItems: [] }] }))} style={{ fontSize: 12 }}>
-                  <Plus size={12} style={{ marginRight: 4 }} />Agregar ítem
+                <span style={{ fontSize: 12, fontWeight: 700 }}>Secciones (encabezados celeste)</span>
+                <button onClick={() => tplSet((t) => ({ ...t, items: [...t.items, { id: pId(), label: "Nueva sección", subItems: [] }] }))} style={{ fontSize: 12 }}>
+                  <Plus size={12} style={{ marginRight: 4 }} />Agregar sección
                 </button>
               </div>
               {editingTpl.items.map((item, ii) => (
                 <div key={item.id} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, marginBottom: 8 }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                    <input value={item.label} onChange={(e) => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, label: e.target.value } : it) }))} style={{ flex: 1, fontSize: 13 }} />
+                    <div style={{ width: 10, height: 10, borderRadius: 2, background: "#0e948b", flexShrink: 0 }} />
+                    <input value={item.label} onChange={(e) => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, label: e.target.value } : it) }))} style={{ flex: 1, fontSize: 13, fontWeight: 600 }} />
                     <button onClick={() => tplSet((t) => ({ ...t, items: t.items.filter((_, i) => i !== ii) }))} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 4 }}><Trash2 size={13} /></button>
                   </div>
-                  <div style={{ marginLeft: 12 }}>
+                  <div style={{ marginLeft: 18 }}>
                     {item.subItems.map((sub, si) => (
-                      <div key={sub.id} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 8, marginBottom: 6, background: "var(--bg)" }}>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                          <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>Sub-ítem:</span>
-                          <input value={sub.label} onChange={(e) => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, label: e.target.value } : s) } : it) }))} style={{ flex: 1, fontSize: 12 }} />
-                          <button onClick={() => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.filter((_, j) => j !== si) } : it) }))} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 2 }}><Trash2 size={12} /></button>
-                        </div>
-                        <div style={{ marginLeft: 12, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                          {sub.options.map((opt, oi) => (
-                            <div key={opt.id} style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                              <input value={opt.label} onChange={(e) => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: s.options.map((o, k) => k === oi ? { ...o, label: e.target.value } : o) } : s) } : it) }))} style={{ width: 90, fontSize: 11, padding: "2px 6px" }} />
-                              <button onClick={() => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: s.options.filter((_, k) => k !== oi) } : s) } : it) }))} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 2 }}><X size={10} /></button>
-                            </div>
-                          ))}
-                          <button onClick={() => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: [...s.options, { id: pId(), label: "Opción" }] } : s) } : it) }))} style={{ fontSize: 11, padding: "2px 8px" }}>+ Opción</button>
-                        </div>
+                      <div key={sub.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5, padding: "4px 0", borderBottom: "1px dashed var(--border)" }}>
+                        <span style={{ fontSize: 11, color: "var(--muted)", width: 18, textAlign: "right", flexShrink: 0 }}>{si + 1}.</span>
+                        <input value={sub.label} onChange={(e) => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, label: e.target.value } : s) } : it) }))} style={{ flex: 1, fontSize: 12 }} />
+                        <button onClick={() => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.filter((_, j) => j !== si) } : it) }))} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 2 }}><Trash2 size={12} /></button>
                       </div>
                     ))}
-                    <button onClick={() => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: [...it.subItems, { id: pId(), label: "Nuevo sub-ítem", options: [] }] } : it) }))} style={{ fontSize: 11 }}>+ Sub-ítem</button>
+                    <button onClick={() => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: [...it.subItems, { id: pId(), label: "Nuevo ítem" }] } : it) }))} style={{ fontSize: 11, marginTop: 4 }}>+ Agregar ítem</button>
                   </div>
                 </div>
               ))}
@@ -3567,6 +3647,9 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
   }
 
   // ── FORM VIEW ────────────────────────────────────────────────────────────────
+  const thStyle: React.CSSProperties = { padding: "7px 8px", border: "1px solid #1e3a5f", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.04em", background: "#0f2340", color: "#fff" };
+  const sectionCellStyle: React.CSSProperties = { background: "#0e948b", color: "#fff", fontWeight: 700, textTransform: "uppercase" as const, fontSize: 11, letterSpacing: "0.04em", padding: "5px 10px", border: "1px solid #0c7a73" };
+
   return (
     <section className="stack">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -3651,38 +3734,29 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
               </div>
 
               {designMode ? (
+                /* ── DESIGN MODE ── */
                 <div>
                   {workingTpl.items.map((item, ii) => (
                     <div key={item.id} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, marginBottom: 8 }}>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                        <input value={item.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, label: e.target.value } : it) } : t)} style={{ flex: 1, fontSize: 13 }} />
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: 2, background: "#0e948b", flexShrink: 0 }} />
+                        <input value={item.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, label: e.target.value } : it) } : t)} style={{ flex: 1, fontSize: 13, fontWeight: 600 }} />
                         <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.filter((_, i) => i !== ii) } : t)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 4 }}><Trash2 size={13} /></button>
                       </div>
-                      <div style={{ marginLeft: 12 }}>
+                      <div style={{ marginLeft: 18 }}>
                         {item.subItems.map((sub, si) => (
-                          <div key={sub.id} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 8, marginBottom: 6, background: "var(--bg)" }}>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                              <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>Sub-ítem:</span>
-                              <input value={sub.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, label: e.target.value } : s) } : it) } : t)} style={{ flex: 1, fontSize: 12 }} />
-                              <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.filter((_, j) => j !== si) } : it) } : t)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 2 }}><Trash2 size={12} /></button>
-                            </div>
-                            <div style={{ marginLeft: 12, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                              {sub.options.map((opt, oi) => (
-                                <div key={opt.id} style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                  <input value={opt.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: s.options.map((o, k) => k === oi ? { ...o, label: e.target.value } : o) } : s) } : it) } : t)} style={{ width: 90, fontSize: 11, padding: "2px 6px" }} />
-                                  <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: s.options.filter((_, k) => k !== oi) } : s) } : it) } : t)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 2 }}><X size={10} /></button>
-                                </div>
-                              ))}
-                              <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: [...s.options, { id: pId(), label: "Opción" }] } : s) } : it) } : t)} style={{ fontSize: 11, padding: "2px 8px" }}>+ Opción</button>
-                            </div>
+                          <div key={sub.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5, padding: "4px 0", borderBottom: "1px dashed var(--border)" }}>
+                            <span style={{ fontSize: 11, color: "var(--muted)", width: 18, textAlign: "right", flexShrink: 0 }}>{si + 1}.</span>
+                            <input value={sub.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, label: e.target.value } : s) } : it) } : t)} style={{ flex: 1, fontSize: 12 }} />
+                            <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.filter((_, j) => j !== si) } : it) } : t)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 2 }}><Trash2 size={12} /></button>
                           </div>
                         ))}
-                        <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: [...it.subItems, { id: pId(), label: "Nuevo sub-ítem", options: [] }] } : it) } : t)} style={{ fontSize: 11 }}>+ Sub-ítem</button>
+                        <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: [...it.subItems, { id: pId(), label: "Nuevo ítem" }] } : it) } : t)} style={{ fontSize: 11, marginTop: 4 }}>+ Agregar ítem</button>
                       </div>
                     </div>
                   ))}
-                  <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: [...t.items, { id: pId(), label: "Nuevo ítem", subItems: [] }] } : t)} style={{ marginTop: 4 }}>
-                    <Plus size={12} style={{ marginRight: 4 }} />Agregar ítem
+                  <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: [...t.items, { id: pId(), label: "Nueva sección", subItems: [] }] } : t)} style={{ marginTop: 4 }}>
+                    <Plus size={12} style={{ marginRight: 4 }} />Agregar sección
                   </button>
                   <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -3700,46 +3774,59 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
                   </div>
                 </div>
               ) : (
-                <div>
+                /* ── FILL MODE ── */
+                <div style={{ overflowX: "auto" }}>
                   {workingTpl.items.length === 0 && (
                     <p style={{ color: "var(--muted)", fontSize: 12, padding: "12px 0" }}>No hay ítems. Usa &quot;Editar estructura&quot; para agregar.</p>
                   )}
-                  {workingTpl.items.map((item) => (
-                    <div key={item.id} style={{ borderBottom: "1px solid var(--border)", padding: "8px 0" }}>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                        <span style={{ flex: 1, fontSize: 12, minWidth: 160 }}>{item.label}</span>
-                        {(["ok", "observacion", "na"] as const).map((st) => (
-                          <label key={st} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, cursor: "pointer" }}>
-                            <input type="radio" name={`fill-${item.id}`} checked={(itemFill[item.id]?.estado ?? "") === st}
-                              onChange={() => setItemFill((prev) => ({ ...prev, [item.id]: { ...(prev[item.id] ?? { estado: "", nota: "", subItems: {} }), estado: st } }))} />
-                            {st === "ok" ? "OK" : st === "observacion" ? "Obs." : "N/A"}
-                          </label>
-                        ))}
-                        <input value={itemFill[item.id]?.nota ?? ""} onChange={(e) => setItemFill((prev) => ({ ...prev, [item.id]: { ...(prev[item.id] ?? { estado: "", nota: "", subItems: {} }), nota: e.target.value } }))}
-                          placeholder="Nota..." style={{ fontSize: 11, width: 130, padding: "3px 6px" }} />
-                      </div>
-                      {item.subItems.length > 0 && (
-                        <div style={{ marginTop: 4, marginLeft: 16 }}>
-                          {item.subItems.map((sub) => (
-                            <div key={sub.id} style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 3, flexWrap: "wrap" }}>
-                              <span style={{ fontSize: 11, color: "var(--muted)", minWidth: 120 }}>{sub.label}:</span>
-                              {sub.options.map((opt) => (
-                                <label key={opt.id} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, cursor: "pointer" }}>
-                                  <input type="radio" name={`sub-${sub.id}`}
-                                    checked={(itemFill[item.id]?.subItems ?? {})[sub.id] === opt.id}
-                                    onChange={() => setItemFill((prev) => {
-                                      const cur = prev[item.id] ?? { estado: "", nota: "", subItems: {} };
-                                      return { ...prev, [item.id]: { ...cur, subItems: { ...cur.subItems, [sub.id]: opt.id } } };
-                                    })} />
-                                  {opt.label}
-                                </label>
-                              ))}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  {workingTpl.items.length > 0 && (
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 540 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ ...thStyle, width: 36, textAlign: "center" }}>No.</th>
+                          <th style={{ ...thStyle, textAlign: "left" }}>Verificación</th>
+                          <th style={{ ...thStyle, width: 42, textAlign: "center" }}>SI</th>
+                          <th style={{ ...thStyle, width: 42, textAlign: "center" }}>NO</th>
+                          <th style={{ ...thStyle, textAlign: "left", minWidth: 160 }}>Observaciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          let rowN = 0;
+                          return workingTpl.items.flatMap((item) => {
+                            const sectionRow = (
+                              <tr key={`sec-${item.id}`}>
+                                <td colSpan={5} style={sectionCellStyle}>{item.label}</td>
+                              </tr>
+                            );
+                            const subRows = item.subItems.map((sub) => {
+                              rowN++;
+                              const fill = subFill[sub.id] ?? { pasa: "", obs: "" };
+                              return (
+                                <tr key={sub.id} style={{ background: rowN % 2 === 0 ? "var(--bg)" : "#fff" }}>
+                                  <td style={{ textAlign: "center", padding: "5px 4px", border: "1px solid var(--border)", fontSize: 11, color: "#94a3b8" }}>{rowN}</td>
+                                  <td style={{ padding: "5px 8px", border: "1px solid var(--border)", fontSize: 12 }}>{sub.label}</td>
+                                  <td style={{ textAlign: "center", padding: "5px 4px", border: "1px solid var(--border)" }}>
+                                    <input type="radio" name={`pasa-${sub.id}`} checked={fill.pasa === "si"}
+                                      onChange={() => setSubFill((prev) => ({ ...prev, [sub.id]: { ...(prev[sub.id] ?? { pasa: "", obs: "" }), pasa: "si" } }))} />
+                                  </td>
+                                  <td style={{ textAlign: "center", padding: "5px 4px", border: "1px solid var(--border)" }}>
+                                    <input type="radio" name={`pasa-${sub.id}`} checked={fill.pasa === "no"}
+                                      onChange={() => setSubFill((prev) => ({ ...prev, [sub.id]: { ...(prev[sub.id] ?? { pasa: "", obs: "" }), pasa: "no" } }))} />
+                                  </td>
+                                  <td style={{ padding: "3px 6px", border: "1px solid var(--border)" }}>
+                                    <input value={fill.obs} onChange={(e) => setSubFill((prev) => ({ ...prev, [sub.id]: { ...(prev[sub.id] ?? { pasa: "", obs: "" }), obs: e.target.value } }))}
+                                      style={{ width: "100%", border: "none", background: "transparent", fontSize: 11, padding: "2px 0", outline: "none" }} placeholder="Observaciones..." />
+                                  </td>
+                                </tr>
+                              );
+                            });
+                            return [sectionRow, ...subRows];
+                          });
+                        })()}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               )}
             </div>
@@ -3818,7 +3905,6 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
     </section>
   );
 }
-
 function Modal({
   kind, close, notify, goTo, clientes, catalogo, setCatalogo, plantillas,
   editingLead, editingCliente, editingProducto,
