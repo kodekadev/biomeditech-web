@@ -3008,6 +3008,7 @@ type ProtoSubItem = { id: string; label: string };
 type ProtoItem = { id: string; label: string; subItems: ProtoSubItem[] };
 type ProtoTemplate = { id: string; label: string; items: ProtoItem[]; conclusions: string[] };
 type SubFill = { pasa: "si" | "no" | ""; obs: string };
+type CalibEquipo = { id: string; equipo: string; marca: string; modelo: string; sn: string };
 
 function pId() { return Math.random().toString(36).slice(2, 9); }
 
@@ -3249,8 +3250,10 @@ function buildProtocolHtml(params: {
   observaciones: string;
   photos: string[];
   signature: string;
+  signatureCliente: string;
+  calibEquipos: CalibEquipo[];
 }): string {
-  const { template, cliente, marca, modelo, anio, serie, servicio, tecnico, fecha, subFill, conclusionFill, observaciones, photos, signature } = params;
+  const { template, cliente, marca, modelo, anio, serie, servicio, tecnico, fecha, subFill, conclusionFill, observaciones, photos, signature, signatureCliente, calibEquipos } = params;
 
   const W_NUM = "34px";
   const W_CHECK = "42px";
@@ -3298,6 +3301,29 @@ function buildProtocolHtml(params: {
     ${sectionsHtml}
   </div>`;
 
+  const calibHtml = `<div class="avoid-break" style="margin-bottom:16px">
+    <div style="background:#0f2340!important;color:#fff!important;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:10px;padding:6px 8px;border-radius:4px 4px 0 0;-webkit-print-color-adjust:exact;print-color-adjust:exact">Equipo de Calibración / Simulador</div>
+    <div style="border:1px solid ${borderC};border-top:none;border-radius:0 0 4px 4px;overflow:hidden">
+      <div style="display:flex;background:#e2e8f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+        <div style="width:34px;min-width:34px;flex-shrink:0;padding:5px 4px;text-align:center;border-right:1px solid ${borderC};font-size:9px;font-weight:700;text-transform:uppercase;color:#475569">No.</div>
+        <div style="flex:1;padding:5px 8px;border-right:1px solid ${borderC};font-size:9px;font-weight:700;text-transform:uppercase;color:#475569">Equipo</div>
+        <div style="width:22%;min-width:22%;flex-shrink:0;padding:5px 8px;border-right:1px solid ${borderC};font-size:9px;font-weight:700;text-transform:uppercase;color:#475569">Marca</div>
+        <div style="width:22%;min-width:22%;flex-shrink:0;padding:5px 8px;border-right:1px solid ${borderC};font-size:9px;font-weight:700;text-transform:uppercase;color:#475569">Modelo</div>
+        <div style="width:18%;min-width:18%;flex-shrink:0;padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;color:#475569">SN/</div>
+      </div>
+      ${calibEquipos.map((eq, i) => {
+        const bg = i % 2 === 0 ? "#ffffff" : "#f9fafb";
+        return `<div style="display:flex;align-items:stretch;background:${bg}!important;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+          <div style="${cell};width:34px;min-width:34px;flex-shrink:0;text-align:center;color:#94a3b8;font-size:10px">${i + 1}</div>
+          <div style="${cell};flex:1">${eq.equipo || ""}</div>
+          <div style="${cell};width:22%;min-width:22%;flex-shrink:0">${eq.marca || ""}</div>
+          <div style="${cell};width:22%;min-width:22%;flex-shrink:0">${eq.modelo || ""}</div>
+          <div style="${cell};width:18%;min-width:18%;flex-shrink:0;border-right:none">${eq.sn || ""}</div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>`;
+
   const conclusionsHtml = template.conclusions.length > 0
     ? `<div class="avoid-break"><h3>Conclusiones</h3><div style="padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
         ${template.conclusions.map((c) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px">
@@ -3322,7 +3348,7 @@ function buildProtocolHtml(params: {
 
   const sigBlock = (label: string, src?: string, name?: string) =>
     `<div><div style="min-height:60px;border-bottom:1px solid #1e293b;display:flex;align-items:flex-end;margin-bottom:4px">${src ? `<img src="${src}" style="max-height:56px;max-width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact"/>` : ""}</div><p style="font-size:11px;color:#64748b">${label}${name ? `: <strong>${name}</strong>` : ""}</p><p style="font-size:11px;color:#64748b">Fecha: ${fecha}</p></div>`;
-  const sigHtml = `<div class="avoid-break" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px">${sigBlock("Firma del técnico", signature, tecnico)}${sigBlock("Firma del cliente / responsable")}</div>`;
+  const sigHtml = `<div class="avoid-break" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px">${sigBlock("Firma del técnico", signature, tecnico)}${sigBlock("Firma del cliente / responsable", signatureCliente || undefined)}</div>`;
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${template.label}</title><style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
@@ -3367,6 +3393,7 @@ function buildProtocolHtml(params: {
       </dl>
     </div>
   </div>
+  ${calibHtml}
   ${tableHtml}
   ${obsHtml}
   ${conclusionsHtml}
@@ -3398,10 +3425,18 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
   const [servicio, setServicio] = useState("");
   const [tecnico, setTecnico] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [calibEquipos, setCalibEquipos] = useState<CalibEquipo[]>([
+    { id: pId(), equipo: "", marca: "", modelo: "", sn: "" },
+    { id: pId(), equipo: "", marca: "", modelo: "", sn: "" },
+    { id: pId(), equipo: "", marca: "", modelo: "", sn: "" },
+  ]);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const signatureRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const sigClienteRef = useRef<HTMLCanvasElement>(null);
+  const isDrawingClienteRef = useRef(false);
+  const lastPosClienteRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const tpl = templates.find((t) => t.id === activeTplId) ?? null;
@@ -3454,6 +3489,33 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
     return Array.from(d).some((v, i) => i % 4 === 3 && v > 0) ? c.toDataURL("image/png") : "";
   }
 
+  function startDrawCliente(e: React.MouseEvent | React.TouchEvent) {
+    e.preventDefault();
+    const canvas = sigClienteRef.current; if (!canvas) return;
+    isDrawingClienteRef.current = true;
+    lastPosClienteRef.current = getCanvasPos(e, canvas);
+  }
+  function drawSignatureCliente(e: React.MouseEvent | React.TouchEvent) {
+    e.preventDefault();
+    if (!isDrawingClienteRef.current) return;
+    const canvas = sigClienteRef.current; if (!canvas) return;
+    const ctx = canvas.getContext("2d"); if (!ctx) return;
+    const pos = getCanvasPos(e, canvas);
+    const last = lastPosClienteRef.current ?? pos;
+    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.stroke();
+    lastPosClienteRef.current = pos;
+  }
+  function stopDrawCliente() { isDrawingClienteRef.current = false; lastPosClienteRef.current = null; }
+  function clearSignatureCliente() { const c = sigClienteRef.current; if (!c) return; c.getContext("2d")?.clearRect(0, 0, c.width, c.height); }
+  function getSignatureClienteUrl() {
+    const c = sigClienteRef.current; if (!c) return "";
+    const ctx = c.getContext("2d"); if (!ctx) return "";
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    return Array.from(d).some((v, i) => i % 4 === 3 && v > 0) ? c.toDataURL("image/png") : "";
+  }
+
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     const res: string[] = [];
@@ -3492,7 +3554,7 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
     notify("Generando PDF…");
     const fecha = new Date().toLocaleDateString("es-CL");
     try {
-      const html = buildProtocolHtml({ template: workingTpl, cliente: selectedCliente, marca, modelo, anio, serie, servicio, tecnico, fecha, subFill, conclusionFill, observaciones, photos, signature: getSignatureUrl() });
+      const html = buildProtocolHtml({ template: workingTpl, cliente: selectedCliente, marca, modelo, anio, serie, servicio, tecnico, fecha, subFill, conclusionFill, observaciones, photos, signature: getSignatureUrl(), signatureCliente: getSignatureClienteUrl(), calibEquipos });
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
       const iframe = document.createElement("iframe");
       iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;height:1122px;border:none;visibility:hidden;";
@@ -3674,9 +3736,22 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div className="panel">
             <div className="panel-title" style={{ marginBottom: 12 }}><FileArchive size={16} />Tipo de protocolo</div>
-            <select value={activeTplId} onChange={(e) => setActiveTplId(e.target.value)} style={{ width: "100%" }}>
+            <select value={activeTplId} onChange={(e) => {
+              if (e.target.value === "__new__") {
+                const label = window.prompt("Nombre del nuevo protocolo:");
+                if (!label?.trim()) return;
+                const newTpl: ProtoTemplate = { id: pId(), label: label.trim(), items: [], conclusions: [] };
+                const updated = [...templates, newTpl];
+                setTemplates(updated); persistTemplates(updated);
+                setActiveTplId(newTpl.id);
+                setDesignMode(true);
+              } else {
+                setActiveTplId(e.target.value);
+              }
+            }} style={{ width: "100%" }}>
               <option value="">— Selecciona un protocolo —</option>
               {templates.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+              <option value="__new__">+ Crear nuevo protocolo...</option>
             </select>
           </div>
 
@@ -3746,28 +3821,40 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
               {designMode ? (
                 /* ── DESIGN MODE ── */
                 <div>
+                  <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: [{ id: pId(), label: "Nueva sección", subItems: [] }, ...t.items] } : t)}
+                    style={{ fontSize: 11, marginBottom: 6, background: "#f0fdf4", border: "1px dashed #0e948b", color: "#0e948b", borderRadius: 6, padding: "3px 10px", cursor: "pointer" }}>
+                    + Insertar sección al inicio
+                  </button>
                   {workingTpl.items.map((item, ii) => (
-                    <div key={item.id} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, marginBottom: 8 }}>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: 2, background: "#0e948b", flexShrink: 0 }} />
-                        <input value={item.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, label: e.target.value } : it) } : t)} style={{ flex: 1, fontSize: 13, fontWeight: 600 }} />
-                        <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.filter((_, i) => i !== ii) } : t)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 4 }}><Trash2 size={13} /></button>
+                    <div key={item.id}>
+                      <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, marginBottom: 4 }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: 2, background: "#0e948b", flexShrink: 0 }} />
+                          <input value={item.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, label: e.target.value } : it) } : t)} style={{ flex: 1, fontSize: 13, fontWeight: 600 }} />
+                          <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.filter((_, i) => i !== ii) } : t)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 4 }}><Trash2 size={13} /></button>
+                        </div>
+                        <div style={{ marginLeft: 18 }}>
+                          {item.subItems.map((sub, si) => (
+                            <div key={sub.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5, padding: "4px 0", borderBottom: "1px dashed var(--border)" }}>
+                              <span style={{ fontSize: 11, color: "var(--muted)", width: 18, textAlign: "right", flexShrink: 0 }}>{si + 1}.</span>
+                              <input value={sub.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, label: e.target.value } : s) } : it) } : t)} style={{ flex: 1, fontSize: 12 }} />
+                              <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.filter((_, j) => j !== si) } : it) } : t)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 2 }}><Trash2 size={12} /></button>
+                            </div>
+                          ))}
+                          <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: [...it.subItems, { id: pId(), label: "Nuevo ítem" }] } : it) } : t)} style={{ fontSize: 11, marginTop: 4 }}>+ Agregar ítem</button>
+                        </div>
                       </div>
-                      <div style={{ marginLeft: 18 }}>
-                        {item.subItems.map((sub, si) => (
-                          <div key={sub.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5, padding: "4px 0", borderBottom: "1px dashed var(--border)" }}>
-                            <span style={{ fontSize: 11, color: "var(--muted)", width: 18, textAlign: "right", flexShrink: 0 }}>{si + 1}.</span>
-                            <input value={sub.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, label: e.target.value } : s) } : it) } : t)} style={{ flex: 1, fontSize: 12 }} />
-                            <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.filter((_, j) => j !== si) } : it) } : t)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 2 }}><Trash2 size={12} /></button>
-                          </div>
-                        ))}
-                        <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: [...it.subItems, { id: pId(), label: "Nuevo ítem" }] } : it) } : t)} style={{ fontSize: 11, marginTop: 4 }}>+ Agregar ítem</button>
-                      </div>
+                      <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: [...t.items.slice(0, ii + 1), { id: pId(), label: "Nueva sección", subItems: [] }, ...t.items.slice(ii + 1)] } : t)}
+                        style={{ fontSize: 11, marginBottom: 4, width: "100%", background: "#f0fdf4", border: "1px dashed #0e948b", color: "#0e948b", borderRadius: 6, padding: "3px 10px", cursor: "pointer" }}>
+                        + Insertar sección aquí
+                      </button>
                     </div>
                   ))}
-                  <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: [...t.items, { id: pId(), label: "Nueva sección", subItems: [] }] } : t)} style={{ marginTop: 4 }}>
-                    <Plus size={12} style={{ marginRight: 4 }} />Agregar sección
-                  </button>
+                  {workingTpl.items.length === 0 && (
+                    <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: [...t.items, { id: pId(), label: "Nueva sección", subItems: [] }] } : t)} style={{ marginTop: 4 }}>
+                      <Plus size={12} style={{ marginRight: 4 }} />Agregar sección
+                    </button>
+                  )}
                   <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <span style={{ fontSize: 12, fontWeight: 700 }}>Conclusiones</span>
@@ -3848,6 +3935,49 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
           )}
 
           <div className="panel">
+            <div className="panel-head">
+              <div className="panel-title"><Wrench size={16} />Equipo de Calibración / Simulador</div>
+              <button onClick={() => setCalibEquipos((prev) => [...prev, { id: pId(), equipo: "", marca: "", modelo: "", sn: "" }])} style={{ fontSize: 12 }}>
+                <Plus size={12} style={{ marginRight: 4 }} />Agregar fila
+              </button>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginTop: 8 }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thStyle, width: 32, textAlign: "center" }}>No.</th>
+                  <th style={{ ...thStyle, textAlign: "left" }}>Equipo</th>
+                  <th style={{ ...thStyle, width: "18%", textAlign: "left" }}>Marca</th>
+                  <th style={{ ...thStyle, width: "18%", textAlign: "left" }}>Modelo</th>
+                  <th style={{ ...thStyle, width: "16%", textAlign: "left" }}>SN/</th>
+                  <th style={{ ...thStyle, width: 28 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {calibEquipos.map((eq, i) => (
+                  <tr key={eq.id} style={{ background: i % 2 === 0 ? "#fff" : "var(--bg)" }}>
+                    <td style={{ textAlign: "center", padding: "4px", border: "1px solid var(--border)", color: "#94a3b8", fontSize: 11 }}>{i + 1}</td>
+                    <td style={{ padding: "2px 4px", border: "1px solid var(--border)" }}>
+                      <input value={eq.equipo} onChange={(e) => setCalibEquipos((prev) => prev.map((r, j) => j === i ? { ...r, equipo: e.target.value } : r))} placeholder="Nombre del equipo" style={{ width: "100%", border: "none", background: "transparent", fontSize: 12, padding: "2px 0", outline: "none" }} />
+                    </td>
+                    <td style={{ padding: "2px 4px", border: "1px solid var(--border)" }}>
+                      <input value={eq.marca} onChange={(e) => setCalibEquipos((prev) => prev.map((r, j) => j === i ? { ...r, marca: e.target.value } : r))} placeholder="Marca" style={{ width: "100%", border: "none", background: "transparent", fontSize: 12, padding: "2px 0", outline: "none" }} />
+                    </td>
+                    <td style={{ padding: "2px 4px", border: "1px solid var(--border)" }}>
+                      <input value={eq.modelo} onChange={(e) => setCalibEquipos((prev) => prev.map((r, j) => j === i ? { ...r, modelo: e.target.value } : r))} placeholder="Modelo" style={{ width: "100%", border: "none", background: "transparent", fontSize: 12, padding: "2px 0", outline: "none" }} />
+                    </td>
+                    <td style={{ padding: "2px 4px", border: "1px solid var(--border)" }}>
+                      <input value={eq.sn} onChange={(e) => setCalibEquipos((prev) => prev.map((r, j) => j === i ? { ...r, sn: e.target.value } : r))} placeholder="S/N" style={{ width: "100%", border: "none", background: "transparent", fontSize: 12, padding: "2px 0", outline: "none" }} />
+                    </td>
+                    <td style={{ textAlign: "center", padding: "2px", border: "1px solid var(--border)" }}>
+                      <button onClick={() => setCalibEquipos((prev) => prev.filter((_, j) => j !== i))} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 2 }}><Trash2 size={12} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="panel">
             <div className="panel-title" style={{ marginBottom: 12 }}><FileText size={16} />Observaciones generales</div>
             <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Notas adicionales del servicio..." rows={4} style={{ width: "100%", resize: "vertical" }} />
           </div>
@@ -3886,14 +4016,29 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
           </div>
 
           <div className="panel">
-            <div className="panel-title" style={{ marginBottom: 12 }}><Edit3 size={16} />Firma del técnico</div>
-            <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "#fafafa", userSelect: "none", touchAction: "none" }}>
-              <canvas ref={signatureRef} width={700} height={160} style={{ width: "100%", height: 160, cursor: "crosshair", display: "block" }}
-                onMouseDown={startDraw} onMouseMove={drawSignature} onMouseUp={stopDraw} onMouseLeave={stopDraw}
-                onTouchStart={startDraw} onTouchMove={drawSignature} onTouchEnd={stopDraw}
-              />
+            <div className="panel-title" style={{ marginBottom: 12 }}><Edit3 size={16} />Firmas</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "#475569" }}>Técnico</div>
+                <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "#fafafa", userSelect: "none", touchAction: "none" }}>
+                  <canvas ref={signatureRef} width={700} height={140} style={{ width: "100%", height: 140, cursor: "crosshair", display: "block" }}
+                    onMouseDown={startDraw} onMouseMove={drawSignature} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+                    onTouchStart={startDraw} onTouchMove={drawSignature} onTouchEnd={stopDraw}
+                  />
+                </div>
+                <button onClick={clearSignature} style={{ marginTop: 6, fontSize: 12, background: "none", border: "1px solid var(--border)", color: "var(--muted)" }}>Limpiar</button>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "#475569" }}>Cliente / responsable</div>
+                <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "#fafafa", userSelect: "none", touchAction: "none" }}>
+                  <canvas ref={sigClienteRef} width={700} height={140} style={{ width: "100%", height: 140, cursor: "crosshair", display: "block" }}
+                    onMouseDown={startDrawCliente} onMouseMove={drawSignatureCliente} onMouseUp={stopDrawCliente} onMouseLeave={stopDrawCliente}
+                    onTouchStart={startDrawCliente} onTouchMove={drawSignatureCliente} onTouchEnd={stopDrawCliente}
+                  />
+                </div>
+                <button onClick={clearSignatureCliente} style={{ marginTop: 6, fontSize: 12, background: "none", border: "1px solid var(--border)", color: "var(--muted)" }}>Limpiar</button>
+              </div>
             </div>
-            <button onClick={clearSignature} style={{ marginTop: 8, fontSize: 12, background: "none", border: "1px solid var(--border)", color: "var(--muted)" }}>Limpiar firma</button>
           </div>
         </div>
       </div>
