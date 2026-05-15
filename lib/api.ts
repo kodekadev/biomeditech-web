@@ -582,6 +582,10 @@ export async function updateCotizacion(id: string, patch: { estado: string }): P
   await apiMutate("PATCH", `/api/cotizaciones/${id}`, patch);
 }
 
+export async function deleteCotizacion(id: string): Promise<void> {
+  await apiMutate("DELETE", `/api/cotizaciones/${id}`, undefined);
+}
+
 export async function upsertPlantilla(existingId: string | null, codigo: string, descripcion_larga: string): Promise<string | null> {
   if (existingId) {
     await apiMutate("PATCH", `/api/plantillas/${existingId}`, { descripcion_larga });

@@ -1070,6 +1070,12 @@ export default function CRMPrototype() {
     }
   }
 
+  async function handleDeleteCotizacion(id: string) {
+    setCotizaciones((prev) => prev.filter((c) => c.id !== id));
+    await api.deleteCotizacion(id);
+    notify("Cotización eliminada");
+  }
+
   function handleUpsertPlantilla(existingId: string | null, codigo: string, descripcion: string) {
     setPlantillas((prev) => {
       const idx = prev.findIndex((p) => p.codigo === codigo);
@@ -1520,7 +1526,7 @@ export default function CRMPrototype() {
 
           {active === "historial" && (
             <section className="stack">
-              <HistorialModule cotizaciones={cotizaciones} clientes={clientes} onVerCotizacion={handleVerCotizacion} onUpdateEstado={handleUpdateCotizacionEstado} onDescargarCotizacion={handleDescargarCotizacion} />
+              <HistorialModule cotizaciones={cotizaciones} clientes={clientes} onVerCotizacion={handleVerCotizacion} onUpdateEstado={handleUpdateCotizacionEstado} onDescargarCotizacion={handleDescargarCotizacion} onDeleteCotizacion={handleDeleteCotizacion} />
             </section>
           )}
 
@@ -2849,12 +2855,13 @@ function PeriodoPicker({ anio, mes, fechas, onAnio, onMes }: {
 
 const COT_ESTADOS = ["Pendiente", "En revisión", "Aprobada", "Rechazada"];
 
-function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEstado, onDescargarCotizacion }: {
+function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEstado, onDescargarCotizacion, onDeleteCotizacion }: {
   cotizaciones: Cotizacion[];
   clientes: Cliente[];
   onVerCotizacion: (id: string) => void;
   onUpdateEstado: (id: string, estado: string) => void;
   onDescargarCotizacion: (id: string) => void;
+  onDeleteCotizacion: (id: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("");
@@ -2979,6 +2986,9 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
                       </button>
                       <button onClick={() => onDescargarCotizacion(cot.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0f2340", fontWeight: 600, background: "none", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}>
                         <Download size={13} />Descargar
+                      </button>
+                      <button onClick={() => { if (!confirm(`¿Eliminar cotización ${cot.nro}? Esta acción no se puede deshacer.`)) return; onDeleteCotizacion(cot.id); }} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#dc2626", fontWeight: 600, background: "none", border: "1px solid #fecaca", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}>
+                        <Trash2 size={13} />Eliminar
                       </button>
                     </div>
                   : <span style={{ color: "#cbd5e0", fontSize: 12 }}>emitiendo…</span>
