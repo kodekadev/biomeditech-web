@@ -2992,171 +2992,239 @@ function HistorialModule({ cotizaciones, clientes, onVerCotizacion, onUpdateEsta
   );
 }
 
-const PROTOCOL_TYPES = [
-  {
-    id: "anestesia",
-    label: "Máquina de Anestesia",
-    items: [
-      "Inspección visual de mangueras y conexiones de gas",
-      "Verificación de válvulas de retención y reguladores de presión",
-      "Prueba de estanqueidad del sistema de gas (leak test)",
-      "Revisión y calibración del vaporizador",
-      "Verificación del sistema de absorción de CO₂ (cal soda)",
-      "Control de presiones de gas (O₂, N₂O, aire)",
-      "Revisión del circuito paciente (mangueras, mascarilla, bolsa reservorio)",
-      "Prueba del sistema de ventilación manual y mecánico",
-      "Verificación de alarmas de alta y baja presión",
-      "Revisión de monitores integrados (SpO₂, capnografía)",
-      "Limpieza y desinfección del circuito paciente",
-      "Prueba funcional general del equipo",
-    ],
-  },
-  {
-    id: "monitor",
-    label: "Monitor Multiparámetro",
-    items: [
-      "Inspección visual del equipo, pantalla y carcasa",
-      "Revisión de cables y electrodos ECG",
-      "Verificación del módulo SpO₂ (oximetría de pulso)",
-      "Verificación del módulo NIBP (presión arterial no invasiva)",
-      "Verificación del módulo de temperatura",
-      "Revisión y prueba de batería / sistema de carga",
-      "Prueba de alarmas sonoras y visuales",
-      "Verificación de fecha y hora del sistema",
-      "Limpieza de pantalla táctil y superficie del equipo",
-      "Prueba funcional completa con paciente simulado",
-    ],
-  },
-  {
-    id: "impedancia",
-    label: "Analizador Corporal por Impedancia",
-    items: [
-      "Inspección visual del equipo y accesorios",
-      "Revisión de electrodos y cables de medición",
-      "Verificación de calibración interna",
-      "Prueba de reproducibilidad de mediciones",
-      "Revisión de la plataforma de pesaje integrada",
-      "Actualización de software si corresponde",
-      "Limpieza y desinfección de electrodos y superficie",
-      "Prueba funcional general del equipo",
-    ],
-  },
-  {
-    id: "balanza",
-    label: "Balanza",
-    items: [
-      "Inspección visual del equipo y plataforma",
-      "Verificación de nivelación (burbuja de nivel)",
-      "Encendido y periodo de calentamiento",
-      "Prueba de cero / tara",
-      "Calibración con pesas patrón certificadas",
-      "Verificación de repetibilidad (3 pesadas con misma carga)",
-      "Prueba con carga máxima",
-      "Revisión del indicador digital y display",
-      "Limpieza de plataforma y estructura del equipo",
-      "Prueba funcional general",
-    ],
-  },
-  {
-    id: "ecg",
-    label: "Electrocardiógrafo",
-    items: [
-      "Inspección visual del equipo y accesorios",
-      "Revisión de cables de derivaciones y electrodos",
-      "Verificación de calibración de señal (1 mV = 10 mm)",
-      "Verificación de velocidad de papel (25 mm/s)",
-      "Prueba de todas las derivaciones (I, II, III, aVR, aVL, aVF, V1-V6)",
-      "Revisión de filtros (60 Hz, EMG)",
-      "Verificación de impresora y papel de registro",
-      "Revisión de batería y sistema de carga",
-      "Limpieza de electrodos y superficies del equipo",
-      "Prueba funcional general del equipo",
-    ],
-  },
-  {
-    id: "espirometro",
-    label: "Espirómetro",
-    items: [
-      "Inspección visual del equipo, turbina y accesorios",
-      "Revisión del sensor de flujo / turbina",
-      "Calibración con jeringa de 3L (±3.5%)",
-      "Verificación de prueba FVC (Capacidad Vital Forzada)",
-      "Verificación de prueba FEV1",
-      "Verificación de prueba PEF (Flujo espiratorio máximo)",
-      "Revisión de software e interfaz de usuario",
-      "Verificación de impresora o conectividad de exportación",
-      "Revisión de batería y sistema de carga",
-      "Limpieza y desinfección de turbina y boquillas",
-      "Prueba funcional general del equipo",
-    ],
-  },
-  {
-    id: "calorico",
-    label: "Estimulador Calórico",
-    items: [
-      "Inspección visual del equipo y accesorios (cánulas, tubing)",
-      "Revisión y limpieza del depósito de agua",
-      "Verificación del sistema de calentamiento (temperatura 44°C)",
-      "Verificación del sistema de enfriamiento (temperatura 30°C)",
-      "Control de presión y caudal de irrigación",
-      "Prueba de ciclo completo (caliente / frío / aire)",
-      "Revisión de alarmas y protecciones de seguridad",
-      "Calibración del temporizador de irrigación",
-      "Limpieza y desinfección de cánulas y accesorios",
-      "Prueba funcional general del equipo",
-    ],
-  },
-  {
-    id: "optotipos",
-    label: "Proyector de Optotipos",
-    items: [
-      "Inspección visual del equipo, lentes y espejo de proyección",
-      "Verificación de uniformidad de iluminación en pantalla",
-      "Revisión del motor y mecanismo de rotación de optotipos",
-      "Prueba de todos los optotipos disponibles (letras, números, símbolos)",
-      "Verificación de la distancia focal de proyección (5 o 6 metros)",
-      "Control del nivel de contraste de imágenes proyectadas",
-      "Revisión del panel de control / control remoto",
-      "Limpieza de lentes, espejo y superficie del equipo",
-      "Prueba funcional general del equipo",
-    ],
-  },
+// ── Tipos Protocolos ──────────────────────────────────────────────────────────
+
+type ProtoOption = { id: string; label: string };
+type ProtoSubItem = { id: string; label: string; options: ProtoOption[] };
+type ProtoItem = { id: string; label: string; subItems: ProtoSubItem[] };
+type ProtoTemplate = { id: string; label: string; items: ProtoItem[]; conclusions: string[] };
+type ItemFill = { estado: "ok" | "observacion" | "na" | ""; nota: string; subItems: Record<string, string> };
+
+function pId() { return Math.random().toString(36).slice(2, 9); }
+
+const DEFAULT_PROTO_DATA: { id: string; label: string; itemLabels: string[] }[] = [
+  { id: "anestesia", label: "Máquina de Anestesia", itemLabels: [
+    "Inspección visual de mangueras y conexiones de gas",
+    "Verificación de válvulas de retención y reguladores de presión",
+    "Prueba de estanqueidad del sistema de gas (leak test)",
+    "Revisión y calibración del vaporizador",
+    "Verificación del sistema de absorción de CO₂ (cal soda)",
+    "Control de presiones de gas (O₂, N₂O, aire)",
+    "Revisión del circuito paciente (mangueras, mascarilla, bolsa reservorio)",
+    "Prueba del sistema de ventilación manual y mecánico",
+    "Verificación de alarmas de alta y baja presión",
+    "Revisión de monitores integrados (SpO₂, capnografía)",
+    "Limpieza y desinfección del circuito paciente",
+    "Prueba funcional general del equipo",
+  ]},
+  { id: "monitor", label: "Monitor Multiparámetro", itemLabels: [
+    "Inspección visual del equipo, pantalla y carcasa",
+    "Revisión de cables y electrodos ECG",
+    "Verificación del módulo SpO₂ (oximetría de pulso)",
+    "Verificación del módulo NIBP (presión arterial no invasiva)",
+    "Verificación del módulo de temperatura",
+    "Revisión y prueba de batería / sistema de carga",
+    "Prueba de alarmas sonoras y visuales",
+    "Verificación de fecha y hora del sistema",
+    "Limpieza de pantalla táctil y superficie del equipo",
+    "Prueba funcional completa con paciente simulado",
+  ]},
+  { id: "impedancia", label: "Analizador Corporal por Impedancia", itemLabels: [
+    "Inspección visual del equipo y accesorios",
+    "Revisión de electrodos y cables de medición",
+    "Verificación de calibración interna",
+    "Prueba de reproducibilidad de mediciones",
+    "Revisión de la plataforma de pesaje integrada",
+    "Actualización de software si corresponde",
+    "Limpieza y desinfección de electrodos y superficie",
+    "Prueba funcional general del equipo",
+  ]},
+  { id: "balanza", label: "Balanza", itemLabels: [
+    "Inspección visual del equipo y plataforma",
+    "Verificación de nivelación (burbuja de nivel)",
+    "Encendido y periodo de calentamiento",
+    "Prueba de cero / tara",
+    "Calibración con pesas patrón certificadas",
+    "Verificación de repetibilidad (3 pesadas con misma carga)",
+    "Prueba con carga máxima",
+    "Revisión del indicador digital y display",
+    "Limpieza de plataforma y estructura del equipo",
+    "Prueba funcional general",
+  ]},
+  { id: "ecg", label: "Electrocardiógrafo", itemLabels: [
+    "Inspección visual del equipo y accesorios",
+    "Revisión de cables de derivaciones y electrodos",
+    "Verificación de calibración de señal (1 mV = 10 mm)",
+    "Verificación de velocidad de papel (25 mm/s)",
+    "Prueba de todas las derivaciones (I, II, III, aVR, aVL, aVF, V1-V6)",
+    "Revisión de filtros (60 Hz, EMG)",
+    "Verificación de impresora y papel de registro",
+    "Revisión de batería y sistema de carga",
+    "Limpieza de electrodos y superficies del equipo",
+    "Prueba funcional general del equipo",
+  ]},
+  { id: "espirometro", label: "Espirómetro", itemLabels: [
+    "Inspección visual del equipo, turbina y accesorios",
+    "Revisión del sensor de flujo / turbina",
+    "Calibración con jeringa de 3L (±3.5%)",
+    "Verificación de prueba FVC (Capacidad Vital Forzada)",
+    "Verificación de prueba FEV1",
+    "Verificación de prueba PEF (Flujo espiratorio máximo)",
+    "Revisión de software e interfaz de usuario",
+    "Verificación de impresora o conectividad de exportación",
+    "Revisión de batería y sistema de carga",
+    "Limpieza y desinfección de turbina y boquillas",
+    "Prueba funcional general del equipo",
+  ]},
+  { id: "calorico", label: "Estimulador Calórico", itemLabels: [
+    "Inspección visual del equipo y accesorios (cánulas, tubing)",
+    "Revisión y limpieza del depósito de agua",
+    "Verificación del sistema de calentamiento (44°C)",
+    "Verificación del sistema de enfriamiento (30°C)",
+    "Control de presión y caudal de irrigación",
+    "Prueba de ciclo completo (caliente / frío / aire)",
+    "Revisión de alarmas y protecciones de seguridad",
+    "Calibración del temporizador de irrigación",
+    "Limpieza y desinfección de cánulas y accesorios",
+    "Prueba funcional general del equipo",
+  ]},
+  { id: "optotipos", label: "Proyector de Optotipos", itemLabels: [
+    "Inspección visual del equipo, lentes y espejo de proyección",
+    "Verificación de uniformidad de iluminación en pantalla",
+    "Revisión del motor y mecanismo de rotación de optotipos",
+    "Prueba de todos los optotipos disponibles (letras, números, símbolos)",
+    "Verificación de la distancia focal de proyección (5 o 6 metros)",
+    "Control del nivel de contraste de imágenes proyectadas",
+    "Revisión del panel de control / control remoto",
+    "Limpieza de lentes, espejo y superficie del equipo",
+    "Prueba funcional general del equipo",
+  ]},
 ];
 
-type ProtocolCheckItem = { label: string; estado: "ok" | "observacion" | "na" | ""; nota: string };
+function defaultProtoTemplates(): ProtoTemplate[] {
+  return DEFAULT_PROTO_DATA.map((p) => ({
+    id: p.id,
+    label: p.label,
+    items: p.itemLabels.map((label, i) => ({ id: `${p.id}_${i}`, label, subItems: [] })),
+    conclusions: [],
+  }));
+}
+
+const PROTO_KEY = "crm_proto_templates";
+
+function loadTemplates(): ProtoTemplate[] {
+  try {
+    if (typeof window !== "undefined") {
+      const s = localStorage.getItem(PROTO_KEY);
+      if (s) return JSON.parse(s);
+    }
+  } catch {}
+  return defaultProtoTemplates();
+}
+
+function persistTemplates(t: ProtoTemplate[]) {
+  try { localStorage.setItem(PROTO_KEY, JSON.stringify(t)); } catch {}
+}
+
+function initFill(tpl: ProtoTemplate): Record<string, ItemFill> {
+  const f: Record<string, ItemFill> = {};
+  tpl.items.forEach((item) => {
+    const subItems: Record<string, string> = {};
+    item.subItems.forEach((s) => { subItems[s.id] = ""; });
+    f[item.id] = { estado: "", nota: "", subItems };
+  });
+  return f;
+}
+
+function initCFill(tpl: ProtoTemplate): Record<string, boolean> {
+  const f: Record<string, boolean> = {};
+  tpl.conclusions.forEach((c) => { f[c] = false; });
+  return f;
+}
+
+function applyPageBreakFix(iDoc: Document) {
+  const PAGE_H = 1122;
+  const els = iDoc.querySelectorAll<HTMLElement>(".avoid-break");
+  els.forEach((el) => {
+    const top = el.offsetTop;
+    const h = el.offsetHeight;
+    if (h >= PAGE_H) return;
+    const pageEnd = (Math.floor(top / PAGE_H) + 1) * PAGE_H;
+    if (top + h > pageEnd) {
+      el.style.marginTop = (parseFloat(el.style.marginTop || "0") + pageEnd - top) + "px";
+    }
+  });
+}
 
 function buildProtocolHtml(params: {
-  protocolLabel: string;
+  template: ProtoTemplate;
   cliente: Cliente;
-  marca: string;
-  modelo: string;
-  anio: string;
-  serie: string;
-  servicio: string;
-  tecnico: string;
-  fecha: string;
-  checklist: ProtocolCheckItem[];
+  marca: string; modelo: string; anio: string; serie: string; servicio: string; tecnico: string; fecha: string;
+  itemFill: Record<string, ItemFill>;
+  conclusionFill: Record<string, boolean>;
   observaciones: string;
   photos: string[];
   signature: string;
 }): string {
-  const { protocolLabel, cliente, marca, modelo, anio, serie, servicio, tecnico, fecha, checklist, observaciones, photos, signature } = params;
-  const checkRows = checklist.map((item, i) => `
-    <tr>
-      <td style="text-align:center;color:#94a3b8;font-size:11px">${i + 1}</td>
-      <td>${item.label}</td>
-      <td style="text-align:center">${item.estado === "ok" ? '<span style="color:#16a34a;font-weight:700">✓</span>' : ""}</td>
-      <td style="text-align:center">${item.estado === "observacion" ? '<span style="color:#d97706;font-weight:700">⚠</span>' : ""}</td>
-      <td style="text-align:center">${item.estado === "na" ? '<span style="color:#94a3b8;font-size:11px">N/A</span>' : ""}</td>
-      <td style="font-size:11px;color:#475569">${item.nota || ""}</td>
-    </tr>`).join("");
-  const photosHtml = photos.length > 0
-    ? `<div style="margin-top:16px"><h3>Evidencia fotográfica</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">${photos.map((p) => `<img src="${p}" style="width:100%;height:150px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;-webkit-print-color-adjust:exact;print-color-adjust:exact"/>`).join("")}</div></div>`
+  const { template, cliente, marca, modelo, anio, serie, servicio, tecnico, fecha, itemFill, conclusionFill, observaciones, photos, signature } = params;
+
+  const itemsHtml = template.items.map((item) => {
+    const fill = itemFill[item.id] ?? { estado: "", nota: "", subItems: {} };
+    const badge = fill.estado === "ok"
+      ? `<span style="color:#16a34a;font-weight:700;padding:2px 7px;background:#dcfce7;border-radius:4px;font-size:10px;flex-shrink:0">✓ OK</span>`
+      : fill.estado === "observacion"
+      ? `<span style="color:#d97706;font-weight:700;padding:2px 7px;background:#fef3c7;border-radius:4px;font-size:10px;flex-shrink:0">⚠ Obs.</span>`
+      : fill.estado === "na"
+      ? `<span style="color:#94a3b8;padding:2px 7px;background:#f1f5f9;border-radius:4px;font-size:10px;flex-shrink:0">N/A</span>`
+      : `<span style="color:#cbd5e1;padding:2px 7px;background:#f8fafc;border-radius:4px;font-size:10px;flex-shrink:0">—</span>`;
+    const subHtml = item.subItems.map((sub) => {
+      const selId = fill.subItems[sub.id] ?? "";
+      const optsHtml = sub.options.map((o) =>
+        `<span style="font-size:10px;padding:1px 7px;border-radius:10px;${o.id === selId ? "background:#0e948b;color:#fff;font-weight:700" : "background:#f1f5f9;color:#64748b"}">${o.label}</span>`
+      ).join("");
+      return `<div style="display:flex;align-items:center;gap:6px;margin-top:3px;padding-left:20px;font-size:11px;color:#475569">
+        <span style="color:#cbd5e1">└</span>
+        <span style="min-width:100px">${sub.label}</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${optsHtml}</div>
+      </div>`;
+    }).join("");
+    return `<div class="avoid-break" style="padding:7px 10px;border-bottom:1px solid #f1f5f9">
+      <div style="display:flex;align-items:center;gap:10px">
+        ${badge}
+        <span style="font-size:12px;flex:1">${item.label}</span>
+        ${fill.nota ? `<span style="font-size:10px;color:#64748b;font-style:italic">(${fill.nota})</span>` : ""}
+      </div>
+      ${subHtml}
+    </div>`;
+  }).join("");
+
+  const conclusionsHtml = template.conclusions.length > 0
+    ? `<div class="avoid-break"><h3>Conclusiones</h3><div style="padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
+        ${template.conclusions.map((c) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px">
+          <span style="width:14px;height:14px;border:1.5px solid ${conclusionFill[c] ? "#0e948b" : "#94a3b8"};border-radius:2px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:${conclusionFill[c] ? "#0e948b" : "transparent"}">
+            ${conclusionFill[c] ? '<span style="color:#fff;font-size:9px;font-weight:700">✓</span>' : ""}
+          </span>
+          <span style="${conclusionFill[c] ? "font-weight:600" : "color:#475569"}">${c}</span>
+        </div>`).join("")}
+      </div></div>`
     : "";
+
+  const obsHtml = observaciones
+    ? `<div class="avoid-break"><h3>Observaciones generales</h3><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;font-size:12px;color:#475569;white-space:pre-wrap;line-height:1.5">${observaciones}</div></div>`
+    : "";
+
+  const photosHtml = photos.length > 0
+    ? `<div class="avoid-break" style="margin-top:16px"><h3>Evidencia fotográfica</h3>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">
+          ${photos.map((p) => `<img src="${p}" style="width:100%;height:150px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;-webkit-print-color-adjust:exact;print-color-adjust:exact"/>`).join("")}
+        </div></div>`
+    : "";
+
   const sigBlock = (label: string, src?: string, name?: string) =>
     `<div><div style="min-height:60px;border-bottom:1px solid #1e293b;display:flex;align-items:flex-end;margin-bottom:4px">${src ? `<img src="${src}" style="max-height:56px;max-width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact"/>` : ""}</div><p style="font-size:11px;color:#64748b">${label}${name ? `: <strong>${name}</strong>` : ""}</p><p style="font-size:11px;color:#64748b">Fecha: ${fecha}</p></div>`;
-  const sigHtml = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px">${sigBlock("Firma del técnico", signature, tecnico)}${sigBlock("Firma del cliente / responsable")}</div>`;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${protocolLabel}</title><style>
+  const sigHtml = `<div class="avoid-break" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px">${sigBlock("Firma del técnico", signature, tecnico)}${sigBlock("Firma del cliente / responsable")}</div>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${template.label}</title><style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
     @page{margin:0;size:A4}
     body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
@@ -3167,15 +3235,13 @@ function buildProtocolHtml(params: {
     .data-block dt{color:#64748b;font-size:12px;white-space:nowrap}
     .data-block dt::after{content:":"}
     .data-block dd{font-size:12px;font-weight:500}
-    table{width:100%;border-collapse:collapse;margin-bottom:16px}
-    thead th{background:#0e948b;color:#fff;padding:8px 10px;text-align:left;font-size:11px}
-    td{padding:6px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;font-size:12px}
-    .obs-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;margin-bottom:16px;font-size:12px;color:#475569;white-space:pre-wrap;line-height:1.5}
+    .check-wrap{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:16px}
+    .check-hdr{background:#0e948b;color:#fff;padding:8px 10px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
     footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
   </style></head><body>
   <header>
     <div><img src="${LOGO_B64}" alt="BIOMEDITECH" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
-    <div style="text-align:right"><strong style="display:block;font-size:16px;color:#0f2340">${protocolLabel}</strong><span style="font-size:11px;color:#64748b">Protocolo de Mantención · BIOMEDITECH</span></div>
+    <div style="text-align:right"><strong style="display:block;font-size:16px;color:#0f2340">${template.label}</strong><span style="font-size:11px;color:#64748b">Protocolo de Mantención · BIOMEDITECH</span></div>
   </header>
   <div style="display:grid;grid-template-columns:max-content 1fr 1fr;gap:16px;margin-bottom:16px;align-items:start">
     <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;padding-top:3px;border-right:2px solid #e2e8f0;padding-right:12px;white-space:nowrap">Información</div>
@@ -3192,7 +3258,7 @@ function buildProtocolHtml(params: {
     <div class="data-block">
       <h4>Equipo</h4>
       <dl>
-        <dt>Tipo</dt><dd>${protocolLabel}</dd>
+        <dt>Tipo</dt><dd>${template.label}</dd>
         <dt>Marca</dt><dd>${marca || "—"}</dd>
         <dt>Modelo</dt><dd>${modelo || "—"}</dd>
         <dt>Año</dt><dd>${anio || "—"}</dd>
@@ -3203,12 +3269,9 @@ function buildProtocolHtml(params: {
       </dl>
     </div>
   </div>
-  <h3>Lista de verificación</h3>
-  <table>
-    <thead><tr><th style="width:28px">#</th><th>Ítem de verificación</th><th style="width:40px;text-align:center">OK</th><th style="width:52px;text-align:center">Obs.</th><th style="width:40px;text-align:center">N/A</th><th>Nota / Observación</th></tr></thead>
-    <tbody>${checkRows}</tbody>
-  </table>
-  ${observaciones ? `<h3>Observaciones generales</h3><div class="obs-box">${observaciones}</div>` : ""}
+  <div class="check-wrap"><div class="check-hdr">Lista de verificación</div>${itemsHtml}</div>
+  ${obsHtml}
+  ${conclusionsHtml}
   ${photosHtml}
   ${sigHtml}
   <footer>contacto@Biomeditech.cl · Biomeditech.cl · WhatsApp: +56 9 5989 0781</footer>
@@ -3216,19 +3279,26 @@ function buildProtocolHtml(params: {
 }
 
 function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (msg: string) => void }) {
-  const [protocolId, setProtocolId] = useState("");
+  const [templates, setTemplates] = useState<ProtoTemplate[]>(() => loadTemplates());
+  const [view, setView] = useState<"form" | "tpls">("form");
+  const [editingTpl, setEditingTpl] = useState<ProtoTemplate | null>(null);
+  const [isNewTpl, setIsNewTpl] = useState(false);
+  const [activeTplId, setActiveTplId] = useState("");
+  const [designMode, setDesignMode] = useState(false);
+  const [workingTpl, setWorkingTpl] = useState<ProtoTemplate | null>(null);
+  const [itemFill, setItemFill] = useState<Record<string, ItemFill>>({});
+  const [conclusionFill, setConclusionFill] = useState<Record<string, boolean>>({});
+  const [observaciones, setObservaciones] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [clienteQuery, setClienteQuery] = useState("");
   const [clienteOpen, setClienteOpen] = useState(false);
-  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [marca, setMarca] = useState("");
   const [modelo, setModelo] = useState("");
   const [anio, setAnio] = useState("");
   const [serie, setSerie] = useState("");
   const [servicio, setServicio] = useState("");
   const [tecnico, setTecnico] = useState("");
-  const [checklist, setChecklist] = useState<ProtocolCheckItem[]>([]);
-  const [observaciones, setObservaciones] = useState("");
-  const [photos, setPhotos] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const signatureRef = useRef<HTMLCanvasElement>(null);
@@ -3236,24 +3306,26 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    const proto = PROTOCOL_TYPES.find((p) => p.id === protocolId);
-    if (proto) {
-      setChecklist(proto.items.map((label) => ({ label, estado: "" as ProtocolCheckItem["estado"], nota: "" })));
+    const tpl = templates.find((t) => t.id === activeTplId) ?? null;
+    if (tpl) {
+      setWorkingTpl(JSON.parse(JSON.stringify(tpl)));
+      setItemFill(initFill(tpl));
+      setConclusionFill(initCFill(tpl));
     } else {
-      setChecklist([]);
+      setWorkingTpl(null);
+      setItemFill({});
+      setConclusionFill({});
     }
-  }, [protocolId]);
+    setDesignMode(false);
+  }, [activeTplId]);
 
   function getCanvasPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    if ("touches" in e) {
-      return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
-    }
-    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    if ("touches" in e) return { x: (e.touches[0].clientX - rect.left) * sx, y: (e.touches[0].clientY - rect.top) * sy };
+    return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
   }
-
   function startDraw(e: React.MouseEvent | React.TouchEvent) {
     e.preventDefault();
     const canvas = signatureRef.current;
@@ -3261,7 +3333,6 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
     isDrawingRef.current = true;
     lastPosRef.current = getCanvasPos(e, canvas);
   }
-
   function drawSignature(e: React.MouseEvent | React.TouchEvent) {
     e.preventDefault();
     if (!isDrawingRef.current) return;
@@ -3271,76 +3342,69 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
     if (!ctx) return;
     const pos = getCanvasPos(e, canvas);
     const last = lastPosRef.current ?? pos;
-    ctx.beginPath();
-    ctx.moveTo(last.x, last.y);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.strokeStyle = "#1e293b";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.stroke();
     lastPosRef.current = pos;
   }
-
-  function stopDraw() {
-    isDrawingRef.current = false;
-    lastPosRef.current = null;
-  }
-
-  function clearSignature() {
-    const canvas = signatureRef.current;
-    if (!canvas) return;
-    canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
-  }
-
-  function getSignatureDataUrl(): string {
-    const canvas = signatureRef.current;
-    if (!canvas) return "";
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return "";
-    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    const hasContent = Array.from(data).some((v, i) => i % 4 === 3 && v > 0);
-    return hasContent ? canvas.toDataURL("image/png") : "";
+  function stopDraw() { isDrawingRef.current = false; lastPosRef.current = null; }
+  function clearSignature() { const c = signatureRef.current; if (!c) return; c.getContext("2d")?.clearRect(0, 0, c.width, c.height); }
+  function getSignatureUrl() {
+    const c = signatureRef.current; if (!c) return "";
+    const ctx = c.getContext("2d"); if (!ctx) return "";
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    return Array.from(d).some((v, i) => i % 4 === 3 && v > 0) ? c.toDataURL("image/png") : "";
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    const results: string[] = [];
-    for (const file of files) {
-      const url = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (ev) => resolve(ev.target?.result as string);
-        reader.readAsDataURL(file);
-      });
-      results.push(url);
+    const res: string[] = [];
+    for (const f of files) {
+      const url = await new Promise<string>((r) => { const fr = new FileReader(); fr.onload = (ev) => r(ev.target?.result as string); fr.readAsDataURL(f); });
+      res.push(url);
     }
-    setPhotos((prev) => [...prev, ...results]);
+    setPhotos((prev) => [...prev, ...res]);
     if (e.target) e.target.value = "";
   }
 
+  function handleSaveNewTpl() {
+    if (!workingTpl) { notify("Selecciona o diseña una plantilla primero"); return; }
+    const label = window.prompt("Nombre de la nueva plantilla:", workingTpl.label + " (copia)");
+    if (!label?.trim()) return;
+    const newTpl: ProtoTemplate = { ...workingTpl, id: pId(), label: label.trim() };
+    const updated = [...templates, newTpl];
+    setTemplates(updated);
+    persistTemplates(updated);
+    setActiveTplId(newTpl.id);
+    notify("Plantilla guardada");
+  }
+
+  function handleUpdateTpl() {
+    if (!workingTpl || !activeTplId) { notify("Selecciona una plantilla primero"); return; }
+    const updated = templates.map((t) => t.id === activeTplId ? { ...workingTpl, id: activeTplId } : t);
+    setTemplates(updated);
+    persistTemplates(updated);
+    notify("Plantilla actualizada");
+  }
+
   async function handleDownload() {
-    if (!protocolId) { notify("Selecciona un tipo de protocolo"); return; }
+    if (!activeTplId || !workingTpl) { notify("Selecciona un tipo de protocolo"); return; }
     if (!selectedCliente) { notify("Selecciona un cliente"); return; }
-    const proto = PROTOCOL_TYPES.find((p) => p.id === protocolId)!;
     setGenerating(true);
     notify("Generando PDF…");
     const fecha = new Date().toLocaleDateString("es-CL");
     try {
-      const html = buildProtocolHtml({
-        protocolLabel: proto.label,
-        cliente: selectedCliente,
-        marca, modelo, anio, serie, servicio, tecnico,
-        fecha, checklist, observaciones, photos,
-        signature: getSignatureDataUrl(),
-      });
+      const html = buildProtocolHtml({ template: workingTpl, cliente: selectedCliente, marca, modelo, anio, serie, servicio, tecnico, fecha, itemFill, conclusionFill, observaciones, photos, signature: getSignatureUrl() });
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
       const iframe = document.createElement("iframe");
       iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;height:1122px;border:none;visibility:hidden;";
       document.body.appendChild(iframe);
-      await new Promise<void>((resolve) => { iframe.onload = () => resolve(); iframe.srcdoc = html; });
+      await new Promise<void>((r) => { iframe.onload = () => r(); iframe.srcdoc = html; });
       await new Promise((r) => setTimeout(r, 600));
       const iDoc = iframe.contentDocument;
       if (!iDoc) { document.body.removeChild(iframe); return; }
+      applyPageBreakFix(iDoc);
+      await new Promise((r) => setTimeout(r, 150));
       const canvas = await html2canvas(iDoc.body, { useCORS: true, scale: 2, backgroundColor: "#ffffff", windowWidth: 794 });
       document.body.removeChild(iframe);
       const imgData = canvas.toDataURL("image/png");
@@ -3348,46 +3412,178 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
       const pdfW = pdf.internal.pageSize.getWidth();
       const pdfH = pdf.internal.pageSize.getHeight();
       const totalH = canvas.height * (pdfW / canvas.width);
-      let pos = 0;
-      let remaining = totalH;
+      let pos = 0; let remaining = totalH;
       pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
       remaining -= pdfH;
-      while (remaining > 0) {
-        pos -= pdfH;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
-        remaining -= pdfH;
-      }
-      const fechaSlug = new Date().toISOString().slice(0, 10);
-      const clienteSlug = selectedCliente.nombre.replace(/\s+/g, "-").slice(0, 30);
-      pdf.save(`protocolo-${proto.id}-${clienteSlug}-${fechaSlug}.pdf`);
-    } finally {
-      setGenerating(false);
-    }
+      while (remaining > 0) { pos -= pdfH; pdf.addPage(); pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH); remaining -= pdfH; }
+      pdf.save(`protocolo-${workingTpl.id}-${selectedCliente.nombre.replace(/\s+/g, "-").slice(0, 25)}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } finally { setGenerating(false); }
   }
 
   const filteredClientes = clienteQuery.length >= 2
-    ? clientes.filter((c) =>
-        c.nombre.toLowerCase().includes(clienteQuery.toLowerCase()) ||
-        c.rut.toLowerCase().includes(clienteQuery.toLowerCase()) ||
-        (c.contacto ?? "").toLowerCase().includes(clienteQuery.toLowerCase())
-      ).slice(0, 8)
+    ? clientes.filter((c) => c.nombre.toLowerCase().includes(clienteQuery.toLowerCase()) || c.rut.toLowerCase().includes(clienteQuery.toLowerCase()) || (c.contacto ?? "").toLowerCase().includes(clienteQuery.toLowerCase())).slice(0, 8)
     : [];
 
-  const selectedProto = PROTOCOL_TYPES.find((p) => p.id === protocolId) ?? null;
+  function tplSet(fn: (t: ProtoTemplate) => ProtoTemplate) { setEditingTpl((prev) => prev ? fn(prev) : prev); }
 
+  function saveEditingTpl() {
+    if (!editingTpl) return;
+    if (!editingTpl.label.trim()) { notify("Ingresa un nombre para la plantilla"); return; }
+    if (isNewTpl) {
+      const newTpl = { ...editingTpl, id: pId() };
+      const updated = [...templates, newTpl];
+      setTemplates(updated); persistTemplates(updated); setActiveTplId(newTpl.id);
+    } else {
+      const updated = templates.map((t) => t.id === editingTpl.id ? editingTpl : t);
+      setTemplates(updated); persistTemplates(updated);
+      if (activeTplId === editingTpl.id) {
+        setWorkingTpl(JSON.parse(JSON.stringify(editingTpl)));
+        setItemFill(initFill(editingTpl));
+        setConclusionFill(initCFill(editingTpl));
+      }
+    }
+    setEditingTpl(null);
+    notify(isNewTpl ? "Plantilla guardada" : "Plantilla actualizada");
+  }
+
+  // ── TEMPLATES VIEW ───────────────────────────────────────────────────────────
+  if (view === "tpls") {
+    return (
+      <section className="stack">
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+          <button onClick={() => { setView("form"); setEditingTpl(null); }} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 14px", cursor: "pointer", fontSize: 13 }}>← Volver</button>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>Gestionar plantillas</span>
+        </div>
+
+        {!editingTpl ? (
+          <div className="panel">
+            <div className="panel-head">
+              <div className="panel-title"><FileArchive size={16} />Plantillas guardadas ({templates.length})</div>
+              <button onClick={() => { setEditingTpl({ id: "", label: "", items: [], conclusions: [] }); setIsNewTpl(true); }}>
+                <Plus size={14} style={{ marginRight: 4 }} />Nueva plantilla
+              </button>
+            </div>
+            {templates.length === 0 ? (
+              <p style={{ color: "var(--muted)", fontSize: 13, padding: "16px 0" }}>No hay plantillas guardadas.</p>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <tbody>
+                  {templates.map((tpl) => (
+                    <tr key={tpl.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <td style={{ padding: "10px 4px" }}>
+                        <strong>{tpl.label}</strong>
+                        <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 8 }}>{tpl.items.length} ítems · {tpl.conclusions.length} conclusiones</span>
+                      </td>
+                      <td style={{ width: 80, textAlign: "right", padding: "10px 4px" }}>
+                        <button onClick={() => { setEditingTpl(JSON.parse(JSON.stringify(tpl))); setIsNewTpl(false); }} style={{ marginRight: 4, fontSize: 12 }}><Edit3 size={13} /></button>
+                        <button onClick={() => {
+                          if (!confirm(`¿Eliminar "${tpl.label}"?`)) return;
+                          const updated = templates.filter((t) => t.id !== tpl.id);
+                          setTemplates(updated); persistTemplates(updated);
+                          if (activeTplId === tpl.id) setActiveTplId("");
+                        }} style={{ fontSize: 12, color: "#dc2626", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={13} /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        ) : (
+          <div className="panel">
+            <div className="panel-head">
+              <div className="panel-title"><FileText size={16} />{isNewTpl ? "Nueva plantilla" : `Editar: ${editingTpl.label}`}</div>
+              <button onClick={() => setEditingTpl(null)}><X size={14} /></button>
+            </div>
+
+            <label style={{ display: "block", marginBottom: 16 }}>
+              <span style={{ fontSize: 12, fontWeight: 600 }}>Nombre del protocolo</span>
+              <input value={editingTpl.label} onChange={(e) => tplSet((t) => ({ ...t, label: e.target.value }))} placeholder="Ej: Monitor Multiparámetro" style={{ display: "block", width: "100%", marginTop: 4 }} />
+            </label>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>Ítems de verificación</span>
+                <button onClick={() => tplSet((t) => ({ ...t, items: [...t.items, { id: pId(), label: "Nuevo ítem", subItems: [] }] }))} style={{ fontSize: 12 }}>
+                  <Plus size={12} style={{ marginRight: 4 }} />Agregar ítem
+                </button>
+              </div>
+              {editingTpl.items.map((item, ii) => (
+                <div key={item.id} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                    <input value={item.label} onChange={(e) => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, label: e.target.value } : it) }))} style={{ flex: 1, fontSize: 13 }} />
+                    <button onClick={() => tplSet((t) => ({ ...t, items: t.items.filter((_, i) => i !== ii) }))} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 4 }}><Trash2 size={13} /></button>
+                  </div>
+                  <div style={{ marginLeft: 12 }}>
+                    {item.subItems.map((sub, si) => (
+                      <div key={sub.id} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 8, marginBottom: 6, background: "var(--bg)" }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>Sub-ítem:</span>
+                          <input value={sub.label} onChange={(e) => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, label: e.target.value } : s) } : it) }))} style={{ flex: 1, fontSize: 12 }} />
+                          <button onClick={() => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.filter((_, j) => j !== si) } : it) }))} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 2 }}><Trash2 size={12} /></button>
+                        </div>
+                        <div style={{ marginLeft: 12, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                          {sub.options.map((opt, oi) => (
+                            <div key={opt.id} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                              <input value={opt.label} onChange={(e) => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: s.options.map((o, k) => k === oi ? { ...o, label: e.target.value } : o) } : s) } : it) }))} style={{ width: 90, fontSize: 11, padding: "2px 6px" }} />
+                              <button onClick={() => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: s.options.filter((_, k) => k !== oi) } : s) } : it) }))} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 2 }}><X size={10} /></button>
+                            </div>
+                          ))}
+                          <button onClick={() => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: [...s.options, { id: pId(), label: "Opción" }] } : s) } : it) }))} style={{ fontSize: 11, padding: "2px 8px" }}>+ Opción</button>
+                        </div>
+                      </div>
+                    ))}
+                    <button onClick={() => tplSet((t) => ({ ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: [...it.subItems, { id: pId(), label: "Nuevo sub-ítem", options: [] }] } : it) }))} style={{ fontSize: 11 }}>+ Sub-ítem</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>Conclusiones</span>
+                <button onClick={() => tplSet((t) => ({ ...t, conclusions: [...t.conclusions, "Nueva conclusión"] }))} style={{ fontSize: 12 }}>
+                  <Plus size={12} style={{ marginRight: 4 }} />Agregar conclusión
+                </button>
+              </div>
+              {editingTpl.conclusions.map((c, ci) => (
+                <div key={ci} style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                  <input value={c} onChange={(e) => tplSet((t) => ({ ...t, conclusions: t.conclusions.map((cv, i) => i === ci ? e.target.value : cv) }))} style={{ flex: 1 }} />
+                  <button onClick={() => tplSet((t) => ({ ...t, conclusions: t.conclusions.filter((_, i) => i !== ci) }))} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={13} /></button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+              <button onClick={() => setEditingTpl(null)} style={{ background: "none" }}>Cancelar</button>
+              <button onClick={saveEditingTpl} style={{ background: "#0e948b", color: "#fff", border: "none", padding: "8px 20px", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>
+                {isNewTpl ? "Guardar plantilla" : "Actualizar plantilla"}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  // ── FORM VIEW ────────────────────────────────────────────────────────────────
   return (
     <section className="stack">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <span style={{ fontWeight: 700, fontSize: 15 }}>Nuevo protocolo</span>
+        <button onClick={() => setView("tpls")} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 14px", cursor: "pointer", fontSize: 12, marginLeft: "auto" }}>
+          <FileArchive size={13} style={{ marginRight: 4 }} />Gestionar plantillas
+        </button>
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 20, alignItems: "start" }}>
-        {/* Left column: protocol + client + equipment */}
+        {/* Left column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div className="panel">
             <div className="panel-title" style={{ marginBottom: 12 }}><FileArchive size={16} />Tipo de protocolo</div>
-            <select value={protocolId} onChange={(e) => setProtocolId(e.target.value)} style={{ width: "100%" }}>
+            <select value={activeTplId} onChange={(e) => setActiveTplId(e.target.value)} style={{ width: "100%" }}>
               <option value="">— Selecciona un protocolo —</option>
-              {PROTOCOL_TYPES.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
+              {templates.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
             </select>
           </div>
 
@@ -3443,46 +3639,109 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
           </div>
         </div>
 
-        {/* Right column: checklist + obs + photos + signature + download */}
+        {/* Right column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {checklist.length > 0 ? (
+          {workingTpl ? (
             <div className="panel">
-              <div className="panel-title" style={{ marginBottom: 12 }}><ClipboardList size={16} />Lista de verificación — {selectedProto?.label}</div>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "2px solid var(--border)" }}>
-                      <th style={{ textAlign: "left", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, width: 28, fontSize: 11 }}>#</th>
-                      <th style={{ textAlign: "left", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, fontSize: 11 }}>Ítem</th>
-                      <th style={{ textAlign: "center", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, width: 48, fontSize: 11, color: "#16a34a" }}>OK</th>
-                      <th style={{ textAlign: "center", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, width: 56, fontSize: 11, color: "#d97706" }}>Obs.</th>
-                      <th style={{ textAlign: "center", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, width: 48, fontSize: 11, color: "#94a3b8" }}>N/A</th>
-                      <th style={{ textAlign: "left", padding: "6px 8px", background: "var(--bg)", fontWeight: 600, fontSize: 11 }}>Nota</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {checklist.map((item, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid var(--border)", background: i % 2 === 0 ? "transparent" : "var(--bg)" }}>
-                        <td style={{ padding: "6px 8px", color: "var(--muted)", textAlign: "center", fontSize: 11 }}>{i + 1}</td>
-                        <td style={{ padding: "6px 8px" }}>{item.label}</td>
-                        <td style={{ textAlign: "center", padding: "6px 8px" }}>
-                          <input type="radio" name={`check-${i}`} checked={item.estado === "ok"} onChange={() => setChecklist((prev) => prev.map((it, idx) => idx === i ? { ...it, estado: "ok" as const } : it))} />
-                        </td>
-                        <td style={{ textAlign: "center", padding: "6px 8px" }}>
-                          <input type="radio" name={`check-${i}`} checked={item.estado === "observacion"} onChange={() => setChecklist((prev) => prev.map((it, idx) => idx === i ? { ...it, estado: "observacion" as const } : it))} />
-                        </td>
-                        <td style={{ textAlign: "center", padding: "6px 8px" }}>
-                          <input type="radio" name={`check-${i}`} checked={item.estado === "na"} onChange={() => setChecklist((prev) => prev.map((it, idx) => idx === i ? { ...it, estado: "na" as const } : it))} />
-                        </td>
-                        <td style={{ padding: "6px 8px" }}>
-                          <input value={item.nota} onChange={(e) => setChecklist((prev) => prev.map((it, idx) => idx === i ? { ...it, nota: e.target.value } : it))}
-                            placeholder="Observación..." style={{ width: "100%", fontSize: 11, padding: "3px 6px" }} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="panel-head">
+                <div className="panel-title"><ClipboardList size={16} />{workingTpl.label}</div>
+                <button onClick={() => setDesignMode((d) => !d)} style={{ fontSize: 12, background: designMode ? "#0e948b" : "none", color: designMode ? "#fff" : undefined, border: "1px solid var(--border)", borderRadius: 6, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Edit3 size={12} />{designMode ? "Vista previa" : "Editar estructura"}
+                </button>
               </div>
+
+              {designMode ? (
+                <div>
+                  {workingTpl.items.map((item, ii) => (
+                    <div key={item.id} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                        <input value={item.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, label: e.target.value } : it) } : t)} style={{ flex: 1, fontSize: 13 }} />
+                        <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.filter((_, i) => i !== ii) } : t)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 4 }}><Trash2 size={13} /></button>
+                      </div>
+                      <div style={{ marginLeft: 12 }}>
+                        {item.subItems.map((sub, si) => (
+                          <div key={sub.id} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 8, marginBottom: 6, background: "var(--bg)" }}>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                              <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>Sub-ítem:</span>
+                              <input value={sub.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, label: e.target.value } : s) } : it) } : t)} style={{ flex: 1, fontSize: 12 }} />
+                              <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.filter((_, j) => j !== si) } : it) } : t)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 2 }}><Trash2 size={12} /></button>
+                            </div>
+                            <div style={{ marginLeft: 12, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                              {sub.options.map((opt, oi) => (
+                                <div key={opt.id} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                  <input value={opt.label} onChange={(e) => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: s.options.map((o, k) => k === oi ? { ...o, label: e.target.value } : o) } : s) } : it) } : t)} style={{ width: 90, fontSize: 11, padding: "2px 6px" }} />
+                                  <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: s.options.filter((_, k) => k !== oi) } : s) } : it) } : t)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 2 }}><X size={10} /></button>
+                                </div>
+                              ))}
+                              <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: it.subItems.map((s, j) => j === si ? { ...s, options: [...s.options, { id: pId(), label: "Opción" }] } : s) } : it) } : t)} style={{ fontSize: 11, padding: "2px 8px" }}>+ Opción</button>
+                            </div>
+                          </div>
+                        ))}
+                        <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: t.items.map((it, i) => i === ii ? { ...it, subItems: [...it.subItems, { id: pId(), label: "Nuevo sub-ítem", options: [] }] } : it) } : t)} style={{ fontSize: 11 }}>+ Sub-ítem</button>
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={() => setWorkingTpl((t) => t ? { ...t, items: [...t.items, { id: pId(), label: "Nuevo ítem", subItems: [] }] } : t)} style={{ marginTop: 4 }}>
+                    <Plus size={12} style={{ marginRight: 4 }} />Agregar ítem
+                  </button>
+                  <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700 }}>Conclusiones</span>
+                      <button onClick={() => setWorkingTpl((t) => t ? { ...t, conclusions: [...t.conclusions, "Nueva conclusión"] } : t)} style={{ fontSize: 12 }}>
+                        <Plus size={12} style={{ marginRight: 4 }} />Agregar
+                      </button>
+                    </div>
+                    {workingTpl.conclusions.map((c, ci) => (
+                      <div key={ci} style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                        <input value={c} onChange={(e) => setWorkingTpl((t) => t ? { ...t, conclusions: t.conclusions.map((cv, i) => i === ci ? e.target.value : cv) } : t)} style={{ flex: 1 }} />
+                        <button onClick={() => setWorkingTpl((t) => t ? { ...t, conclusions: t.conclusions.filter((_, i) => i !== ci) } : t)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={13} /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {workingTpl.items.length === 0 && (
+                    <p style={{ color: "var(--muted)", fontSize: 12, padding: "12px 0" }}>No hay ítems. Usa &quot;Editar estructura&quot; para agregar.</p>
+                  )}
+                  {workingTpl.items.map((item) => (
+                    <div key={item.id} style={{ borderBottom: "1px solid var(--border)", padding: "8px 0" }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span style={{ flex: 1, fontSize: 12, minWidth: 160 }}>{item.label}</span>
+                        {(["ok", "observacion", "na"] as const).map((st) => (
+                          <label key={st} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, cursor: "pointer" }}>
+                            <input type="radio" name={`fill-${item.id}`} checked={(itemFill[item.id]?.estado ?? "") === st}
+                              onChange={() => setItemFill((prev) => ({ ...prev, [item.id]: { ...(prev[item.id] ?? { estado: "", nota: "", subItems: {} }), estado: st } }))} />
+                            {st === "ok" ? "OK" : st === "observacion" ? "Obs." : "N/A"}
+                          </label>
+                        ))}
+                        <input value={itemFill[item.id]?.nota ?? ""} onChange={(e) => setItemFill((prev) => ({ ...prev, [item.id]: { ...(prev[item.id] ?? { estado: "", nota: "", subItems: {} }), nota: e.target.value } }))}
+                          placeholder="Nota..." style={{ fontSize: 11, width: 130, padding: "3px 6px" }} />
+                      </div>
+                      {item.subItems.length > 0 && (
+                        <div style={{ marginTop: 4, marginLeft: 16 }}>
+                          {item.subItems.map((sub) => (
+                            <div key={sub.id} style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 3, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 11, color: "var(--muted)", minWidth: 120 }}>{sub.label}:</span>
+                              {sub.options.map((opt) => (
+                                <label key={opt.id} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 3, cursor: "pointer" }}>
+                                  <input type="radio" name={`sub-${sub.id}`}
+                                    checked={(itemFill[item.id]?.subItems ?? {})[sub.id] === opt.id}
+                                    onChange={() => setItemFill((prev) => {
+                                      const cur = prev[item.id] ?? { estado: "", nota: "", subItems: {} };
+                                      return { ...prev, [item.id]: { ...cur, subItems: { ...cur.subItems, [sub.id]: opt.id } } };
+                                    })} />
+                                  {opt.label}
+                                </label>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="panel" style={{ textAlign: "center", color: "var(--muted)", padding: 40 }}>
@@ -3495,6 +3754,18 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
             <div className="panel-title" style={{ marginBottom: 12 }}><FileText size={16} />Observaciones generales</div>
             <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Notas adicionales del servicio..." rows={4} style={{ width: "100%", resize: "vertical" }} />
           </div>
+
+          {workingTpl && workingTpl.conclusions.length > 0 && !designMode && (
+            <div className="panel">
+              <div className="panel-title" style={{ marginBottom: 12 }}><Check size={16} />Conclusiones</div>
+              {workingTpl.conclusions.map((c, ci) => (
+                <label key={ci} style={{ display: "flex", gap: 10, alignItems: "center", padding: "7px 0", cursor: "pointer", fontSize: 13, borderBottom: ci < workingTpl.conclusions.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <input type="checkbox" checked={conclusionFill[c] ?? false} onChange={(e) => setConclusionFill((prev) => ({ ...prev, [c]: e.target.checked }))} />
+                  {c}
+                </label>
+              ))}
+            </div>
+          )}
 
           <div className="panel">
             <div className="panel-title" style={{ marginBottom: photos.length > 0 ? 12 : 0 }}><FileText size={16} />Fotos de evidencia</div>
@@ -3527,12 +3798,22 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
             </div>
             <button onClick={clearSignature} style={{ marginTop: 8, fontSize: 12, background: "none", border: "1px solid var(--border)", color: "var(--muted)" }}>Limpiar firma</button>
           </div>
-
-          <button onClick={handleDownload} disabled={generating}
-            style={{ background: "#0e948b", color: "#fff", padding: "12px 24px", borderRadius: 8, fontSize: 14, fontWeight: 700, border: "none", cursor: generating ? "not-allowed" : "pointer", opacity: generating ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <Download size={16} />{generating ? "Generando PDF…" : "Descargar protocolo PDF"}
-          </button>
         </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid var(--border)", flexWrap: "wrap" }}>
+        <button onClick={handleSaveNewTpl} style={{ border: "1px solid var(--border)", background: "none", padding: "10px 18px", borderRadius: 8, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <Plus size={14} />Guardar nueva plantilla
+        </button>
+        {activeTplId && (
+          <button onClick={handleUpdateTpl} style={{ border: "1px solid #0e948b", color: "#0e948b", background: "none", padding: "10px 18px", borderRadius: 8, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            <Check size={14} />Actualizar plantilla
+          </button>
+        )}
+        <button onClick={handleDownload} disabled={generating}
+          style={{ background: "#0e948b", color: "#fff", padding: "10px 24px", borderRadius: 8, fontSize: 14, fontWeight: 700, border: "none", cursor: generating ? "not-allowed" : "pointer", opacity: generating ? 0.7 : 1, display: "flex", alignItems: "center", gap: 8 }}>
+          <Download size={16} />{generating ? "Generando PDF…" : "Descargar protocolo PDF"}
+        </button>
       </div>
     </section>
   );
