@@ -3437,6 +3437,7 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
   const sigClienteRef = useRef<HTMLCanvasElement>(null);
   const isDrawingClienteRef = useRef(false);
   const lastPosClienteRef = useRef<{ x: number; y: number } | null>(null);
+  const openInDesignRef = useRef(false);
 
   useEffect(() => {
     const tpl = templates.find((t) => t.id === activeTplId) ?? null;
@@ -3449,7 +3450,12 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
       setSubFill({});
       setConclusionFill({});
     }
-    setDesignMode(false);
+    if (openInDesignRef.current) {
+      setDesignMode(true);
+      openInDesignRef.current = false;
+    } else {
+      setDesignMode(false);
+    }
   }, [activeTplId]);
 
   function getCanvasPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
@@ -3743,8 +3749,8 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
                 const newTpl: ProtoTemplate = { id: pId(), label: label.trim(), items: [], conclusions: [] };
                 const updated = [...templates, newTpl];
                 setTemplates(updated); persistTemplates(updated);
+                openInDesignRef.current = true;
                 setActiveTplId(newTpl.id);
-                setDesignMode(true);
               } else {
                 setActiveTplId(e.target.value);
               }
