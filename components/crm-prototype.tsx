@@ -284,24 +284,19 @@ export default function CRMPrototype() {
     let cancelled = false;
     setFetchError(null);
     setIsLoading(true);
+    // Critical path: show UI as soon as these 4 resolve
     Promise.all([
       api.fetchLeads(),
       api.fetchClientes(),
-      api.fetchProductos(),
       api.fetchCotizaciones(),
       api.fetchDashboard(),
-      api.fetchCatalogo(),
-      api.fetchPlantillas(),
     ])
-      .then(([l, c, p, cot, s, cat, plt]) => {
+      .then(([l, c, cot, s]) => {
         if (cancelled) return;
         if (l.length > 0) setLeads(l);
         if (c.length > 0) setClientes(c);
-        if (p.length > 0) setProductos(p);
         if (cot.length > 0) setCotizaciones(cot);
         if (s) setStats(s);
-        if (cat.length > 0) setCatalogo(cat);
-        if (plt.length > 0) setPlantillas(plt);
         setIsLoading(false);
       })
       .catch(() => {
@@ -310,6 +305,14 @@ export default function CRMPrototype() {
           setIsLoading(false);
         }
       });
+    // Background: catalog and plantillas (BigQuery scans ~200 rows, slower)
+    Promise.all([api.fetchCatalogo(), api.fetchPlantillas()])
+      .then(([cat, plt]) => {
+        if (cancelled) return;
+        if (cat.length > 0) setCatalogo(cat);
+        if (plt.length > 0) setPlantillas(plt);
+      })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, [loggedIn]);
 
@@ -2447,7 +2450,7 @@ function ProductsModule({
 
     if (editingGroup) {
       const existing = catalogo.filter((c) => c.equipo === editingGroup);
-      for (const s of enabled) {
+      await Promise.all(enabled.map(async (s) => {
         const ex = existing.find((c) => c.categoria === s.id);
         const form: CatalogoItemForm = {
           codigo: ex?.codigo || nextCode(s.id),
@@ -2466,12 +2469,10 @@ function ProductsModule({
           const created = await api.createCatalogoItem(form);
           if (created) setCatalogo((prev) => [...prev, created]);
         }
-      }
+      }));
       const toDelete = existing.filter((c) => !enabled.some((s) => s.id === c.categoria));
-      for (const item of toDelete) {
-        setCatalogo((prev) => prev.filter((c) => c.id !== item.id));
-        await api.deleteCatalogoItem(item.id);
-      }
+      setCatalogo((prev) => prev.filter((c) => !toDelete.some((d) => d.id === c.id)));
+      await Promise.all(toDelete.map((item) => api.deleteCatalogoItem(item.id)));
       notify(`Equipo "${prodForm.nombre}" actualizado`);
     } else {
       for (const s of enabled) {
