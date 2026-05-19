@@ -831,3 +831,42 @@ export async function fetchDashboard(): Promise<DashboardStats | null> {
     actividadReciente: r.data.actividad_reciente ?? [],
   };
 }
+
+// --- Protocolos plantillas ---
+
+export type ProtocolRaw = { id: string; label: string; items_json: string; conclusiones_json: string };
+
+export async function fetchProtocols(): Promise<ProtocolRaw[]> {
+  const r = await apiGet<{ data: unknown[] }>("/api/protocolos-plantillas?limit=100");
+  return (r?.data ?? []).map((v) => {
+    const raw = v as Record<string, unknown>;
+    return {
+      id: str(raw.id),
+      label: str(raw.label),
+      items_json: str(raw.items_json),
+      conclusiones_json: str(raw.conclusiones_json),
+    };
+  });
+}
+
+export async function createProtocol(id: string, label: string, items: unknown, conclusions: unknown): Promise<boolean> {
+  const r = await apiMutate<{ data: unknown }>("POST", "/api/protocolos-plantillas", {
+    id,
+    label,
+    items_json: JSON.stringify(items),
+    conclusiones_json: JSON.stringify(conclusions),
+  });
+  return r != null;
+}
+
+export async function updateProtocol(id: string, label: string, items: unknown, conclusions: unknown): Promise<void> {
+  await apiMutate("PATCH", `/api/protocolos-plantillas/${id}`, {
+    label,
+    items_json: JSON.stringify(items),
+    conclusiones_json: JSON.stringify(conclusions),
+  });
+}
+
+export async function deleteProtocol(id: string): Promise<void> {
+  await apiMutate("DELETE", `/api/protocolos-plantillas/${id}`);
+}

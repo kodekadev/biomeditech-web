@@ -34,7 +34,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as api from "@/lib/api";
 import { LOGO_B64 } from "@/lib/logo-b64";
-import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, CatalogoItemForm, Plantilla, CotizacionItemForm } from "@/lib/api";
+import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, CatalogoItemForm, Plantilla, CotizacionItemForm, ProtocolRaw } from "@/lib/api";
 import { money, formatRut, normalizeRut, isValidEmail, validateRut, isValidPhone, isActivo, fmtActivityDate } from "@/lib/utils";
 
 type ModuleId = "dashboard" | "leads" | "clientes" | "productos" | "cotizaciones" | "historial" | "protocolos";
@@ -3470,6 +3470,54 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
   const lastPosClienteRef = useRef<{ x: number; y: number } | null>(null);
   const openInDesignRef = useRef(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const apiProtocolIdsRef = useRef<Set<string>>(new Set());
+  const skipSyncRef = useRef(false);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load templates from API on mount; merge with localStorage (API is source of truth)
+  useEffect(() => {
+    api.fetchProtocols().then((rows: ProtocolRaw[]) => {
+      if (rows.length === 0) return;
+      apiProtocolIdsRef.current = new Set(rows.map((r) => r.id));
+      skipSyncRef.current = true;
+      setTemplates((local) => {
+        const apiIds = new Set(rows.map((r) => r.id));
+        const apiTpls: ProtoTemplate[] = rows.map((r) => ({
+          id: r.id,
+          label: r.label,
+          items: (() => { try { return JSON.parse(r.items_json || "[]"); } catch { return []; } })(),
+          conclusions: (() => { try { return JSON.parse(r.conclusiones_json || "[]"); } catch { return []; } })(),
+        }));
+        const localOnly = local.filter((t) => !apiIds.has(t.id));
+        const merged = [...apiTpls, ...localOnly];
+        persistTemplates(merged);
+        return merged;
+      });
+    }).catch(() => {});
+  }, []);
+
+  // Debounced sync to API whenever templates change
+  useEffect(() => {
+    if (skipSyncRef.current) { skipSyncRef.current = false; return; }
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      const apiIds = apiProtocolIdsRef.current;
+      const updatedIds = new Set(templates.map((t) => t.id));
+      // Delete removed templates
+      Array.from(apiIds).forEach((id) => {
+        if (!updatedIds.has(id)) { api.deleteProtocol(id); apiIds.delete(id); }
+      });
+      // Create or update
+      for (const tpl of templates) {
+        if (apiIds.has(tpl.id)) {
+          api.updateProtocol(tpl.id, tpl.label, tpl.items, tpl.conclusions);
+        } else {
+          api.createProtocol(tpl.id, tpl.label, tpl.items, tpl.conclusions)
+            .then((ok) => { if (ok) apiIds.add(tpl.id); });
+        }
+      }
+    }, 1200);
+  }, [templates]);
 
   useEffect(() => {
     const tpl = templates.find((t) => t.id === activeTplId) ?? null;
