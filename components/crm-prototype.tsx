@@ -2782,12 +2782,11 @@ function ProductsModule({
                   setProdForm((f) => ({
                     ...f,
                     equipCat: newCat,
-                    servicios: serviceTypes.filter((st) => allowed.includes(st.id)).map((st) => ({
-                      id: st.id,
-                      precio: st.defaultPrice > 0 ? String(st.defaultPrice) : "",
-                      descripcion: "",
-                      enabled: false,
-                    })),
+                    servicios: serviceTypes.filter((st) => allowed.includes(st.id)).map((st) => {
+                      const prev = f.servicios.find((sv) => sv.id === st.id);
+                      if (prev) return prev;
+                      return { id: st.id, precio: st.defaultPrice > 0 ? String(st.defaultPrice) : "", descripcion: "", enabled: false };
+                    }),
                   }));
                 }}>
                   {equipCats.map((c) => <option key={c} value={c}>{c}</option>)}
