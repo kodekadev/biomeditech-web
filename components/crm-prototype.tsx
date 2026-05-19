@@ -1581,7 +1581,7 @@ function Dashboard({
   const leadsValue = stats ? String(stats.leadsPendientes) : String(noCotizados.length);
   const clientesValue = stats ? String(stats.clientesActivos) : "—";
   const totalCotizaciones = cotizaciones.length;
-  const totalMonto = cotizaciones.reduce((s, c) => s + (c.monto || 0), 0);
+  const totalMonto = cotizaciones.filter((c) => c.estado === "Aprobada").reduce((s, c) => s + (c.monto || 0), 0);
   const cotizacionesValue = totalCotizaciones > 0 ? String(totalCotizaciones) : (stats ? String(stats.cotizacionesAbiertas) : "—");
   const montoStr = totalMonto > 0
     ? `$${(totalMonto / 1000000).toFixed(1).replace(".", ",")}M`
@@ -3457,6 +3457,12 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
       setDesignMode(false);
     }
   }, [activeTplId]);
+
+  useEffect(() => {
+    setCalibEquipos((prev) => prev.map((row, i) =>
+      i === 0 ? { ...row, equipo: workingTpl?.label ?? row.equipo, marca, modelo, sn: serie } : row
+    ));
+  }, [marca, modelo, serie, workingTpl?.label]);
 
   function getCanvasPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
     const rect = canvas.getBoundingClientRect();
