@@ -1578,11 +1578,25 @@ function Dashboard({
   stats: DashboardStats | null;
   cotizaciones: Cotizacion[];
 }) {
+  const [kpiAnio, setKpiAnio] = useState(0);
+  const [kpiMes, setKpiMes] = useState(0);
+
+  const cotizacionesFiltradas = useMemo(() => {
+    if (!kpiAnio) return cotizaciones;
+    return cotizaciones.filter((c) => {
+      if (!c.fecha) return false;
+      const d = new Date(c.fecha);
+      if (d.getFullYear() !== kpiAnio) return false;
+      if (kpiMes && d.getMonth() + 1 !== kpiMes) return false;
+      return true;
+    });
+  }, [cotizaciones, kpiAnio, kpiMes]);
+
   const leadsValue = stats ? String(stats.leadsPendientes) : String(noCotizados.length);
   const clientesValue = stats ? String(stats.clientesActivos) : "—";
-  const totalCotizaciones = cotizaciones.length;
-  const totalEmitido = cotizaciones.reduce((s, c) => s + (c.monto || 0), 0);
-  const totalAprobado = cotizaciones.filter((c) => c.estado === "Aprobada").reduce((s, c) => s + (c.monto || 0), 0);
+  const totalCotizaciones = cotizacionesFiltradas.length;
+  const totalEmitido = cotizacionesFiltradas.reduce((s, c) => s + (c.monto || 0), 0);
+  const totalAprobado = cotizacionesFiltradas.filter((c) => c.estado === "Aprobada").reduce((s, c) => s + (c.monto || 0), 0);
   const cotizacionesValue = totalCotizaciones > 0 ? String(totalCotizaciones) : (stats ? String(stats.cotizacionesAbiertas) : "—");
   const montoAprobadoStr = totalAprobado > 0
     ? `$${(totalAprobado / 1000000).toFixed(1).replace(".", ",")}M`
@@ -1590,6 +1604,10 @@ function Dashboard({
 
   return (
     <section className="stack">
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>Filtrar KPIs:</span>
+        <PeriodoPicker anio={kpiAnio} mes={kpiMes} fechas={cotizaciones.map((c) => c.fecha)} onAnio={setKpiAnio} onMes={setKpiMes} />
+      </div>
       <div className="kpi-row">
         <Kpi icon={Activity} label="Leads pendientes" value={leadsValue} delta="No cotizados" tone="amber" />
         <Kpi icon={BriefcaseMedical} label="Clientes activos" value={clientesValue} delta="En base de datos" tone="green" />
@@ -3439,6 +3457,7 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
   const isDrawingClienteRef = useRef(false);
   const lastPosClienteRef = useRef<{ x: number; y: number } | null>(null);
   const openInDesignRef = useRef(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const tpl = templates.find((t) => t.id === activeTplId) ?? null;
@@ -3451,6 +3470,7 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
       setSubFill({});
       setConclusionFill({});
     }
+    setCollapsedSections(new Set());
     if (openInDesignRef.current) {
       setDesignMode(true);
       openInDesignRef.current = false;
@@ -3904,11 +3924,23 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
                         {(() => {
                           let rowN = 0;
                           return workingTpl.items.flatMap((item) => {
+                            const isCollapsed = collapsedSections.has(item.id);
+                            const toggleSection = () => setCollapsedSections((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                              return next;
+                            });
                             const sectionRow = (
-                              <tr key={`sec-${item.id}`}>
-                                <td colSpan={5} style={sectionCellStyle}>{item.label}</td>
+                              <tr key={`sec-${item.id}`} onClick={toggleSection} style={{ cursor: "pointer" }}>
+                                <td colSpan={5} style={{ ...sectionCellStyle, userSelect: "none" }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                    <span style={{ display: "inline-block", transition: "transform 0.15s", transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)", fontSize: 10 }}>▼</span>
+                                    {item.label}
+                                  </span>
+                                </td>
                               </tr>
                             );
+                            if (isCollapsed) return [sectionRow];
                             const subRows = item.subItems.map((sub) => {
                               rowN++;
                               const fill = subFill[sub.id] ?? { pasa: "", obs: "" };
