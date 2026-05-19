@@ -309,7 +309,15 @@ export default function CRMPrototype() {
     Promise.all([api.fetchCatalogo(), api.fetchPlantillas()])
       .then(([cat, plt]) => {
         if (cancelled) return;
-        if (cat.length > 0) setCatalogo(cat);
+        if (cat.length > 0) {
+          setCatalogo((prev) => {
+            if (prev.length === 0) return cat;
+            // Preserve locally-created items not yet visible in API (BigQuery eventual consistency)
+            const apiIds = new Set(cat.map((c) => c.id));
+            const localOnly = prev.filter((c) => !apiIds.has(c.id));
+            return localOnly.length > 0 ? [...cat, ...localOnly] : cat;
+          });
+        }
         if (plt.length > 0) setPlantillas(plt);
       })
       .catch(() => {});
@@ -2475,21 +2483,25 @@ function ProductsModule({
       await Promise.all(toDelete.map((item) => api.deleteCatalogoItem(item.id)));
       notify(`Equipo "${prodForm.nombre}" actualizado`);
     } else {
-      for (const s of enabled) {
-        const form: CatalogoItemForm = {
-          codigo: nextCode(s.id),
-          categoria: s.id,
-          servicio: svcLabel[s.id] || s.id,
-          equipo: prodForm.nombre,
-          unidad: "Servicio",
-          precio_neto: s.precio,
-          texto_base_key: `${s.id}_${prodForm.equipCat}`,
-          descripcion_larga: s.descripcion,
-        };
-        const created = await api.createCatalogoItem(form);
-        if (created) setCatalogo((prev) => [...prev, created]);
+      const results = await Promise.all(enabled.map((s) => api.createCatalogoItem({
+        codigo: nextCode(s.id),
+        categoria: s.id,
+        servicio: svcLabel[s.id] || s.id,
+        equipo: prodForm.nombre,
+        unidad: "Servicio",
+        precio_neto: s.precio,
+        texto_base_key: `${s.id}_${prodForm.equipCat}`,
+        descripcion_larga: s.descripcion,
+      })));
+      const saved = results.filter((r): r is CatalogoItem => r !== null);
+      if (saved.length > 0) setCatalogo((prev) => [...prev, ...saved]);
+      if (saved.length === 0) {
+        notify("Error al guardar el producto. Intenta de nuevo.");
+      } else if (saved.length < enabled.length) {
+        notify(`Equipo "${prodForm.nombre}" guardado parcialmente (${saved.length}/${enabled.length} servicios)`);
+      } else {
+        notify(`Equipo "${prodForm.nombre}" agregado con ${enabled.length} servicio(s)`);
       }
-      notify(`Equipo "${prodForm.nombre}" agregado con ${enabled.length} servicio(s)`);
     }
     setSaving(false);
     setModal(null);
