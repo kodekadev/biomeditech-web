@@ -1581,10 +1581,11 @@ function Dashboard({
   const leadsValue = stats ? String(stats.leadsPendientes) : String(noCotizados.length);
   const clientesValue = stats ? String(stats.clientesActivos) : "—";
   const totalCotizaciones = cotizaciones.length;
-  const totalMonto = cotizaciones.filter((c) => c.estado === "Aprobada").reduce((s, c) => s + (c.monto || 0), 0);
+  const totalEmitido = cotizaciones.reduce((s, c) => s + (c.monto || 0), 0);
+  const totalAprobado = cotizaciones.filter((c) => c.estado === "Aprobada").reduce((s, c) => s + (c.monto || 0), 0);
   const cotizacionesValue = totalCotizaciones > 0 ? String(totalCotizaciones) : (stats ? String(stats.cotizacionesAbiertas) : "—");
-  const montoStr = totalMonto > 0
-    ? `$${(totalMonto / 1000000).toFixed(1).replace(".", ",")}M`
+  const montoAprobadoStr = totalAprobado > 0
+    ? `$${(totalAprobado / 1000000).toFixed(1).replace(".", ",")}M`
     : (stats ? `$${(stats.ventasAprobadas / 1000000).toFixed(1).replace(".", ",")}M` : "—");
 
   return (
@@ -1592,8 +1593,8 @@ function Dashboard({
       <div className="kpi-row">
         <Kpi icon={Activity} label="Leads pendientes" value={leadsValue} delta="No cotizados" tone="amber" />
         <Kpi icon={BriefcaseMedical} label="Clientes activos" value={clientesValue} delta="En base de datos" tone="green" />
-        <Kpi icon={ClipboardList} label="Total cotizaciones" value={cotizacionesValue} delta={totalMonto > 0 ? `$${totalMonto.toLocaleString("es-CL")} CLP emitidos` : "Emitidas / en revisión"} tone="amber" />
-        <Kpi icon={FileText} label="Monto total" value={montoStr} delta="CLP acumulado" tone="green" />
+        <Kpi icon={ClipboardList} label="Total cotizaciones" value={cotizacionesValue} delta={totalEmitido > 0 ? `$${totalEmitido.toLocaleString("es-CL")} CLP emitidos` : "Emitidas / en revisión"} tone="amber" />
+        <Kpi icon={FileText} label="Monto aprobado" value={montoAprobadoStr} delta="Solo cotizaciones aprobadas" tone="green" />
       </div>
 
       <div className="flow-strip">
