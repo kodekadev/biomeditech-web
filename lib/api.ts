@@ -762,7 +762,7 @@ export async function createCatalogoItem(form: CatalogoItemForm): Promise<Catalo
     precio_neto: Number(form.precio_neto) || 0,
     grupo: form.categoria,
     texto_base_key: form.texto_base_key,
-    descripcion_larga: form.descripcion_larga,
+    descripcion_larga: form.descripcion_larga || null,
     activo: true,
   });
   if (!r?.data) return null;
@@ -790,7 +790,7 @@ export async function updateCatalogoItem(id: string, form: CatalogoItemForm): Pr
     unidad: form.unidad || "Servicio",
     precio_neto: Number(form.precio_neto) || 0,
     texto_base_key: form.texto_base_key,
-    descripcion_larga: form.descripcion_larga,
+    descripcion_larga: form.descripcion_larga || null,
   });
   if (!r?.data) return null;
   const raw = r.data as Record<string, unknown>;
