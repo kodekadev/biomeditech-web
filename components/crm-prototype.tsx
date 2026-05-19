@@ -4186,12 +4186,12 @@ function Modal({
   clientePrefill: Partial<ClienteForm> | null;
   leadPreItems: Record<string, CotizacionItemForm[]>;
   setLeadPreItems: React.Dispatch<React.SetStateAction<Record<string, CotizacionItemForm[]>>>;
-  onSaveLead: (form: LeadForm, items?: CotizacionItemForm[]) => void;
-  onSaveCliente: (form: ClienteForm) => void;
-  onSaveProducto: (form: ProductoForm) => void;
-  onUpdateLead: (id: string, form: LeadForm, items?: CotizacionItemForm[]) => void;
-  onUpdateCliente: (id: string, form: ClienteForm) => void;
-  onUpdateProducto: (id: string, form: ProductoForm) => void;
+  onSaveLead: (form: LeadForm, items?: CotizacionItemForm[]) => Promise<void>;
+  onSaveCliente: (form: ClienteForm) => Promise<void>;
+  onSaveProducto: (form: ProductoForm) => Promise<void>;
+  onUpdateLead: (id: string, form: LeadForm, items?: CotizacionItemForm[]) => Promise<void>;
+  onUpdateCliente: (id: string, form: ClienteForm) => Promise<void>;
+  onUpdateProducto: (id: string, form: ProductoForm) => Promise<void>;
 }) {
   const [leadForm, setLeadForm] = useState<LeadForm>(LEAD_FORM_INIT);
   const [clienteForm, setClienteForm] = useState<ClienteForm>(CLIENTE_FORM_INIT);
@@ -4294,6 +4294,9 @@ function Modal({
 
   async function handleSave() {
     if (saving) return;
+
+    let action: Promise<void> | null = null;
+
     if (kind === "lead") {
       if (!leadForm.nombre.trim()) { notify("El nombre del contacto es requerido"); return; }
       if (!leadForm.empresa.trim()) { notify("La empresa es requerida"); return; }
@@ -4301,8 +4304,7 @@ function Modal({
       if (!validateRut(leadForm.rut)) { notify("El RUT ingresado no es válido. Verifica el dígito verificador."); return; }
       if (leadForm.tel && leadForm.tel.replace(/\D/g, "").length > 0 && !isValidPhone(leadForm.tel)) { notify("El teléfono no tiene un formato válido (ej: +56 9 1234 5678)"); return; }
       if (leadForm.email && !isValidEmail(leadForm.email)) { notify("El correo no tiene un formato válido"); return; }
-      setSaving(true);
-      editingLead ? onUpdateLead(editingLead.id, leadForm, leadItems) : onSaveLead(leadForm, leadItems);
+      action = editingLead ? onUpdateLead(editingLead.id, leadForm, leadItems) : onSaveLead(leadForm, leadItems);
     } else if (kind === "cliente") {
       if (!clienteForm.rut?.trim()) { notify("El RUT de la empresa es requerido"); return; }
       if (!validateRut(clienteForm.rut)) { notify("El RUT del cliente no es válido. Verifica el dígito verificador."); return; }
@@ -4312,16 +4314,26 @@ function Modal({
       if (!isValidPhone(clienteForm.tel)) { notify("El teléfono no tiene un formato válido (ej: +56 9 1234 5678)"); return; }
       if (!clienteForm.correo.trim()) { notify("El correo es requerido"); return; }
       if (!isValidEmail(clienteForm.correo)) { notify("El correo no tiene un formato válido"); return; }
-      setSaving(true);
-      editingCliente ? onUpdateCliente(editingCliente.id, clienteForm) : onSaveCliente(clienteForm);
+      action = editingCliente ? onUpdateCliente(editingCliente.id, clienteForm) : onSaveCliente(clienteForm);
     } else if (kind === "producto") {
       if (!productoForm.nombre.trim()) { notify("El nombre del producto es requerido"); return; }
       if ([productoForm.diag, productoForm.rep, productoForm.mant, productoForm.inst].some((v) => Number(v) < 0)) { notify("Los precios no pueden ser negativos"); return; }
-      setSaving(true);
-      editingProducto ? onUpdateProducto(editingProducto.id, productoForm) : onSaveProducto(productoForm);
+      action = editingProducto ? onUpdateProducto(editingProducto.id, productoForm) : onSaveProducto(productoForm);
     } else if (kind === "cotizacion") {
       close();
       goTo("cotizaciones");
+      return;
+    }
+
+    if (action) {
+      setSaving(true);
+      try {
+        await action;
+      } catch {
+        notify("No se pudo guardar. Intenta nuevamente.");
+      } finally {
+        setSaving(false);
+      }
     }
   }
 
