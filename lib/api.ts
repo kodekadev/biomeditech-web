@@ -177,6 +177,7 @@ export type CotizacionForm = {
   validez_dias: number;
   notas_internas?: string;
   items: CotizacionItemForm[];
+  numero?: string;
 };
 
 export interface DashboardStats {
@@ -627,10 +628,14 @@ export async function fetchPlantillas(): Promise<Plantilla[]> {
 }
 
 export async function fetchCotizacionDetalle(id: string): Promise<CotizacionDetalle | null> {
-  const r = await apiGet<{ data: unknown }>(`/api/cotizaciones/${id}`);
+  const [r, rItems] = await Promise.all([
+    apiGet<{ data: unknown }>(`/api/cotizaciones/${id}`),
+    apiGet<{ data: unknown[] }>(`/api/servicios-cotizacion?cotizacion_id=${encodeURIComponent(id)}&limit=100`),
+  ]);
   if (!r?.data) return null;
   const raw = r.data as Record<string, unknown>;
-  const items = ((raw.items as unknown[]) ?? []).map((it) => {
+  const rawItems = rItems?.data?.length ? rItems.data : ((raw.items as unknown[]) ?? []);
+  const items = rawItems.map((it) => {
     const i = it as Record<string, unknown>;
     return {
       id: str(i.id),
@@ -643,7 +648,7 @@ export async function fetchCotizacionDetalle(id: string): Promise<CotizacionDeta
       descuento_pct: num(i.descuento_pct),
       subtotal: num(i.subtotal),
     };
-  });
+  }).sort((a, b) => a.linea_numero - b.linea_numero);
   return {
     id: str(raw.id),
     numero: str(raw.numero),
@@ -663,12 +668,19 @@ export async function fetchCotizacionDetalle(id: string): Promise<CotizacionDeta
   };
 }
 
+export async function countCotizacionesHoy(): Promise<number> {
+  const d = new Date();
+  const prefix = `${String(d.getDate()).padStart(2, "0")}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getFullYear()).slice(-2)}`;
+  const r = await apiGet<{ data: unknown[] }>(`/api/cotizaciones?search=${prefix}&limit=200`);
+  return (r?.data ?? []).length;
+}
+
 export async function createCotizacionMulti(form: CotizacionForm): Promise<CotizacionDetalle | null> {
   const subtotal = form.items.reduce((sum, it) => {
     return sum + Math.round(it.precio_unitario * it.cantidad * (1 - it.descuento_pct / 100));
   }, 0);
   const iva = Math.round(subtotal * 0.19);
-  const numero = `COT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+  const numero = form.numero ?? `COT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
   const r = await apiMutate<{ data: unknown }>("POST", "/api/cotizaciones", {
     numero,

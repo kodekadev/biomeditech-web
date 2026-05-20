@@ -648,6 +648,13 @@ export default function CRMPrototype() {
       )
     );
 
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yy = String(d.getFullYear()).slice(-2);
+    const todayCount = await api.countCotizacionesHoy();
+    const numero = `${dd}${mm}${yy}${String(todayCount + 1).padStart(2, "0")}`;
+
     const result = await api.createCotizacionMulti({
       cliente_id: cotizClienteId,
       lead_id: matchLead?.id,
@@ -656,6 +663,7 @@ export default function CRMPrototype() {
       notas_internas: cotizGarantia,
       validez_dias: cotizValidez,
       items: cotizItems,
+      numero,
     });
     const total = result?.total_con_iva ?? tempTotal;
     const cot: Cotizacion = {
@@ -687,7 +695,7 @@ export default function CRMPrototype() {
     const clienteObj = clientes.find((c) => c.id === det.cliente_id);
     const rowsHtml = det.items.map((it, i) => {
       const disc = it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : "";
-      const glosaHtml = it.glosa ? `<br/><span style="font-size:11px;color:#64748b;white-space:pre-line">${it.glosa}</span>` : "";
+      const glosaHtml = it.descripcion_larga ? `<br/><span style="font-size:11px;color:#64748b;white-space:pre-line">${it.descripcion_larga}</span>` : "";
       return `<tr>
         <td>${i + 1}</td>
         <td>${it.descripcion}${disc}${glosaHtml}</td>
@@ -868,8 +876,8 @@ export default function CRMPrototype() {
       remaining -= pdfH;
     }
     const clienteObj = clientes.find((c) => c.id === det.cliente_id);
-    const fecha = new Date().toISOString().slice(0, 10);
-    pdf.save(`cotizacion-${det.numero}-${(clienteObj?.nombre ?? "cliente").replace(/\s+/g, "-")}-${fecha}.pdf`);
+    const empresa = (clienteObj?.nombre ?? "cliente").replace(/\s+/g, "").replace(/[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ]/g, "");
+    pdf.save(`${det.numero}_${empresa}.pdf`);
   }
 
   function handlePrintQuote() {
