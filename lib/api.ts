@@ -756,7 +756,7 @@ export async function createCotizacionMulti(form: CotizacionForm): Promise<Cotiz
     moneda: str(raw.moneda) || "CLP",
     forma_pago: str(raw.forma_pago) || form.forma_pago,
     validez_dias: num(raw.validez_dias) || form.validez_dias,
-    notas_cliente: str(raw.notas_cliente),
+    notas_cliente: str(raw.notas_cliente) || (form.notas_cliente ?? ""),
     notas_internas: str(raw.notas_internas),
     emitida_en: str(raw.emitida_en),
     pdf_url: raw.pdf_url ? str(raw.pdf_url) : undefined,
