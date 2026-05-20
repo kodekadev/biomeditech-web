@@ -107,7 +107,7 @@ function getPrice(productId: string, service: QuoteService, productos: Producto[
 // Utility functions are imported from @/lib/utils
 
 const LEAD_FORM_INIT: LeadForm = { rut: "", nombre: "", empresa: "", tel: "+56 ", email: "", canal: "wsp", servicio: "", equipo: "", direccion: "", tipo_entidad: "" };
-const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", tel: "+56 ", correo: "", rubro: "Médico", estado: "activo", direccion: "", ciudad: "", comuna: "", tipo_entidad: "" };
+const CLIENTE_FORM_INIT: ClienteForm = { rut: "", nombre: "", contacto: "", tel: "+56 ", correo: "", estado: "activo", direccion: "", ciudad: "", comuna: "", tipo_entidad: "" };
 const CATALOGO_FORM_INIT: CatalogoItemForm = { codigo: "", categoria: "MP", servicio: "", equipo: "", unidad: "Servicio", precio_neto: "", texto_base_key: "", descripcion_larga: "" };
 const PRODUCTO_FORM_INIT: ProductoForm = { nombre: "", cat: "Equipos médicos", marca: "", diag: "", rep: "", mant: "", inst: "" };
 
@@ -507,14 +507,13 @@ export default function CRMPrototype() {
         contacto: form.nombre,
         tel: form.tel,
         correo: form.email,
-        rubro: "Médico",
         estado: "activo",
         direccion: form.direccion || "",
         ciudad: "",
         comuna: "",
       };
       const tempCId = `C-${String(Date.now())}`;
-      const tempCliente: Cliente = { id: tempCId, rut: clienteForm.rut, nombre: clienteForm.nombre, contacto: clienteForm.contacto, correo: clienteForm.correo, rubro: clienteForm.rubro, estado: clienteForm.estado, telefono: clienteForm.tel, direccion: "", ciudad: "", comuna: "" };
+      const tempCliente: Cliente = { id: tempCId, rut: clienteForm.rut, nombre: clienteForm.nombre, contacto: clienteForm.contacto, correo: clienteForm.correo, estado: clienteForm.estado, telefono: clienteForm.tel, direccion: "", ciudad: "", comuna: "" };
       setClientes((prev) => [tempCliente, ...prev]);
       const newCliente = await api.createCliente(clienteForm);
       if (newCliente) setClientes((prev) => prev.map((c) => c.id === tempCId ? newCliente : c));
@@ -543,7 +542,6 @@ export default function CRMPrototype() {
         contacto: form.nombre || matchingCliente.contacto,
         tel: form.tel || matchingCliente.telefono,
         correo: form.email || matchingCliente.correo,
-        rubro: matchingCliente.rubro,
         estado: matchingCliente.estado,
         direccion: matchingCliente.direccion,
         ciudad: matchingCliente.ciudad,
@@ -570,7 +568,7 @@ export default function CRMPrototype() {
 
   async function handleSaveCliente(form: ClienteForm) {
     const tempId = `C-temp-${Date.now()}`;
-    const tempCliente: Cliente = { id: tempId, rut: form.rut, nombre: form.nombre, contacto: form.contacto, correo: form.correo, rubro: form.rubro, estado: form.estado || "activo", telefono: form.tel, direccion: form.direccion, ciudad: form.ciudad, comuna: form.comuna };
+    const tempCliente: Cliente = { id: tempId, rut: form.rut, nombre: form.nombre, contacto: form.contacto, correo: form.correo, estado: form.estado || "activo", telefono: form.tel, direccion: form.direccion, ciudad: form.ciudad, comuna: form.comuna };
     setClientes((prev) => [tempCliente, ...prev]);
     closeModal();
     notify("Cliente agregado correctamente");
@@ -583,7 +581,7 @@ export default function CRMPrototype() {
   }
 
   async function handleUpdateCliente(id: string, form: ClienteForm) {
-    setClientes((prev) => prev.map((c) => c.id === id ? { ...c, rut: form.rut, nombre: form.nombre, contacto: form.contacto, correo: form.correo, rubro: form.rubro, estado: form.estado, telefono: form.tel, direccion: form.direccion, ciudad: form.ciudad, comuna: form.comuna } : c));
+    setClientes((prev) => prev.map((c) => c.id === id ? { ...c, rut: form.rut, nombre: form.nombre, contacto: form.contacto, correo: form.correo, estado: form.estado, telefono: form.tel, direccion: form.direccion, ciudad: form.ciudad, comuna: form.comuna } : c));
     closeModal();
     notify("Cliente actualizado");
 
@@ -4277,7 +4275,7 @@ function Modal({
       });
       setLeadItems(leadPreItems[editingLead.id] ?? []);
     } else if (kind === "cliente" && editingCliente) {
-      setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, tel: editingCliente.telefono || "+56 ", correo: editingCliente.correo, rubro: editingCliente.rubro, estado: editingCliente.estado || "activo", direccion: editingCliente.direccion || "", ciudad: editingCliente.ciudad || "", comuna: editingCliente.comuna || "", tipo_entidad: editingCliente.tipo_entidad ?? "" });
+      setClienteForm({ rut: editingCliente.rut, nombre: editingCliente.nombre, contacto: editingCliente.contacto, tel: editingCliente.telefono || "+56 ", correo: editingCliente.correo, estado: editingCliente.estado || "activo", direccion: editingCliente.direccion || "", ciudad: editingCliente.ciudad || "", comuna: editingCliente.comuna || "", tipo_entidad: editingCliente.tipo_entidad ?? "" });
     } else if (kind === "cliente" && clientePrefill) {
       setClienteForm({ ...CLIENTE_FORM_INIT, ...clientePrefill });
     } else if (kind === "producto" && editingProducto) {
@@ -4564,17 +4562,6 @@ function Modal({
                 {clienteForm.correo && !isValidEmail(clienteForm.correo) && (
                   <span className="field-error">Correo inválido (ej: usuario@empresa.cl)</span>
                 )}
-              </label>
-              <label>
-                Rubro
-                <select value={clienteForm.rubro} onChange={(e) => setClienteForm((f) => ({ ...f, rubro: e.target.value }))}>
-                  <option>Médico</option>
-                  <option>Dental</option>
-                  <option>Laboratorio</option>
-                  <option>Estético</option>
-                  <option>Veterinario</option>
-                  <option>Otro</option>
-                </select>
               </label>
               <label>
                 Tipo de entidad

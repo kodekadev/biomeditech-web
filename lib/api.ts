@@ -77,7 +77,6 @@ export interface Cliente {
   nombre: string;
   contacto: string;
   correo: string;
-  rubro: string;
   estado: string;
   telefono: string;
   direccion: string;
@@ -209,7 +208,6 @@ export type ClienteForm = {
   contacto: string;
   tel: string;
   correo: string;
-  rubro: string;
   estado: string;
   direccion: string;
   ciudad: string;
@@ -308,7 +306,6 @@ function mapCliente(value: unknown): Cliente {
     nombre: str(raw.nombre_empresa),
     contacto: str(raw.contacto_nombre),
     correo: str(raw.email),
-    rubro: str(raw.rubro),
     estado: str(raw.estado),
     telefono: str(raw.telefono),
     direccion: str(raw.direccion),
@@ -431,7 +428,6 @@ export async function createCliente(form: ClienteForm): Promise<Cliente | null> 
     contacto_nombre: form.contacto,
     telefono: form.tel,
     email: form.correo,
-    rubro: form.rubro,
     estado: form.estado || "activo",
     direccion: form.direccion,
     ciudad: form.ciudad,
@@ -538,7 +534,6 @@ export async function saveCliente(id: string, form: ClienteForm): Promise<Client
     contacto_nombre: form.contacto,
     telefono: form.tel,
     email: form.correo,
-    rubro: form.rubro,
     estado: form.estado,
     direccion: form.direccion,
     ciudad: form.ciudad,
