@@ -756,7 +756,7 @@ export default function CRMPrototype() {
       .transfer dd{font-weight:500}
       .glossary{margin-top:32px;padding-top:20px;border-top:2px solid #0e948b}
       .glossary h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:12px}
-      .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #0e948b}
+      .gloss-item{margin-bottom:16px;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #0e948b;page-break-inside:avoid;break-inside:avoid}
       .gloss-item p{font-size:12px;color:#475569;white-space:pre-line;line-height:1.6}
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
