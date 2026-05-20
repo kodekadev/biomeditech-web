@@ -248,7 +248,7 @@ export default function CRMPrototype() {
   const [cotizNotas, setCotizNotas] = useState("");
   const [cotizFormaPago, setCotizFormaPago] = useState("50% inicio - 50% entrega");
   const [cotizGarantia, setCotizGarantia] = useState("");
-  const [cotizValidez, setCotizValidez] = useState(30);
+  const [cotizValidez, setCotizValidez] = useState(15);
   const [cotizItems, setCotizItems] = useState<CotizacionItemForm[]>([]);
   const DEFAULT_CONDICIONES = [
     "Valores expresados en pesos chilenos",
@@ -759,6 +759,7 @@ export default function CRMPrototype() {
       .gloss-item p{font-size:12px;color:#475569;white-space:pre-line;line-height:1.6}
       footer{margin-top:24px;padding-top:10px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
+    <div style="min-height:1050px">
     <header>
       <div><img src="${LOGO_B64}" alt="Biomeditech" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
       <div class="right"><strong>COT-${det.numero}</strong><br/><span style="color:#64748b">Biomeditech.cl</span></div>
@@ -817,6 +818,7 @@ export default function CRMPrototype() {
       </dl>
     </div>
     ${det.notas_cliente ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${det.notas_cliente}</em></p>` : ""}
+    </div>
     ${glossaryHtml}
     <footer>contacto@biomeditech.cl · biomeditech.cl · WhatsApp: +56 9 5989 0781</footer>
     </body></html>`;
@@ -875,7 +877,7 @@ export default function CRMPrototype() {
     }
     const clienteObj = clientes.find((c) => c.id === det.cliente_id);
     const empresa = (clienteObj?.nombre ?? "cliente").replace(/\s+/g, "").replace(/[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ]/g, "");
-    pdf.save(`${det.numero}_${empresa}.pdf`);
+    pdf.save(`COT_${det.numero}_${empresa}.pdf`);
   }
 
   function handlePrintQuote() {
