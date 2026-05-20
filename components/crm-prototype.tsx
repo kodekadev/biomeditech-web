@@ -762,7 +762,7 @@ export default function CRMPrototype() {
     </style></head><body>
     <header>
       <div><img src="${LOGO_B64}" alt="Biomeditech" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
-      <div class="right"><strong>${det.numero}</strong><br/><span style="color:#64748b">Biomeditech.cl</span></div>
+      <div class="right"><strong>COT-${det.numero}</strong><br/><span style="color:#64748b">Biomeditech.cl</span></div>
     </header>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div class="data-block">
@@ -817,7 +817,6 @@ export default function CRMPrototype() {
         <dt>Correo</dt><dd>contacto@biomeditech.cl</dd>
       </dl>
     </div>
-    ${det.notas_cliente ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${det.notas_cliente}</em></p>` : ""}
     ${glossaryHtml}
     <footer>contacto@biomeditech.cl · biomeditech.cl · WhatsApp: +56 9 5989 0781</footer>
     </body></html>`;
@@ -1018,7 +1017,6 @@ export default function CRMPrototype() {
         <dt>Correo</dt><dd>contacto@biomeditech.cl</dd>
       </dl>
     </div>
-    ${cotizNotas ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${cotizNotas}</em></p>` : ""}
     ${glossaryHtml}
     <footer>contacto@biomeditech.cl · biomeditech.cl · WhatsApp: +56 9 5989 0781</footer>
     <div class="action-bar">
