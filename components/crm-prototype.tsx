@@ -3405,8 +3405,7 @@ function buildProtocolHtml(params: {
     <div><img src="${LOGO_B64}" alt="BIOMEDITECH" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
     <div style="text-align:right"><strong style="display:block;font-size:16px;color:#0f2340">${template.label}</strong><span style="font-size:11px;color:#64748b">Protocolo de Mantención · BIOMEDITECH</span></div>
   </header>
-  <div style="display:grid;grid-template-columns:max-content 1fr 1fr;gap:16px;margin-bottom:16px;align-items:start">
-    <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;padding-top:3px;border-right:2px solid #e2e8f0;padding-right:12px;white-space:nowrap">Información</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:start">
     <div class="data-block">
       <h4>Cliente</h4>
       <dl>
@@ -3680,9 +3679,9 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
     } finally { setGenerating(false); }
   }
 
-  const filteredClientes = clienteQuery.length >= 2
-    ? clientes.filter((c) => c.nombre.toLowerCase().includes(clienteQuery.toLowerCase()) || c.rut.toLowerCase().includes(clienteQuery.toLowerCase()) || (c.contacto ?? "").toLowerCase().includes(clienteQuery.toLowerCase())).slice(0, 8)
-    : [];
+  const filteredClientes = clienteQuery
+    ? clientes.filter((c) => c.nombre.toLowerCase().includes(clienteQuery.toLowerCase()) || (c.rut || "").toLowerCase().includes(clienteQuery.toLowerCase()) || (c.contacto ?? "").toLowerCase().includes(clienteQuery.toLowerCase())).slice(0, 8)
+    : clientes.slice(0, 8);
 
   function tplSet(fn: (t: ProtoTemplate) => ProtoTemplate) { setEditingTpl((prev) => prev ? fn(prev) : prev); }
 
@@ -3858,38 +3857,46 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
           <div className="panel">
             <div className="panel-title" style={{ marginBottom: 12 }}><Search size={16} />Cliente</div>
             <div style={{ position: "relative" }}>
-              <input
-                value={selectedCliente ? selectedCliente.nombre : clienteQuery}
-                onChange={(e) => { setClienteQuery(e.target.value); setSelectedCliente(null); setClienteOpen(true); }}
-                onFocus={() => { if (!selectedCliente) setClienteOpen(true); }}
-                onBlur={() => setTimeout(() => setClienteOpen(false), 150)}
-                placeholder="Buscar por nombre o RUT..."
-                style={{ width: "100%", paddingRight: selectedCliente ? 32 : undefined }}
-              />
-              {selectedCliente && (
-                <button onClick={() => { setSelectedCliente(null); setClienteQuery(""); }}
-                  style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 4 }}>
-                  <X size={14} />
-                </button>
+              {selectedCliente && !clienteOpen ? (
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer", background: "#f8fafc" }}
+                  onClick={() => { setClienteOpen(true); setClienteQuery(""); }}
+                >
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#0f2340" }}>{selectedCliente.nombre}</span>
+                  <span style={{ fontSize: 11, color: "#94a3b8" }}>{selectedCliente.rut}</span>
+                  <X size={13} style={{ color: "#94a3b8", cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); setSelectedCliente(null); setClienteQuery(""); }} />
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid #0e948b", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
+                  <Search size={13} style={{ color: "#94a3b8", flexShrink: 0 }} />
+                  <input
+                    placeholder="Buscar cliente por nombre o RUT..."
+                    value={clienteQuery}
+                    onChange={(e) => { setClienteQuery(e.target.value); setSelectedCliente(null); setClienteOpen(true); }}
+                    onFocus={() => setClienteOpen(true)}
+                    onBlur={() => setTimeout(() => setClienteOpen(false), 150)}
+                    style={{ flex: 1, border: "none", outline: "none", fontSize: 13, background: "transparent" }}
+                  />
+                </div>
               )}
-              {clienteOpen && filteredClientes.length > 0 && !selectedCliente && (
-                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,.1)", zIndex: 100, maxHeight: 220, overflowY: "auto" }}>
+              {clienteOpen && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,.1)", zIndex: 100, maxHeight: 240, overflowY: "auto", marginTop: 2 }}>
+                  {filteredClientes.length === 0 && <div style={{ padding: "10px 14px", color: "#94a3b8", fontSize: 13 }}>Sin resultados</div>}
                   {filteredClientes.map((c) => (
-                    <button key={c.id} onMouseDown={() => { setSelectedCliente(c); setClienteQuery(""); setClienteOpen(false); }}
-                      style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer" }}>
-                      <strong style={{ fontSize: 13 }}>{c.nombre}</strong>
-                      <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 8 }}>{c.rut}</span>
-                    </button>
+                    <div
+                      key={c.id}
+                      onMouseDown={() => { setSelectedCliente(c); setClienteQuery(""); setClienteOpen(false); }}
+                      style={{ padding: "9px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f0faf5")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 500, color: "#0f2340" }}>{c.nombre}</span>
+                      <span style={{ fontSize: 11, color: "#94a3b8" }}>{c.rut}</span>
+                    </div>
                   ))}
                 </div>
               )}
             </div>
-            {selectedCliente && (
-              <div style={{ marginTop: 8, fontSize: 12, color: "#475569", background: "#f0fdf4", borderRadius: 6, padding: "8px 12px", border: "1px solid #bbf7d0" }}>
-                <strong>{selectedCliente.nombre}</strong>{selectedCliente.rut ? ` · RUT ${selectedCliente.rut}` : ""}
-                {selectedCliente.direccion && <div style={{ marginTop: 2, color: "#64748b" }}>{selectedCliente.direccion}{selectedCliente.ciudad ? `, ${selectedCliente.ciudad}` : ""}</div>}
-              </div>
-            )}
           </div>
 
           <div className="panel">
