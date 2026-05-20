@@ -242,7 +242,7 @@ export default function CRMPrototype() {
   const [leadPreItems, setLeadPreItems] = useState<Record<string, CotizacionItemForm[]>>({});
   const [clientePrefill, setClientePrefill] = useState<Partial<ClienteForm> | null>(null);
   const [toast, setToast] = useState("");
-  const [catalogo, setCatalogo] = useState<CatalogoItem[]>(INITIAL_CATALOGO);
+  const [catalogo, setCatalogo] = useState<CatalogoItem[]>([]);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [cotizClienteId, setCotizClienteId] = useState("");
   const [cotizNotas, setCotizNotas] = useState("");
