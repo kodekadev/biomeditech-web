@@ -817,6 +817,7 @@ export default function CRMPrototype() {
         <dt>Correo</dt><dd>contacto@biomeditech.cl</dd>
       </dl>
     </div>
+    ${det.notas_cliente ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${det.notas_cliente}</em></p>` : ""}
     ${glossaryHtml}
     <footer>contacto@biomeditech.cl · biomeditech.cl · WhatsApp: +56 9 5989 0781</footer>
     </body></html>`;
@@ -1017,6 +1018,7 @@ export default function CRMPrototype() {
         <dt>Correo</dt><dd>contacto@biomeditech.cl</dd>
       </dl>
     </div>
+    ${cotizNotas ? `<p style="font-size:12px;color:#475569;margin-bottom:12px"><em>${cotizNotas}</em></p>` : ""}
     ${glossaryHtml}
     <footer>contacto@biomeditech.cl · biomeditech.cl · WhatsApp: +56 9 5989 0781</footer>
     <div class="action-bar">
