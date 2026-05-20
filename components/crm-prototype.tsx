@@ -764,31 +764,6 @@ export default function CRMPrototype() {
       <div><img src="${LOGO_B64}" alt="Biomeditech" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
       <div class="right"><strong>${det.numero}</strong><br/><span style="color:#64748b">Biomeditech.cl</span></div>
     </header>
-    <div style="display:grid;grid-template-columns:max-content 1fr 1fr;gap:16px;margin-bottom:16px;align-items:start">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;padding-top:3px;border-right:2px solid #e2e8f0;padding-right:12px;white-space:nowrap">Información</div>
-      <div class="data-block">
-        <h4>Cliente</h4>
-        <dl>
-          <dt>Empresa</dt><dd>${clienteObj?.nombre ?? det.cliente_id}</dd>
-          <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
-          <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
-          <dt>Correo</dt><dd>${clienteObj?.correo || "—"}</dd>
-          <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
-          <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
-        </dl>
-      </div>
-      <div class="data-block">
-        <h4>BIOMEDITECH</h4>
-        <dl>
-          <dt>Razón social</dt><dd>GVA SpA</dd>
-          <dt>RUT</dt><dd>78.200.394-1</dd>
-          <dt>Dirección</dt><dd>Pedro Torres 798, Ñuñoa</dd>
-          <dt>Contacto</dt><dd>contacto@Biomeditech.cl</dd>
-          <dt>Teléfono</dt><dd>+56 9 5989 0781</dd>
-          <dt>Web</dt><dd>Biomeditech.cl</dd>
-        </dl>
-      </div>
-    </div>
     <h3>Detalle del servicio</h3>
     <table>
       <thead><tr><th>#</th><th>Descripción</th><th>Cant.</th><th>P. Unitario</th><th>Subtotal</th></tr></thead>
@@ -968,31 +943,6 @@ export default function CRMPrototype() {
       <div><img src="${LOGO_B64}" alt="Biomeditech" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
       <div class="right"><span class="draft-badge">BORRADOR</span><strong style="font-size:16px;color:#64748b">Sin número</strong><br/><span style="color:#64748b">Biomeditech.cl</span></div>
     </header>
-    <div style="display:grid;grid-template-columns:max-content 1fr 1fr;gap:16px;margin-bottom:16px;align-items:start">
-      <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;padding-top:3px;border-right:2px solid #e2e8f0;padding-right:12px;white-space:nowrap">Información</div>
-      <div class="data-block">
-        <h4>Cliente</h4>
-        <dl>
-          <dt>Empresa</dt><dd>${clienteObj?.nombre ?? "—"}</dd>
-          <dt>RUT</dt><dd>${clienteObj?.rut ?? "—"}</dd>
-          <dt>Contacto</dt><dd>${clienteObj?.contacto ?? "—"}</dd>
-          <dt>Correo</dt><dd>${clienteObj?.correo || "—"}</dd>
-          <dt>Teléfono</dt><dd>${clienteObj?.telefono || "—"}</dd>
-          <dt>Dirección</dt><dd>${clienteObj?.direccion || "—"}</dd>
-        </dl>
-      </div>
-      <div class="data-block">
-        <h4>BIOMEDITECH</h4>
-        <dl>
-          <dt>Razón social</dt><dd>GVA SpA</dd>
-          <dt>RUT</dt><dd>78.200.394-1</dd>
-          <dt>Dirección</dt><dd>Pedro Torres 798, Ñuñoa</dd>
-          <dt>Contacto</dt><dd>contacto@Biomeditech.cl</dd>
-          <dt>Teléfono</dt><dd>+56 9 5989 0781</dd>
-          <dt>Web</dt><dd>Biomeditech.cl</dd>
-        </dl>
-      </div>
-    </div>
     <h3>Detalle del servicio</h3>
     <table>
       <thead><tr><th>#</th><th>Descripción</th><th>Cant.</th><th>P. Unitario</th><th>Subtotal</th></tr></thead>
