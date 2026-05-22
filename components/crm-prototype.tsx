@@ -216,7 +216,9 @@ export default function CRMPrototype() {
   });
 
   const [currentUser] = useState(() => api.getUser());
-  const [active, setActive] = useState<ModuleId>("dashboard");
+  const [active, setActive] = useState<ModuleId>(() => {
+    try { return (localStorage.getItem("crm_active_module") as ModuleId) || "dashboard"; } catch { return "dashboard"; }
+  });
   const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
   const [clientes, setClientes] = useState<Cliente[]>(INITIAL_CLIENTES);
   const [productos, setProductos] = useState<Producto[]>(INITIAL_PRODUCTOS);
@@ -405,6 +407,7 @@ export default function CRMPrototype() {
 
   function goTo(id: ModuleId) {
     setActive(id);
+    try { localStorage.setItem("crm_active_module", id); } catch {}
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
