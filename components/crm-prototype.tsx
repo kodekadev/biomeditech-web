@@ -261,7 +261,14 @@ export default function CRMPrototype() {
   const [cotizCondiciones, setCotizCondiciones] = useState(() => {
     try { return localStorage.getItem("crm_condiciones") || DEFAULT_CONDICIONES; } catch { return DEFAULT_CONDICIONES; }
   });
-  useEffect(() => { try { localStorage.setItem("crm_condiciones", cotizCondiciones); } catch {} }, [cotizCondiciones]);
+  const condSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    try { localStorage.setItem("crm_condiciones", cotizCondiciones); } catch {}
+    if (condSaveTimer.current) clearTimeout(condSaveTimer.current);
+    condSaveTimer.current = setTimeout(() => {
+      api.fetchCrmSettings().then((cfg) => api.saveCrmSettings({ ...cfg, condiciones: cotizCondiciones })).catch(() => {});
+    }, 2000);
+  }, [cotizCondiciones]);
   const [emitiendo, setEmitiendo] = useState(false);
   // legacy single-line state kept for backward compat with pre-fill from lead
   const [quote, setQuote] = useState({
@@ -305,9 +312,9 @@ export default function CRMPrototype() {
           setIsLoading(false);
         }
       });
-    // Background: catalog and plantillas (BigQuery scans ~200 rows, slower)
-    Promise.all([api.fetchCatalogo(), api.fetchPlantillas()])
-      .then(([cat, plt]) => {
+    // Background: catalog, plantillas, and shared settings
+    Promise.all([api.fetchCatalogo(), api.fetchPlantillas(), api.fetchCrmSettings()])
+      .then(([cat, plt, cfg]) => {
         if (cancelled) return;
         if (cat.length > 0) {
           setCatalogo((prev) => {
@@ -319,6 +326,10 @@ export default function CRMPrototype() {
           });
         }
         if (plt.length > 0) setPlantillas(plt);
+        if (cfg.condiciones) {
+          setCotizCondiciones(cfg.condiciones);
+          try { localStorage.setItem("crm_condiciones", cfg.condiciones); } catch {}
+        }
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -2356,13 +2367,42 @@ function ProductsModule({
   const [descTemplates, setDescTemplates] = useState<Record<string, string>>(() => {
     try { const s = localStorage.getItem("crm_desc_templates"); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
-  useEffect(() => { try { localStorage.setItem("crm_svc_types", JSON.stringify(serviceTypes)); } catch {} }, [serviceTypes]);
-  useEffect(() => { try { localStorage.setItem("crm_equip_cats", JSON.stringify(equipCats)); } catch {} }, [equipCats]);
-  useEffect(() => { try { localStorage.setItem("crm_desc_templates", JSON.stringify(descTemplates)); } catch {} }, [descTemplates]);
   const [catServiceMap, setCatServiceMap] = useState<Record<string, string[]>>(() => {
     try { const s = localStorage.getItem("crm_cat_svc_map"); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
+
+  // Sync localStorage
+  useEffect(() => { try { localStorage.setItem("crm_svc_types", JSON.stringify(serviceTypes)); } catch {} }, [serviceTypes]);
+  useEffect(() => { try { localStorage.setItem("crm_equip_cats", JSON.stringify(equipCats)); } catch {} }, [equipCats]);
+  useEffect(() => { try { localStorage.setItem("crm_desc_templates", JSON.stringify(descTemplates)); } catch {} }, [descTemplates]);
   useEffect(() => { try { localStorage.setItem("crm_cat_svc_map", JSON.stringify(catServiceMap)); } catch {} }, [catServiceMap]);
+
+  // Load shared settings from API on mount
+  useEffect(() => {
+    api.fetchCrmSettings().then((cfg) => {
+      if (cfg.equip_cats?.length) {
+        setEquipCats(cfg.equip_cats);
+        try { localStorage.setItem("crm_equip_cats", JSON.stringify(cfg.equip_cats)); } catch {}
+      }
+      if (cfg.svc_types?.length) {
+        setServiceTypes(cfg.svc_types as ServiceTypeEntry[]);
+        try { localStorage.setItem("crm_svc_types", JSON.stringify(cfg.svc_types)); } catch {}
+      }
+      if (cfg.cat_svc_map && Object.keys(cfg.cat_svc_map).length) {
+        setCatServiceMap(cfg.cat_svc_map);
+        try { localStorage.setItem("crm_cat_svc_map", JSON.stringify(cfg.cat_svc_map)); } catch {}
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Save shared settings to API (debounced)
+  const cfgSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function scheduleCfgSave(patch: Partial<import("@/lib/api").CrmSettings>) {
+    if (cfgSaveTimer.current) clearTimeout(cfgSaveTimer.current);
+    cfgSaveTimer.current = setTimeout(() => {
+      api.fetchCrmSettings().then((cfg) => api.saveCrmSettings({ ...cfg, ...patch })).catch(() => {});
+    }, 1500);
+  }
 
   const [catFilter, setCatFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -2543,12 +2583,12 @@ function ProductsModule({
                 {equipCats.map((cat) => (
                   <div key={cat} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                     <span style={{ flex: 1, color: "#475569" }}>{cat}</span>
-                    <button onClick={() => { if (window.confirm(`¿Eliminar categoría "${cat}"?`)) setEquipCats((p) => p.filter((c) => c !== cat)); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}><Trash2 size={13} /></button>
+                    <button onClick={() => { if (window.confirm(`¿Eliminar categoría "${cat}"?`)) { setEquipCats((p) => { const next = p.filter((c) => c !== cat); scheduleCfgSave({ equip_cats: next }); return next; }); } }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}><Trash2 size={13} /></button>
                   </div>
                 ))}
                 <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                   <input placeholder="Nueva categoría" value={newEquipCat} onChange={(e) => setNewEquipCat(e.target.value)} style={{ flex: 1 }} maxLength={40} />
-                  <button className="primary small" onClick={() => { if (!newEquipCat.trim()) { notify("Debe ingresar una categoría"); return; } if (equipCats.includes(newEquipCat.trim())) { notify("Ya existe"); return; } setEquipCats((p) => [...p, newEquipCat.trim()]); setNewEquipCat(""); }}><Plus size={14} /></button>
+                  <button className="primary small" onClick={() => { if (!newEquipCat.trim()) { notify("Debe ingresar una categoría"); return; } if (equipCats.includes(newEquipCat.trim())) { notify("Ya existe"); return; } setEquipCats((p) => { const next = [...p, newEquipCat.trim()]; scheduleCfgSave({ equip_cats: next }); return next; }); setNewEquipCat(""); }}><Plus size={14} /></button>
                 </div>
               </div>
             </div>
@@ -2574,7 +2614,7 @@ function ProductsModule({
                         <td style={{ padding: "7px 10px", textAlign: "right", color: "#475569" }}>{st.defaultPrice > 0 ? money(st.defaultPrice) : <span style={{ color: "#cbd5e0" }}>—</span>}</td>
                         <td style={{ padding: "7px 6px", textAlign: "center" }}>
                           <button
-                            onClick={() => { if (window.confirm(`¿Eliminar tipo de servicio "${st.id}"?`)) setServiceTypes((p) => p.filter((s) => s.id !== st.id)); }}
+                            onClick={() => { if (window.confirm(`¿Eliminar tipo de servicio "${st.id}"?`)) { setServiceTypes((p) => { const next = p.filter((s) => s.id !== st.id); scheduleCfgSave({ svc_types: next }); return next; }); } }}
                             style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2, display: "flex" }}
                           ><Trash2 size={13} /></button>
                         </td>
@@ -2615,7 +2655,7 @@ function ProductsModule({
                     if (!id) { notify("Debe ingresar un código"); return; }
                     if (!label) { notify("Debe ingresar el nombre del servicio"); return; }
                     if (serviceTypes.some((s) => s.id === id)) { notify(`El código "${id}" ya existe`); return; }
-                    setServiceTypes((p) => [...p, { id, label, defaultPrice: Number(newSvcPrice) || 0 }]);
+                    setServiceTypes((p) => { const next = [...p, { id, label, defaultPrice: Number(newSvcPrice) || 0 }]; scheduleCfgSave({ svc_types: next }); return next; });
                     setNewSvcId(""); setNewSvcLabel(""); setNewSvcPrice("");
                   }}
                 ><Plus size={14} />Agregar</button>
@@ -2646,7 +2686,9 @@ function ProductsModule({
                                 setCatServiceMap((prev) => {
                                   const current = (prev[cat] && prev[cat].length > 0) ? prev[cat] : serviceTypes.map((s) => s.id);
                                   const updated = e.target.checked ? [...current.filter((id) => id !== st.id), st.id] : current.filter((id) => id !== st.id);
-                                  return { ...prev, [cat]: updated.length === serviceTypes.length ? [] : updated };
+                                  const next = { ...prev, [cat]: updated.length === serviceTypes.length ? [] : updated };
+                                  scheduleCfgSave({ cat_svc_map: next });
+                                  return next;
                                 });
                               }}
                             />

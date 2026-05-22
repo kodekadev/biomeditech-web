@@ -613,15 +613,17 @@ export async function fetchCatalogo(): Promise<CatalogoItem[]> {
 }
 
 export async function fetchPlantillas(): Promise<Plantilla[]> {
-  const r = await apiGet<{ data: unknown[] }>("/api/plantillas?limit=50");
-  return (r?.data ?? []).map((v) => {
-    const raw = v as Record<string, unknown>;
-    return {
-      id: str(raw.id),
-      codigo: str(raw.codigo),
-      descripcion_larga: str(raw.descripcion_larga),
-    };
-  });
+  const r = await apiGet<{ data: unknown[] }>("/api/plantillas?limit=200");
+  return (r?.data ?? [])
+    .filter((v) => !str((v as Record<string, unknown>).codigo).startsWith("__CFG__"))
+    .map((v) => {
+      const raw = v as Record<string, unknown>;
+      return {
+        id: str(raw.id),
+        codigo: str(raw.codigo),
+        descripcion_larga: str(raw.descripcion_larga),
+      };
+    });
 }
 
 export async function fetchCotizacionDetalle(id: string): Promise<CotizacionDetalle | null> {
@@ -878,4 +880,30 @@ export async function updateProtocol(id: string, label: string, items: unknown, 
 
 export async function deleteProtocol(id: string): Promise<void> {
   await apiMutate("DELETE", `/api/protocolos-plantillas/${id}`);
+}
+
+// --- Shared CRM settings (stored as a single plantilla with __CFG__ prefix) ---
+
+export type CrmSettings = {
+  equip_cats?: string[];
+  svc_types?: Array<{ id: string; label: string; defaultPrice: number }>;
+  cat_svc_map?: Record<string, string[]>;
+  condiciones?: string;
+};
+
+const SETTINGS_CODE = "__CFG__settings";
+let _settingsId: string | null | undefined = undefined;
+
+export async function fetchCrmSettings(): Promise<CrmSettings> {
+  const r = await apiGet<{ data: unknown[] }>("/api/plantillas?limit=200");
+  const entry = (r?.data ?? []).find((v) => str((v as Record<string, unknown>).codigo) === SETTINGS_CODE);
+  _settingsId = entry ? str((entry as Record<string, unknown>).id) : null;
+  if (!entry) return {};
+  try { return JSON.parse(str((entry as Record<string, unknown>).descripcion_larga)) as CrmSettings; } catch { return {}; }
+}
+
+export async function saveCrmSettings(settings: CrmSettings): Promise<void> {
+  if (_settingsId === undefined) await fetchCrmSettings();
+  const newId = await upsertPlantilla(_settingsId ?? null, SETTINGS_CODE, JSON.stringify(settings));
+  if (newId && !_settingsId) _settingsId = newId;
 }
