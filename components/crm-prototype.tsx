@@ -3546,13 +3546,15 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
   const openInDesignRef = useRef(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const apiProtocolIdsRef = useRef<Set<string>>(new Set());
+  const apiLoadedRef = useRef(false);
   const skipSyncRef = useRef(false);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load templates from API on mount; merge with localStorage (API is source of truth)
   useEffect(() => {
     api.fetchProtocols().then((rows: ProtocolRaw[]) => {
-      if (rows.length === 0) return;
+      apiLoadedRef.current = true;
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current); // cancel any pending sync from mount
       apiProtocolIdsRef.current = new Set(rows.map((r) => r.id));
       skipSyncRef.current = true;
       setTemplates((local) => {
@@ -3563,17 +3565,19 @@ function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (
           items: (() => { try { return JSON.parse(r.items_json || "[]"); } catch { return []; } })(),
           conclusions: (() => { try { return JSON.parse(r.conclusiones_json || "[]"); } catch { return []; } })(),
         }));
+        // Only keep local templates that don't exist in the API
         const localOnly = local.filter((t) => !apiIds.has(t.id));
         const merged = [...apiTpls, ...localOnly];
         persistTemplates(merged);
         return merged;
       });
-    }).catch(() => {});
+    }).catch(() => { apiLoadedRef.current = true; });
   }, []);
 
-  // Debounced sync to API whenever templates change
+  // Debounced sync to API whenever templates change — only after API has loaded
   useEffect(() => {
     if (skipSyncRef.current) { skipSyncRef.current = false; return; }
+    if (!apiLoadedRef.current) return; // don't sync until API has responded
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(() => {
       const apiIds = apiProtocolIdsRef.current;
