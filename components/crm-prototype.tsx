@@ -2401,10 +2401,11 @@ function ProductsModule({
   useEffect(() => { try { localStorage.setItem("crm_cat_svc_map", JSON.stringify(catServiceMap)); } catch {} }, [catServiceMap]);
 
   // Load shared settings from API — on mount and every 30s
+  const cfgPendingRef = useRef(false); // true while a local change is pending save
   useEffect(() => {
     let cancelled = false;
     const applySettings = (cfg: import("@/lib/api").CrmSettings) => {
-      if (cancelled) return;
+      if (cancelled || cfgPendingRef.current) return; // don't overwrite unsaved local changes
       if (cfg.equip_cats?.length) {
         setEquipCats(cfg.equip_cats);
         try { localStorage.setItem("crm_equip_cats", JSON.stringify(cfg.equip_cats)); } catch {}
@@ -2426,9 +2427,13 @@ function ProductsModule({
   // Save shared settings to API (debounced)
   const cfgSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   function scheduleCfgSave(patch: Partial<import("@/lib/api").CrmSettings>) {
+    cfgPendingRef.current = true;
     if (cfgSaveTimer.current) clearTimeout(cfgSaveTimer.current);
     cfgSaveTimer.current = setTimeout(() => {
-      api.fetchCrmSettings().then((cfg) => api.saveCrmSettings({ ...cfg, ...patch })).catch(() => {});
+      api.fetchCrmSettings()
+        .then((cfg) => api.saveCrmSettings({ ...cfg, ...patch }))
+        .catch(() => {})
+        .finally(() => { cfgPendingRef.current = false; });
     }, 1500);
   }
 
