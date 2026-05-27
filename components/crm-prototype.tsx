@@ -2386,9 +2386,11 @@ function ProductsModule({
   useEffect(() => { try { localStorage.setItem("crm_desc_templates", JSON.stringify(descTemplates)); } catch {} }, [descTemplates]);
   useEffect(() => { try { localStorage.setItem("crm_cat_svc_map", JSON.stringify(catServiceMap)); } catch {} }, [catServiceMap]);
 
-  // Load shared settings from API on mount
+  // Load shared settings from API — on mount and every 30s
   useEffect(() => {
-    api.fetchCrmSettings().then((cfg) => {
+    let cancelled = false;
+    const applySettings = (cfg: import("@/lib/api").CrmSettings) => {
+      if (cancelled) return;
       if (cfg.equip_cats?.length) {
         setEquipCats(cfg.equip_cats);
         try { localStorage.setItem("crm_equip_cats", JSON.stringify(cfg.equip_cats)); } catch {}
@@ -2401,7 +2403,10 @@ function ProductsModule({
         setCatServiceMap(cfg.cat_svc_map);
         try { localStorage.setItem("crm_cat_svc_map", JSON.stringify(cfg.cat_svc_map)); } catch {}
       }
-    }).catch(() => {});
+    };
+    api.fetchCrmSettings().then(applySettings).catch(() => {});
+    const interval = setInterval(() => { api.fetchCrmSettings().then(applySettings).catch(() => {}); }, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   // Save shared settings to API (debounced)
