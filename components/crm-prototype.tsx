@@ -609,16 +609,24 @@ export default function CRMPrototype() {
     if (newCliente) {
       setClientes((prev) => prev.map((c) => c.id === tempId ? newCliente : c));
       api.logActivity("nuevo_cliente", "Nuevo cliente registrado", `${form.nombre}`, newCliente.id, "cliente", currentUser?.email);
+    } else {
+      // API failed — remove temp and alert user
+      setClientes((prev) => prev.filter((c) => c.id !== tempId));
+      notify("Error al crear el cliente. Intenta nuevamente.");
     }
   }
 
   async function handleUpdateCliente(id: string, form: ClienteForm) {
     setClientes((prev) => prev.map((c) => c.id === id ? { ...c, rut: form.rut, nombre: form.nombre, contacto: form.contacto, correo: form.correo, estado: form.estado, telefono: form.tel, direccion: form.direccion, ciudad: form.ciudad, comuna: form.comuna } : c));
     closeModal();
-    notify("Cliente actualizado");
 
     const updated = await api.saveCliente(id, form);
-    if (updated) setClientes((prev) => prev.map((c) => c.id === id ? updated : c));
+    if (updated) {
+      setClientes((prev) => prev.map((c) => c.id === id ? updated : c));
+      notify("Cliente actualizado");
+    } else {
+      notify("Error al actualizar el cliente. Intenta nuevamente.");
+    }
   }
 
   // --- Producto actions ---
