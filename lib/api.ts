@@ -594,7 +594,7 @@ export async function upsertPlantilla(existingId: string | null, codigo: string,
 }
 
 export async function fetchCatalogo(): Promise<CatalogoItem[]> {
-  const r = await apiGet<{ data: unknown[] }>("/api/catalogo?limit=200");
+  const r = await apiGet<{ data: unknown[] }>("/api/catalogo?limit=500");
   return (r?.data ?? []).map((v) => {
     const raw = v as Record<string, unknown>;
     return {

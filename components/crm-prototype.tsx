@@ -298,9 +298,15 @@ export default function CRMPrototype() {
         resolved++;
         if (initial && resolved === 1 && !cancelled) setIsLoading(false);
       };
-      api.fetchLeads().then((l) => { if (!cancelled && l.length > 0) setLeads(l); done(); }).catch(() => done());
-      api.fetchClientes().then((c) => { if (!cancelled && c.length > 0) setClientes(c); done(); }).catch(() => { done(); if (initial) setFetchError("Error al cargar los datos. Verifica tu conexión."); });
-      api.fetchCotizaciones().then((cot) => { if (!cancelled && cot.length > 0) setCotizaciones(cot); done(); }).catch(() => done());
+      // Merge helper: preserve local items not yet in BigQuery (eventual consistency lag)
+      const merge = <T extends { id: string }>(apiItems: T[], prev: T[]): T[] => {
+        const apiIds = new Set(apiItems.map((x) => x.id));
+        const localOnly = prev.filter((x) => !x.id.includes("temp") && !apiIds.has(x.id));
+        return localOnly.length > 0 ? [...apiItems, ...localOnly] : apiItems;
+      };
+      api.fetchLeads().then((l) => { if (!cancelled && l.length > 0) setLeads((prev) => merge(l, prev)); done(); }).catch(() => done());
+      api.fetchClientes().then((c) => { if (!cancelled && c.length > 0) setClientes((prev) => merge(c, prev)); done(); }).catch(() => { done(); if (initial) setFetchError("Error al cargar los datos. Verifica tu conexión."); });
+      api.fetchCotizaciones().then((cot) => { if (!cancelled && cot.length > 0) setCotizaciones((prev) => merge(cot, prev)); done(); }).catch(() => done());
       api.fetchDashboard().then((s) => { if (!cancelled && s) setStats(s); done(); }).catch(() => done());
     };
 
@@ -503,6 +509,10 @@ export default function CRMPrototype() {
     if (newLead) {
       setLeads((prev) => prev.map((l) => l.id === tempId ? newLead : l));
       if (items.length > 0) setLeadPreItems((prev) => { const { [tempId]: v, ...rest } = prev; return { ...rest, [newLead.id]: v }; });
+    } else {
+      setLeads((prev) => prev.filter((l) => l.id !== tempId));
+      notify("Error al guardar el lead. Intenta nuevamente.");
+      return;
     }
     api.logActivity("nuevo_lead", "Nuevo lead registrado", `${form.nombre} (${form.empresa}) — ${form.servicio}`, lead.id, "lead", currentUser?.email);
 
@@ -512,23 +522,27 @@ export default function CRMPrototype() {
       (rutNorm.length > 4 && normalizeRut(c.rut) === rutNorm) ||
       c.nombre.toLowerCase().trim() === (form.empresa || form.nombre).toLowerCase().trim()
     );
-    if (!clienteExiste && (form.rut || form.empresa)) {
+    if (!clienteExiste && (form.empresa || form.nombre)) {
       const clienteForm: ClienteForm = {
         rut: form.rut ?? "",
         nombre: form.empresa || form.nombre,
         contacto: form.nombre,
-        tel: form.tel,
-        correo: form.email,
+        tel: form.tel || "+56 ",
+        correo: form.email || "",
         estado: "activo",
         direccion: form.direccion || "",
         ciudad: "",
         comuna: "",
       };
-      const tempCId = `C-${String(Date.now())}`;
+      const tempCId = `C-temp-${Date.now()}`;
       const tempCliente: Cliente = { id: tempCId, rut: clienteForm.rut, nombre: clienteForm.nombre, contacto: clienteForm.contacto, correo: clienteForm.correo, estado: clienteForm.estado, telefono: clienteForm.tel, direccion: "", ciudad: "", comuna: "" };
       setClientes((prev) => [tempCliente, ...prev]);
       const newCliente = await api.createCliente(clienteForm);
-      if (newCliente) setClientes((prev) => prev.map((c) => c.id === tempCId ? newCliente : c));
+      if (newCliente) {
+        setClientes((prev) => prev.map((c) => c.id === tempCId ? newCliente : c));
+      } else {
+        setClientes((prev) => prev.filter((c) => c.id !== tempCId));
+      }
     }
   }
 
