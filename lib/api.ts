@@ -466,7 +466,7 @@ export async function deleteProducto(id: string): Promise<void> {
 }
 
 export async function fetchCotizaciones(): Promise<Cotizacion[]> {
-  const r = await apiGet<{ data: unknown[] }>("/api/cotizaciones?limit=50");
+  const r = await apiGet<{ data: unknown[] }>("/api/cotizaciones?limit=100");
   return (r?.data ?? []).map(mapCotizacion);
 }
 

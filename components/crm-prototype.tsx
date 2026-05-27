@@ -291,32 +291,40 @@ export default function CRMPrototype() {
   useEffect(() => {
     if (!loggedIn) return;
     let cancelled = false;
+    let resolved = 0;
     setFetchError(null);
     setIsLoading(true);
-    // Critical path: show UI as soon as these 4 resolve
-    Promise.all([
-      api.fetchLeads(),
-      api.fetchClientes(),
-      api.fetchCotizaciones(),
-      api.fetchDashboard(),
-    ])
-      .then(([l, c, cot, s]) => {
-        if (cancelled) return;
-        if (l.length > 0) setLeads(l);
-        if (c.length > 0) setClientes(c);
-        if (cot.length > 0) setCotizaciones(cot);
-        if (s) setStats(s);
-        setIsLoading(false);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFetchError("Error al cargar los datos. Verifica tu conexión.");
-          setIsLoading(false);
-        }
-      });
-    // Background: catalog, plantillas, and shared settings
-    Promise.all([api.fetchCatalogo(), api.fetchPlantillas(), api.fetchCrmSettings()])
-      .then(([cat, plt, cfg]) => {
+
+    const done = () => {
+      resolved++;
+      // Show UI as soon as first critical request resolves
+      if (resolved === 1 && !cancelled) setIsLoading(false);
+    };
+
+    // Fire all requests in parallel, update state as each one arrives
+    api.fetchLeads()
+      .then((l) => { if (!cancelled && l.length > 0) setLeads(l); done(); })
+      .catch(() => { done(); });
+
+    api.fetchClientes()
+      .then((c) => { if (!cancelled && c.length > 0) setClientes(c); done(); })
+      .catch(() => { done(); setFetchError("Error al cargar los datos. Verifica tu conexión."); });
+
+    api.fetchCotizaciones()
+      .then((cot) => { if (!cancelled && cot.length > 0) setCotizaciones(cot); done(); })
+      .catch(() => { done(); });
+
+    api.fetchDashboard()
+      .then((s) => { if (!cancelled && s) setStats(s); done(); })
+      .catch(() => { done(); });
+
+    // Background: productos, catalog, plantillas, shared settings
+    api.fetchProductos()
+      .then((p) => { if (!cancelled && p.length > 0) setProductos(p); })
+      .catch(() => {});
+
+    api.fetchCatalogo()
+      .then((cat) => {
         if (cancelled) return;
         if (cat.length > 0) {
           setCatalogo((prev) => {
@@ -327,13 +335,23 @@ export default function CRMPrototype() {
             return localOnly.length > 0 ? [...cat, ...localOnly] : cat;
           });
         }
-        if (plt.length > 0) setPlantillas(plt);
+      })
+      .catch(() => {});
+
+    api.fetchPlantillas()
+      .then((plt) => { if (!cancelled && plt.length > 0) setPlantillas(plt); })
+      .catch(() => {});
+
+    api.fetchCrmSettings()
+      .then((cfg) => {
+        if (cancelled) return;
         if (cfg.condiciones) {
           setCotizCondiciones(cfg.condiciones);
           try { localStorage.setItem("crm_condiciones", cfg.condiciones); } catch {}
         }
       })
       .catch(() => {});
+
     return () => { cancelled = true; };
   }, [loggedIn]);
 
