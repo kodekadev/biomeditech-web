@@ -2888,7 +2888,7 @@ function ProductsModule({
                       {s.enabled && (
                         <label style={{ marginTop: 8, display: "block" }}>
                           <span style={{ fontSize: 11, color: "#64748b" }}>Descripción en cotización (opcional)</span>
-                          <textarea rows={2} value={s.descripcion} placeholder={tplDesc || `Descripción de ${stLabel}...`} onChange={(e) => setProdForm((f) => ({ ...f, servicios: f.servicios.map((sv, i) => i === idx ? { ...sv, descripcion: e.target.value } : sv) }))} style={{ fontSize: 12, marginTop: 2 }} maxLength={600} />
+                          <textarea rows={2} value={s.descripcion} placeholder={tplDesc || `Descripción de ${stLabel}...`} onChange={(e) => setProdForm((f) => ({ ...f, servicios: f.servicios.map((sv, i) => i === idx ? { ...sv, descripcion: e.target.value } : sv) }))} style={{ fontSize: 12, marginTop: 2 }} maxLength={3000} />
                           {tplDesc && !s.descripcion && <span style={{ fontSize: 11, color: "#94a3b8" }}>Dejando vacío se usará la plantilla de &quot;{prodForm.equipCat}:{s.id}&quot;</span>}
                         </label>
                       )}
