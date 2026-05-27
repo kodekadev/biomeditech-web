@@ -882,7 +882,7 @@ export async function deleteProtocol(id: string): Promise<void> {
   await apiMutate("DELETE", `/api/protocolos-plantillas/${id}`);
 }
 
-// --- Shared CRM settings (stored as a single plantilla with __CFG__ prefix) ---
+// --- Shared CRM settings (stored in configuracion table, id='global') ---
 
 export type CrmSettings = {
   equip_cats?: string[];
@@ -891,19 +891,24 @@ export type CrmSettings = {
   condiciones?: string;
 };
 
-const SETTINGS_CODE = "__CFG__settings";
-let _settingsId: string | null | undefined = undefined;
-
 export async function fetchCrmSettings(): Promise<CrmSettings> {
-  const r = await apiGet<{ data: unknown[] }>("/api/plantillas?limit=200");
-  const entry = (r?.data ?? []).find((v) => str((v as Record<string, unknown>).codigo) === SETTINGS_CODE);
-  _settingsId = entry ? str((entry as Record<string, unknown>).id) : null;
-  if (!entry) return {};
-  try { return JSON.parse(str((entry as Record<string, unknown>).descripcion_larga)) as CrmSettings; } catch { return {}; }
+  const r = await apiGet<{ data: unknown[] }>("/api/configuracion?limit=1");
+  const row = (r?.data ?? [])[0] as Record<string, unknown> | undefined;
+  if (!row) return {};
+  const parse = (field: unknown) => { try { return JSON.parse(str(field)); } catch { return undefined; } };
+  return {
+    equip_cats: parse(row.equip_cats),
+    svc_types: parse(row.svc_types),
+    cat_svc_map: parse(row.cat_svc_map),
+    condiciones: str(row.condiciones) || undefined,
+  };
 }
 
 export async function saveCrmSettings(settings: CrmSettings): Promise<void> {
-  if (_settingsId === undefined) await fetchCrmSettings();
-  const newId = await upsertPlantilla(_settingsId ?? null, SETTINGS_CODE, JSON.stringify(settings));
-  if (newId && !_settingsId) _settingsId = newId;
+  await apiMutate("PATCH", "/api/configuracion/global", {
+    equip_cats: JSON.stringify(settings.equip_cats ?? []),
+    svc_types: JSON.stringify(settings.svc_types ?? []),
+    cat_svc_map: JSON.stringify(settings.cat_svc_map ?? {}),
+    condiciones: settings.condiciones ?? "",
+  });
 }
