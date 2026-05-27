@@ -291,68 +291,48 @@ export default function CRMPrototype() {
   useEffect(() => {
     if (!loggedIn) return;
     let cancelled = false;
-    let resolved = 0;
-    setFetchError(null);
-    setIsLoading(true);
 
-    const done = () => {
-      resolved++;
-      // Show UI as soon as first critical request resolves
-      if (resolved === 1 && !cancelled) setIsLoading(false);
+    const fetchCritical = (initial: boolean) => {
+      let resolved = 0;
+      const done = () => {
+        resolved++;
+        if (initial && resolved === 1 && !cancelled) setIsLoading(false);
+      };
+      api.fetchLeads().then((l) => { if (!cancelled && l.length > 0) setLeads(l); done(); }).catch(() => done());
+      api.fetchClientes().then((c) => { if (!cancelled && c.length > 0) setClientes(c); done(); }).catch(() => { done(); if (initial) setFetchError("Error al cargar los datos. Verifica tu conexión."); });
+      api.fetchCotizaciones().then((cot) => { if (!cancelled && cot.length > 0) setCotizaciones(cot); done(); }).catch(() => done());
+      api.fetchDashboard().then((s) => { if (!cancelled && s) setStats(s); done(); }).catch(() => done());
     };
 
-    // Fire all requests in parallel, update state as each one arrives
-    api.fetchLeads()
-      .then((l) => { if (!cancelled && l.length > 0) setLeads(l); done(); })
-      .catch(() => { done(); });
+    const fetchBackground = () => {
+      api.fetchProductos().then((p) => { if (!cancelled && p.length > 0) setProductos(p); }).catch(() => {});
+      api.fetchCatalogo().then((cat) => {
+        if (cancelled || cat.length === 0) return;
+        setCatalogo((prev) => {
+          const apiIds = new Set(cat.map((c) => c.id));
+          const localOnly = prev.filter((c) => !apiIds.has(c.id));
+          return localOnly.length > 0 ? [...cat, ...localOnly] : cat;
+        });
+      }).catch(() => {});
+      api.fetchPlantillas().then((plt) => { if (!cancelled && plt.length > 0) setPlantillas(plt); }).catch(() => {});
+      api.fetchCrmSettings().then((cfg) => {
+        if (cancelled || !cfg.condiciones) return;
+        setCotizCondiciones(cfg.condiciones);
+        try { localStorage.setItem("crm_condiciones", cfg.condiciones); } catch {}
+      }).catch(() => {});
+    };
 
-    api.fetchClientes()
-      .then((c) => { if (!cancelled && c.length > 0) setClientes(c); done(); })
-      .catch(() => { done(); setFetchError("Error al cargar los datos. Verifica tu conexión."); });
+    setFetchError(null);
+    setIsLoading(true);
+    fetchCritical(true);
+    fetchBackground();
 
-    api.fetchCotizaciones()
-      .then((cot) => { if (!cancelled && cot.length > 0) setCotizaciones(cot); done(); })
-      .catch(() => { done(); });
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchCritical(false);
+    }, 30000);
 
-    api.fetchDashboard()
-      .then((s) => { if (!cancelled && s) setStats(s); done(); })
-      .catch(() => { done(); });
-
-    // Background: productos, catalog, plantillas, shared settings
-    api.fetchProductos()
-      .then((p) => { if (!cancelled && p.length > 0) setProductos(p); })
-      .catch(() => {});
-
-    api.fetchCatalogo()
-      .then((cat) => {
-        if (cancelled) return;
-        if (cat.length > 0) {
-          setCatalogo((prev) => {
-            if (prev.length === 0) return cat;
-            // Preserve locally-created items not yet visible in API (BigQuery eventual consistency)
-            const apiIds = new Set(cat.map((c) => c.id));
-            const localOnly = prev.filter((c) => !apiIds.has(c.id));
-            return localOnly.length > 0 ? [...cat, ...localOnly] : cat;
-          });
-        }
-      })
-      .catch(() => {});
-
-    api.fetchPlantillas()
-      .then((plt) => { if (!cancelled && plt.length > 0) setPlantillas(plt); })
-      .catch(() => {});
-
-    api.fetchCrmSettings()
-      .then((cfg) => {
-        if (cancelled) return;
-        if (cfg.condiciones) {
-          setCotizCondiciones(cfg.condiciones);
-          try { localStorage.setItem("crm_condiciones", cfg.condiciones); } catch {}
-        }
-      })
-      .catch(() => {});
-
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearInterval(interval); };
   }, [loggedIn]);
 
   // All hooks must be called before any conditional return
