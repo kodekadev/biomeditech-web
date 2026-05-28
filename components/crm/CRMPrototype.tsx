@@ -1,33 +1,26 @@
 "use client";
 
 import {
-  Activity,
   Bell,
   Check,
-  ClipboardList,
-  Clock3,
-  Edit3,
-  Mail,
-  MessageCircle,
   Plus,
-  Search,
   Settings,
-  Trash2,
-  UserPlus,
-  Wrench,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as api from "@/lib/api";
 import { LOGO_B64 } from "@/lib/logo-b64";
 import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, Plantilla, CotizacionItemForm, CotizacionDetalle } from "@/lib/api";
-import { money, normalizeRut, isActivo, isValidEmail, isValidPhone, validateRut } from "@/lib/utils";
+import { money, normalizeRut } from "@/lib/utils";
 import type { ModuleId, LeadStatus, LeadChannel, QuoteService } from "./types";
 import { NAV_ITEMS, INITIAL_LEADS, INITIAL_CLIENTES, INITIAL_PRODUCTOS, INITIAL_COTIZACIONES } from "./constants";
-import { useDebounce, DataModule, SortTh, RowActions, PeriodoPicker, serviceLabel, leadEstadoMeta } from "./shared";
+import { useDebounce, serviceLabel } from "./shared";
 import { LoginScreen } from "./LoginScreen";
 import { Dashboard } from "./Dashboard";
-import { ProductsModule, CotizadorForm, CotizadorPreview, catalogoToCotizacionItem } from "./ProductsModule";
+import { ProductsModule, catalogoToCotizacionItem } from "./ProductsModule";
+import { LeadsModule } from "./LeadsModule";
+import { ClientesModule } from "./ClientesModule";
+import { CotizacionesModule } from "./CotizacionesModule";
 import { HistorialModule } from "./HistorialModule";
 import { ProtocolosModule } from "./ProtocolosModule";
 import { Modal } from "./Modal";
@@ -1040,243 +1033,45 @@ export default function CRMPrototype() {
           )}
 
           {active === "leads" && (
-            <section className="stack">
-              <div className="module-toolbar">
-                <div className="segmented">
-                  <button className={leadFilter === "todos" ? "selected" : ""} onClick={() => setLeadFilter("todos")}>
-                    Todos <span>{leads.length}</span>
-                  </button>
-                  <button className={leadFilter === "no-cotizado" ? "selected" : ""} onClick={() => setLeadFilter("no-cotizado")}>
-                    No cotizados <span>{noCotizados.length}</span>
-                  </button>
-                  <button className={leadFilter === "cotizado" ? "selected" : ""} onClick={() => setLeadFilter("cotizado")}>
-                    Cotizados <span>{leads.filter((l) => l.estado === "cotizado").length}</span>
-                  </button>
-                  <button className={leadFilter === "aprobado" ? "selected" : ""} onClick={() => setLeadFilter("aprobado")}>
-                    Aprobados <span>{leads.filter((l) => l.estado === "aprobado").length}</span>
-                  </button>
-                  <button className={leadFilter === "rechazado" ? "selected" : ""} onClick={() => setLeadFilter("rechazado")}>
-                    Rechazados <span>{leads.filter((l) => l.estado === "rechazado").length}</span>
-                  </button>
-                </div>
-                <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexWrap: "wrap", alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f8fafc", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 10px", minWidth: 220 }}>
-                    <Search size={14} style={{ color: "#94a3b8", flexShrink: 0 }} />
-                    <input
-                      placeholder="Buscar por RUT, nombre, empresa o correo..."
-                      value={leadQuery}
-                      onChange={(e) => setLeadQuery(e.target.value)}
-                      style={{ flex: 1, minHeight: 26, fontSize: 13, border: "none", background: "transparent", outline: "none" }}
-                    />
-                    {leadQuery && <button onClick={() => setLeadQuery("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: 0 }}><X size={13} /></button>}
-                  </div>
-                  <PeriodoPicker anio={leadAnio} mes={leadMes} fechas={leads.map((l) => l.creado_en || "")} onAnio={setLeadAnio} onMes={setLeadMes} />
-                  <div className="segmented">
-                    <button className={leadView === "iconos" ? "selected" : ""} onClick={() => setLeadView("iconos")} title="Vista tarjetas">
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="1" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor"/></svg>
-                    </button>
-                    <button className={leadView === "lista" ? "selected" : ""} onClick={() => setLeadView("lista")} title="Vista lista">
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="2" width="13" height="2" rx="1" fill="currentColor"/><rect x="1" y="6.5" width="13" height="2" rx="1" fill="currentColor"/><rect x="1" y="11" width="13" height="2" rx="1" fill="currentColor"/></svg>
-                    </button>
-                    <button className={leadView === "detalle" ? "selected" : ""} onClick={() => setLeadView("detalle")} title="Vista detalle">
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="13" height="4" rx="1" fill="currentColor"/><rect x="1" y="7" width="13" height="4" rx="1" fill="currentColor"/></svg>
-                    </button>
-                  </div>
-                  <button className="primary" onClick={() => setModal("lead")}>
-                    <UserPlus size={16} />Agregar lead
-                  </button>
-                </div>
-              </div>
-
-              {leadView === "iconos" && (
-                <div className="lead-grid">
-                  {visibleLeads.map((lead) => (
-                    <article className={`lead-card ${lead.estado}`} key={lead.id}>
-                      <div className="lead-card-head">
-                        <div>
-                          <h3>{lead.nombre}</h3>
-                          <p>{lead.empresa}</p>
-                        </div>
-                        <div className="lead-badges">
-                          <span className={lead.canal}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span>
-                          <span className={`tag ${leadEstadoMeta(lead.estado).tagClass}`} style={{ fontSize: 11 }}>
-                            {leadEstadoMeta(lead.estado).label}
-                          </span>
-                        </div>
-                      </div>
-                      <dl className="lead-meta">
-                        <div><MessageCircle size={14} />{lead.tel}</div>
-                        <div><Mail size={14} />{lead.email}</div>
-                        <div><Wrench size={14} />{serviceLabel(lead.servicio)}{lead.equipo ? ` / ${lead.equipo}` : ""}</div>
-                        <div><Clock3 size={14} />{lead.tiempo}</div>
-                      </dl>
-                      <div className="card-actions">
-                        <button className="primary small" title="Crear cotización para este lead" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} />Cotizar</button>
-                        <select
-                          value={lead.estado}
-                          onChange={(e) => handleSetLeadEstado(lead.id, e.target.value as LeadStatus)}
-                          style={{ fontSize: 11, padding: "3px 6px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#f8fafc", cursor: "pointer", minHeight: 28 }}
-                          title="Cambiar estado"
-                        >
-                          <option value="no-cotizado">No cotizado</option>
-                          <option value="cotizado">Cotizado</option>
-                          <option value="aprobado">Aprobado</option>
-                          <option value="rechazado">Rechazado</option>
-                        </select>
-                        <button className="ghost small card-icon-btn" aria-label="Editar" title="Editar lead" onClick={() => handleEditLead(lead)}><Edit3 size={14} /></button>
-                        <button className="ghost small card-icon-btn danger" aria-label="Eliminar" title="Eliminar lead" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={14} /></button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-
-              {leadView === "lista" && (
-                <div className="table-card">
-                  <table>
-                    <thead>
-                      <tr>
-                        <SortTh label="Nombre" sortKey="nombre" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                        <SortTh label="Empresa" sortKey="empresa" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                        <SortTh label="RUT" sortKey="rut" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                        <th>Canal</th>
-                        <SortTh label="Servicio" sortKey="servicio" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                        <SortTh label="Estado" sortKey="estado" current={leadSort} onSort={(k) => setLeadSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                        <th>Tiempo</th><th>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleLeads.map((lead) => (
-                        <tr key={lead.id}>
-                          <td><strong>{lead.nombre}</strong></td>
-                          <td>{lead.empresa}</td>
-                          <td className="mono" style={{ fontSize: 12 }}>{lead.rut || "—"}</td>
-                          <td><span className={`tag ${lead.canal === "wsp" ? "green" : "navy"}`}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span></td>
-                          <td>{serviceLabel(lead.servicio)}</td>
-                          <td><span className={`tag ${leadEstadoMeta(lead.estado).tagClass}`}>{leadEstadoMeta(lead.estado).label}</span></td>
-                          <td style={{ color: "#64748b", fontSize: 12 }}>{lead.tiempo}</td>
-                          <td>
-                            <div className="row-actions">
-                              <button aria-label="Cotizar" title="Crear cotización" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} /></button>
-                              <select
-                                value={lead.estado}
-                                onChange={(e) => handleSetLeadEstado(lead.id, e.target.value as LeadStatus)}
-                                style={{ fontSize: 11, padding: "2px 4px", borderRadius: 5, border: "1px solid #e2e8f0", background: "#f8fafc", cursor: "pointer" }}
-                                title="Estado"
-                              >
-                                <option value="no-cotizado">No cotizado</option>
-                                <option value="cotizado">Cotizado</option>
-                                <option value="aprobado">Aprobado</option>
-                                <option value="rechazado">Rechazado</option>
-                              </select>
-                              <button aria-label="Editar" title="Editar lead" onClick={() => handleEditLead(lead)}><Edit3 size={15} /></button>
-                              <button aria-label="Eliminar" title="Eliminar lead" className="danger" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={15} /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {leadView === "detalle" && (
-                <div className="stack" style={{ gap: 10 }}>
-                  {visibleLeads.map((lead) => (
-                    <div key={lead.id} className={`panel lead-detalle ${lead.estado}`} style={{ padding: "14px 18px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                            <strong style={{ fontSize: 15 }}>{lead.nombre}</strong>
-                            <span style={{ color: "#64748b", fontSize: 13 }}>— {lead.empresa}</span>
-                            <span className={`tag ${lead.canal === "wsp" ? "green" : "navy"}`} style={{ fontSize: 11 }}>{lead.canal === "wsp" ? "WhatsApp" : "Correo"}</span>
-                            <span className={`tag ${leadEstadoMeta(lead.estado).tagClass}`} style={{ fontSize: 11 }}>{leadEstadoMeta(lead.estado).label}</span>
-                          </div>
-                          <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#64748b", flexWrap: "wrap" }}>
-                            <span><MessageCircle size={12} style={{ display: "inline", marginRight: 4 }} />{lead.tel}</span>
-                            <span><Mail size={12} style={{ display: "inline", marginRight: 4 }} />{lead.email}</span>
-                            <span><Wrench size={12} style={{ display: "inline", marginRight: 4 }} />{serviceLabel(lead.servicio)}{lead.equipo ? ` — ${lead.equipo}` : ""}</span>
-                            <span><Clock3 size={12} style={{ display: "inline", marginRight: 4 }} />{lead.tiempo}</span>
-                          </div>
-                        </div>
-                        <div className="card-actions" style={{ flexShrink: 0 }}>
-                          <button className="primary small" onClick={() => handleCotizarLead(lead)}><ClipboardList size={15} />Cotizar</button>
-                          <select
-                            value={lead.estado}
-                            onChange={(e) => handleSetLeadEstado(lead.id, e.target.value as LeadStatus)}
-                            style={{ fontSize: 11, padding: "3px 6px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#f8fafc", cursor: "pointer", minHeight: 28 }}
-                            title="Estado"
-                          >
-                            <option value="no-cotizado">No cotizado</option>
-                            <option value="cotizado">Cotizado</option>
-                            <option value="aprobado">Aprobado</option>
-                            <option value="rechazado">Rechazado</option>
-                          </select>
-                          <button className="ghost small card-icon-btn" aria-label="Editar" onClick={() => handleEditLead(lead)}><Edit3 size={14} /></button>
-                          <button className="ghost small card-icon-btn danger" aria-label="Eliminar" onClick={() => handleDeleteLead(lead.id)}><Trash2 size={14} /></button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+            <LeadsModule
+              leads={leads}
+              visibleLeads={visibleLeads}
+              noCotizados={noCotizados}
+              leadFilter={leadFilter}
+              setLeadFilter={setLeadFilter}
+              leadAnio={leadAnio}
+              setLeadAnio={setLeadAnio}
+              leadMes={leadMes}
+              setLeadMes={setLeadMes}
+              leadQuery={leadQuery}
+              setLeadQuery={setLeadQuery}
+              leadSort={leadSort}
+              setLeadSort={setLeadSort}
+              leadView={leadView}
+              setLeadView={setLeadView}
+              onCotizarLead={handleCotizarLead}
+              onEditLead={handleEditLead}
+              onDeleteLead={handleDeleteLead}
+              onSetLeadEstado={handleSetLeadEstado}
+              onAddLead={() => setModal("lead")}
+            />
           )}
 
           {active === "clientes" && (
-            <DataModule
-              title="Clientes"
-              search={clientQuery}
-              setSearch={setClientQuery}
-              searchPlaceholder="Buscar por RUT, nombre, contacto o correo..."
-              onAdd={() => setModal("cliente")}
-              filterEl={
-                <select
-                  value={clientSearchField}
-                  onChange={(e) => setClientSearchField(e.target.value as typeof clientSearchField)}
-                  style={{ minHeight: 38, fontSize: 13, padding: "0 10px", borderRadius: 8, border: "1px solid var(--border)", background: "#fff" }}
-                >
-                  <option value="todos">Todos los campos</option>
-                  <option value="rut">RUT</option>
-                  <option value="nombre">Empresa</option>
-                  <option value="contacto">Contacto</option>
-                  <option value="correo">Correo</option>
-                </select>
-              }
-            >
-              <table>
-                <thead>
-                  <tr>
-                    <SortTh label="RUT" sortKey="rut" current={clientSort} onSort={(k) => setClientSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                    <SortTh label="Nombre / Empresa" sortKey="nombre" current={clientSort} onSort={(k) => setClientSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                    <SortTh label="Contacto" sortKey="contacto" current={clientSort} onSort={(k) => setClientSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                    <th>Teléfono</th><th>Ciudad</th>
-                    <SortTh label="Estado" sortKey="estado" current={clientSort} onSort={(k) => setClientSort((s) => ({ key: k, dir: s.key === k && s.dir === "asc" ? "desc" : "asc" }))} />
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredClients.map((client) => (
-                    <tr key={client.id}>
-                      <td className="mono" style={{ fontSize: 12 }}>{client.rut}</td>
-                      <td><strong>{client.nombre}</strong><small>{client.correo}</small></td>
-                      <td>{client.contacto}</td>
-                      <td style={{ fontSize: 12, color: "#64748b" }}>{client.telefono || "—"}</td>
-                      <td style={{ fontSize: 12 }}>{client.ciudad || (client.comuna ? client.comuna : "—")}</td>
-                      <td><span className={`tag ${isActivo(client.estado) ? "green" : "amber"}`}>{client.estado}</span></td>
-                      <td>
-                        <RowActions
-                          notify={notify}
-                          quote={() => handleCotizarCliente(client)}
-                          onEdit={() => handleEditCliente(client)}
-                          onDelete={() => handleDeleteCliente(client.id)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </DataModule>
+            <ClientesModule
+              filteredClients={filteredClients}
+              clientQuery={clientQuery}
+              setClientQuery={setClientQuery}
+              clientSearchField={clientSearchField}
+              setClientSearchField={setClientSearchField}
+              clientSort={clientSort}
+              setClientSort={setClientSort}
+              notify={notify}
+              onCotizarCliente={handleCotizarCliente}
+              onEditCliente={handleEditCliente}
+              onDeleteCliente={handleDeleteCliente}
+              onAddCliente={() => setModal("cliente")}
+            />
           )}
 
           {active === "productos" && (
@@ -1289,112 +1084,32 @@ export default function CRMPrototype() {
             />
           )}
 
-          {(false as boolean) && active === "productos" && (
-            <DataModule
-              title="Productos / Servicios"
-              search={productQuery}
-              setSearch={setProductQuery}
-              searchPlaceholder="Buscar por ID, producto, categoría o precio..."
-              onAdd={() => setModal("producto")}
-            >
-              <table>
-                <thead>
-                  <tr><th>ID</th><th>Producto / Servicio</th><th>Categoría</th><th>Diagnóstico</th><th>Reparación</th><th>Mantención</th><th>Instalación</th><th>Acciones</th></tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.map((product) => (
-                    <tr key={product.id}>
-                      <td className="mono">{product.id}</td>
-                      <td><strong>{product.nombre}</strong></td>
-                      <td><span className="tag navy">{product.cat}</span></td>
-                      <td>{money(product.diag)}</td>
-                      <td>{money(product.rep)}</td>
-                      <td>{money(product.mant)}</td>
-                      <td>{money(product.inst)}</td>
-                      <td>
-                        <RowActions
-                          notify={notify}
-                          onEdit={() => handleEditProducto(product)}
-                          onDelete={() => handleDeleteProducto(product.id)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </DataModule>
-          )}
-
           {active === "cotizaciones" && (
-            <section className="quote-layout">
-              <div className="stack">
-                <div className="panel">
-                  <div className="panel-title"><ClipboardList size={18} />Nueva cotización</div>
-                  <CotizadorForm
-                    clientes={clientes}
-                    catalogo={catalogo}
-                    plantillas={plantillas}
-                    clienteId={cotizClienteId}
-                    setClienteId={setCotizClienteId}
-                    notas={cotizNotas}
-                    setNotas={setCotizNotas}
-                    formaPago={cotizFormaPago}
-                    setFormaPago={setCotizFormaPago}
-                    condiciones={cotizCondiciones}
-                    setCondiciones={setCotizCondiciones}
-                    garantia={cotizGarantia}
-                    setGarantia={setCotizGarantia}
-                    validez={cotizValidez}
-                    setValidez={setCotizValidez}
-                    items={cotizItems}
-                    setItems={setCotizItems}
-                    onEmitir={handleEmitirCotizacion}
-                    onDescargarPDF={handlePrintQuote}
-                    emitiendo={emitiendo}
-                  />
-                </div>
-                {noCotizados.length > 0 && (
-                  <div className="panel">
-                    <div className="panel-head">
-                      <div className="panel-title"><Activity size={18} />Leads por cotizar</div>
-                      <span className="tag amber">{noCotizados.length} pendiente{noCotizados.length !== 1 ? "s" : ""}</span>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 4 }}>
-                      {noCotizados.slice(0, 6).map((lead) => (
-                        <div key={lead.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8fafc", borderRadius: 6, gap: 12 }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: "#0f2340", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.empresa || lead.nombre}</div>
-                            <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {serviceLabel(lead.servicio)}{lead.equipo ? ` · ${lead.equipo}` : ""}
-                            </div>
-                          </div>
-                          <button className="primary small" style={{ flexShrink: 0 }} onClick={() => handleCotizarLead(lead)}>
-                            <ClipboardList size={13} />Cotizar
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="stack">
-              <div className="preview-label-row">
-                  <span className="preview-label">Vista previa</span>
-                </div>
-                <CotizadorPreview
-                  clientes={clientes}
-                  clienteId={cotizClienteId}
-                  items={cotizItems}
-                  notas={cotizNotas}
-                  formaPago={cotizFormaPago}
-                  fecha={fecha}
-                  validez={cotizValidez}
-                  garantia={cotizGarantia}
-                  condiciones={cotizCondiciones}
-                />
-              </div>
-            </section>
+            <CotizacionesModule
+              clientes={clientes}
+              noCotizados={noCotizados}
+              catalogo={catalogo}
+              plantillas={plantillas}
+              cotizClienteId={cotizClienteId}
+              setCotizClienteId={setCotizClienteId}
+              cotizNotas={cotizNotas}
+              setCotizNotas={setCotizNotas}
+              cotizFormaPago={cotizFormaPago}
+              setCotizFormaPago={setCotizFormaPago}
+              cotizCondiciones={cotizCondiciones}
+              setCotizCondiciones={setCotizCondiciones}
+              cotizGarantia={cotizGarantia}
+              setCotizGarantia={setCotizGarantia}
+              cotizValidez={cotizValidez}
+              setCotizValidez={setCotizValidez}
+              cotizItems={cotizItems}
+              setCotizItems={setCotizItems}
+              emitiendo={emitiendo}
+              fecha={fecha}
+              onEmitirCotizacion={handleEmitirCotizacion}
+              onPrintQuote={handlePrintQuote}
+              onCotizarLead={handleCotizarLead}
+            />
           )}
 
           {active === "historial" && (
