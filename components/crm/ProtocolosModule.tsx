@@ -168,7 +168,7 @@ export function buildProtocolHtml(params: {
   const photosHtml = photos.length > 0
     ? `<div class="avoid-break" style="margin-top:16px"><h3>Evidencia fotográfica</h3>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">
-          ${photos.map((p) => `<img src="${p}" style="width:100%;height:150px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;-webkit-print-color-adjust:exact;print-color-adjust:exact"/>`).join("")}
+          ${photos.map((p) => `<img src="${p}" style="width:100%;height:220px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;-webkit-print-color-adjust:exact;print-color-adjust:exact"/>`).join("")}
         </div></div>`
     : "";
 
@@ -413,7 +413,20 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
     const files = Array.from(e.target.files ?? []);
     const res: string[] = [];
     for (const f of files) {
-      const url = await new Promise<string>((r) => { const fr = new FileReader(); fr.onload = (ev) => r(ev.target?.result as string); fr.readAsDataURL(f); });
+      const raw = await new Promise<string>((r) => { const fr = new FileReader(); fr.onload = (ev) => r(ev.target?.result as string); fr.readAsDataURL(f); });
+      const url = await new Promise<string>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 1600;
+          const scale = img.width > MAX ? MAX / img.width : 1;
+          const cvs = document.createElement("canvas");
+          cvs.width = Math.round(img.width * scale);
+          cvs.height = Math.round(img.height * scale);
+          cvs.getContext("2d")!.drawImage(img, 0, 0, cvs.width, cvs.height);
+          resolve(cvs.toDataURL("image/jpeg", 0.9));
+        };
+        img.src = raw;
+      });
       res.push(url);
     }
     setPhotos((prev) => [...prev, ...res]);
@@ -458,7 +471,7 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
       if (!iDoc) { document.body.removeChild(iframe); return; }
       applyPageBreakFix(iDoc);
       await new Promise((r) => setTimeout(r, 150));
-      const canvas = await html2canvas(iDoc.body, { useCORS: true, scale: 2, backgroundColor: "#ffffff", windowWidth: 794 });
+      const canvas = await html2canvas(iDoc.body, { useCORS: true, scale: 3, backgroundColor: "#ffffff", windowWidth: 794 });
       document.body.removeChild(iframe);
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });

@@ -443,7 +443,7 @@ export async function deleteCliente(id: string): Promise<void> {
 }
 
 export async function fetchProductos(): Promise<Producto[]> {
-  const r = await apiGet<{ data: unknown[] }>("/api/productos?limit=100");
+  const r = await apiGet<{ data: unknown[] }>("/api/productos?limit=2000");
   return (r?.data ?? []).map(mapProducto);
 }
 
@@ -594,7 +594,7 @@ export async function upsertPlantilla(existingId: string | null, codigo: string,
 }
 
 export async function fetchCatalogo(): Promise<CatalogoItem[]> {
-  const r = await apiGet<{ data: unknown[] }>("/api/catalogo?limit=500");
+  const r = await apiGet<{ data: unknown[] }>("/api/catalogo?limit=2000");
   return (r?.data ?? []).map((v) => {
     const raw = v as Record<string, unknown>;
     return {
