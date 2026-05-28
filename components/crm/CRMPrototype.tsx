@@ -12,9 +12,10 @@ import * as api from "@/lib/api";
 import { LOGO_B64 } from "@/lib/logo-b64";
 import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, Plantilla, CotizacionItemForm, CotizacionDetalle } from "@/lib/api";
 import { money, normalizeRut } from "@/lib/utils";
+// normalizeRut used in handleCotizarLead + handleSaveLead
 import type { ModuleId, LeadStatus, LeadChannel, QuoteService } from "./types";
 import { NAV_ITEMS, INITIAL_LEADS, INITIAL_CLIENTES, INITIAL_PRODUCTOS, INITIAL_COTIZACIONES } from "./constants";
-import { useDebounce, serviceLabel } from "./shared";
+import { serviceLabel } from "./shared";
 import { LoginScreen } from "./LoginScreen";
 import { Dashboard } from "./Dashboard";
 import { ProductsModule, catalogoToCotizacionItem } from "./ProductsModule";
@@ -41,22 +42,12 @@ export default function CRMPrototype() {
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>(INITIAL_COTIZACIONES);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [leadSort, setLeadSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "tiempo", dir: "desc" });
-  const [clientSort, setClientSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "nombre", dir: "asc" });
   const [isLoading, setIsLoading] = useState(true);
-  const [leadFilter, setLeadFilter] = useState<"todos" | LeadStatus>("todos");
-  const [leadAnio, setLeadAnio] = useState(0);
-  const [leadMes, setLeadMes] = useState(0);
-  const [leadQuery, setLeadQuery] = useState("");
-  const [clientQuery, setClientQuery] = useState("");
-  const [clientSearchField, setClientSearchField] = useState<"todos" | "rut" | "nombre" | "contacto" | "correo">("todos");
-  const [productQuery, setProductQuery] = useState("");
   const [modal, setModal] = useState<"lead" | "cliente" | "producto" | "cotizacion" | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [editingProducto, setEditingProducto] = useState<Producto | null>(null);
   const [editingCatalogo, setEditingCatalogo] = useState<CatalogoItem | null>(null);
-  const [leadView, setLeadView] = useState<"iconos" | "lista" | "detalle">("iconos");
   const [leadPreItems, setLeadPreItems] = useState<Record<string, CotizacionItemForm[]>>({});
   const [clientePrefill, setClientePrefill] = useState<Partial<ClienteForm> | null>(null);
   const [toast, setToast] = useState("");
@@ -159,61 +150,6 @@ export default function CRMPrototype() {
 
   // All hooks must be called before any conditional return
   const noCotizados = useMemo(() => leads.filter((l) => l.estado === "no-cotizado"), [leads]);
-  const debouncedLeadQuery = useDebounce(leadQuery, 250);
-  const visibleLeads = useMemo(() => {
-    const q = debouncedLeadQuery.toLowerCase();
-    const qRut = normalizeRut(debouncedLeadQuery);
-    const list = leads.filter((l) => {
-      if (leadFilter !== "todos" && l.estado !== leadFilter) return false;
-      if ((leadAnio || leadMes) && l.creado_en) {
-        const d = new Date(l.creado_en);
-        if (leadAnio && d.getFullYear() !== leadAnio) return false;
-        if (leadMes && d.getMonth() + 1 !== leadMes) return false;
-      }
-      if (q) {
-        return (
-          (qRut.length > 3 && normalizeRut(l.rut ?? "").includes(qRut)) ||
-          l.nombre.toLowerCase().includes(q) ||
-          l.empresa.toLowerCase().includes(q) ||
-          l.email.toLowerCase().includes(q) ||
-          l.tel.includes(q)
-        );
-      }
-      return true;
-    });
-    return [...list].sort((a, b) => {
-      if (leadSort.key === "tiempo") {
-        const ai = leads.indexOf(a);
-        const bi = leads.indexOf(b);
-        return leadSort.dir === "desc" ? ai - bi : bi - ai;
-      }
-      const av = String((a as unknown as Record<string,unknown>)[leadSort.key] ?? "").toLowerCase();
-      const bv = String((b as unknown as Record<string,unknown>)[leadSort.key] ?? "").toLowerCase();
-      return leadSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-    });
-  }, [leads, leadFilter, leadAnio, leadMes, leadSort, debouncedLeadQuery]);
-  const debouncedClientQuery = useDebounce(clientQuery, 250);
-  const debouncedProductQuery = useDebounce(productQuery, 250);
-  const filteredClients = useMemo(() => {
-    const list = clientes.filter((c) => {
-      if (!debouncedClientQuery) return true;
-      const q = debouncedClientQuery.toLowerCase();
-      const qNorm = normalizeRut(debouncedClientQuery);
-      if (clientSearchField === "rut") return normalizeRut(c.rut).includes(qNorm);
-      if (clientSearchField === "nombre") return c.nombre.toLowerCase().includes(q);
-      if (clientSearchField === "contacto") return c.contacto.toLowerCase().includes(q);
-      if (clientSearchField === "correo") return c.correo.toLowerCase().includes(q);
-      return normalizeRut(c.rut).includes(qNorm) || c.nombre.toLowerCase().includes(q) || c.contacto.toLowerCase().includes(q) || c.correo.toLowerCase().includes(q) || (c.ciudad ?? "").toLowerCase().includes(q);
-    });
-    return [...list].sort((a, b) => {
-      const av = String((a as unknown as Record<string,unknown>)[clientSort.key] ?? "").toLowerCase();
-      const bv = String((b as unknown as Record<string,unknown>)[clientSort.key] ?? "").toLowerCase();
-      return clientSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-    });
-  }, [clientes, debouncedClientQuery, clientSearchField, clientSort]);
-  const filteredProducts = useMemo(() =>
-    productos.filter((p) => JSON.stringify(p).toLowerCase().includes(debouncedProductQuery.toLowerCase())),
-    [productos, debouncedProductQuery]);
   const activeTitle = NAV_ITEMS.find((item) => item.id === active)?.label ?? "Dashboard";
 
   if (!loggedIn) {
@@ -1035,20 +971,7 @@ export default function CRMPrototype() {
           {active === "leads" && (
             <LeadsModule
               leads={leads}
-              visibleLeads={visibleLeads}
-              noCotizados={noCotizados}
-              leadFilter={leadFilter}
-              setLeadFilter={setLeadFilter}
-              leadAnio={leadAnio}
-              setLeadAnio={setLeadAnio}
-              leadMes={leadMes}
-              setLeadMes={setLeadMes}
-              leadQuery={leadQuery}
-              setLeadQuery={setLeadQuery}
-              leadSort={leadSort}
-              setLeadSort={setLeadSort}
-              leadView={leadView}
-              setLeadView={setLeadView}
+              setLeads={setLeads}
               onCotizarLead={handleCotizarLead}
               onEditLead={handleEditLead}
               onDeleteLead={handleDeleteLead}
@@ -1059,13 +982,8 @@ export default function CRMPrototype() {
 
           {active === "clientes" && (
             <ClientesModule
-              filteredClients={filteredClients}
-              clientQuery={clientQuery}
-              setClientQuery={setClientQuery}
-              clientSearchField={clientSearchField}
-              setClientSearchField={setClientSearchField}
-              clientSort={clientSort}
-              setClientSort={setClientSort}
+              clientes={clientes}
+              setClientes={setClientes}
               notify={notify}
               onCotizarCliente={handleCotizarCliente}
               onEditCliente={handleEditCliente}

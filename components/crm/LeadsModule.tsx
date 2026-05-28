@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import {
   ClipboardList,
   Clock3,
@@ -12,28 +13,17 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import * as api from "@/lib/api";
 import type { Lead } from "@/lib/api";
+import { normalizeRut } from "@/lib/utils";
 import type { LeadStatus } from "./types";
-import { SortTh, PeriodoPicker, serviceLabel, leadEstadoMeta } from "./shared";
+import { useDebounce, SortTh, PeriodoPicker, serviceLabel, leadEstadoMeta } from "./shared";
 
 type SortState = { key: string; dir: "asc" | "desc" };
 
 interface Props {
   leads: Lead[];
-  visibleLeads: Lead[];
-  noCotizados: Lead[];
-  leadFilter: "todos" | LeadStatus;
-  setLeadFilter: (f: "todos" | LeadStatus) => void;
-  leadAnio: number;
-  setLeadAnio: (v: number) => void;
-  leadMes: number;
-  setLeadMes: (v: number) => void;
-  leadQuery: string;
-  setLeadQuery: (v: string) => void;
-  leadSort: SortState;
-  setLeadSort: (fn: (s: SortState) => SortState) => void;
-  leadView: "iconos" | "lista" | "detalle";
-  setLeadView: (v: "iconos" | "lista" | "detalle") => void;
+  setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
   onCotizarLead: (lead: Lead) => void;
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (id: string) => void;
@@ -43,26 +33,77 @@ interface Props {
 
 export function LeadsModule({
   leads,
-  visibleLeads,
-  noCotizados,
-  leadFilter,
-  setLeadFilter,
-  leadAnio,
-  setLeadAnio,
-  leadMes,
-  setLeadMes,
-  leadQuery,
-  setLeadQuery,
-  leadSort,
-  setLeadSort,
-  leadView,
-  setLeadView,
+  setLeads,
   onCotizarLead,
   onEditLead,
   onDeleteLead,
   onSetLeadEstado,
   onAddLead,
 }: Props) {
+  const [leadFilter, setLeadFilter] = useState<"todos" | LeadStatus>("todos");
+  const [leadAnio, setLeadAnio] = useState(0);
+  const [leadMes, setLeadMes] = useState(0);
+  const [leadQuery, setLeadQuery] = useState("");
+  const [leadSort, setLeadSort] = useState<SortState>({ key: "tiempo", dir: "desc" });
+  const [leadView, setLeadView] = useState<"iconos" | "lista" | "detalle">("iconos");
+
+  const debouncedLeadQuery = useDebounce(leadQuery, 250);
+
+  const noCotizados = useMemo(() => leads.filter((l) => l.estado === "no-cotizado"), [leads]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const merge = <T extends { id: string }>(apiItems: T[], prev: T[]): T[] => {
+      const apiIds = new Set(apiItems.map((x) => x.id));
+      const localOnly = prev.filter((x) => !x.id.includes("temp") && !apiIds.has(x.id));
+      return localOnly.length > 0 ? [...apiItems, ...localOnly] : apiItems;
+    };
+
+    const load = () => {
+      api.fetchLeads().then((l) => {
+        if (!cancelled && l.length > 0) setLeads((prev) => merge(l, prev));
+      }).catch(() => {});
+    };
+
+    load();
+    const interval = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [setLeads]);
+
+  const visibleLeads = useMemo(() => {
+    const q = debouncedLeadQuery.toLowerCase();
+    const qRut = normalizeRut(debouncedLeadQuery);
+    const list = leads.filter((l) => {
+      if (leadFilter !== "todos" && l.estado !== leadFilter) return false;
+      if ((leadAnio || leadMes) && l.creado_en) {
+        const d = new Date(l.creado_en);
+        if (leadAnio && d.getFullYear() !== leadAnio) return false;
+        if (leadMes && d.getMonth() + 1 !== leadMes) return false;
+      }
+      if (q) {
+        return (
+          (qRut.length > 3 && normalizeRut(l.rut ?? "").includes(qRut)) ||
+          l.nombre.toLowerCase().includes(q) ||
+          l.empresa.toLowerCase().includes(q) ||
+          l.email.toLowerCase().includes(q) ||
+          l.tel.includes(q)
+        );
+      }
+      return true;
+    });
+    return [...list].sort((a, b) => {
+      if (leadSort.key === "tiempo") {
+        const ai = leads.indexOf(a);
+        const bi = leads.indexOf(b);
+        return leadSort.dir === "desc" ? ai - bi : bi - ai;
+      }
+      const av = String((a as unknown as Record<string, unknown>)[leadSort.key] ?? "").toLowerCase();
+      const bv = String((b as unknown as Record<string, unknown>)[leadSort.key] ?? "").toLowerCase();
+      return leadSort.dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+  }, [leads, leadFilter, leadAnio, leadMes, leadSort, debouncedLeadQuery]);
+
   return (
     <section className="stack">
       <div className="module-toolbar">
