@@ -642,21 +642,23 @@ export default function CRMPrototype() {
     await new Promise((r) => setTimeout(r, 500));
     const iDoc = iframe.contentDocument;
     if (!iDoc) { document.body.removeChild(iframe); return; }
+    iframe.style.height = `${iDoc.body.scrollHeight + 200}px`;
+    await new Promise((r) => setTimeout(r, 100));
     const canvas = await html2canvas(iDoc.body, { useCORS: true, scale: 2, backgroundColor: "#ffffff", windowWidth: 794 });
     document.body.removeChild(iframe);
-    const imgData = canvas.toDataURL("image/png");
+    const imgData = canvas.toDataURL("image/jpeg", 0.82);
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
     const totalH = canvas.height * (pdfW / canvas.width);
     let pos = 0;
     let remaining = totalH;
-    pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+    pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
     remaining -= pdfH;
     while (remaining > 0) {
       pos -= pdfH;
       pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+      pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
       remaining -= pdfH;
     }
     const clienteObj = clientes.find((c) => c.id === det.cliente_id);
@@ -828,19 +830,19 @@ export default function CRMPrototype() {
       import("jspdf"),
     ]);
     const canvas = await html2canvas(el, { useCORS: true, scale: 2, backgroundColor: "#ffffff" });
-    const imgData = canvas.toDataURL("image/png");
+    const imgData = canvas.toDataURL("image/jpeg", 0.82);
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
     const totalH = canvas.height * (pdfW / canvas.width);
     let pos = 0;
     let remaining = totalH;
-    pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+    pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
     remaining -= pdfH;
     while (remaining > 0) {
       pos -= pdfH;
       pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+      pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
       remaining -= pdfH;
     }
     const cliente = clientes.find((c) => c.id === cotizClienteId);

@@ -469,19 +469,22 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
       await new Promise((r) => setTimeout(r, 600));
       const iDoc = iframe.contentDocument;
       if (!iDoc) { document.body.removeChild(iframe); return; }
+      // Expand iframe to full content height so applyPageBreakFix and html2canvas capture everything
+      iframe.style.height = `${iDoc.body.scrollHeight + 200}px`;
+      await new Promise((r) => setTimeout(r, 100));
       applyPageBreakFix(iDoc);
       await new Promise((r) => setTimeout(r, 150));
-      const canvas = await html2canvas(iDoc.body, { useCORS: true, scale: 3, backgroundColor: "#ffffff", windowWidth: 794 });
+      const canvas = await html2canvas(iDoc.body, { useCORS: true, scale: 2, backgroundColor: "#ffffff", windowWidth: 794 });
       document.body.removeChild(iframe);
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/jpeg", 0.82);
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pdfW = pdf.internal.pageSize.getWidth();
       const pdfH = pdf.internal.pageSize.getHeight();
       const totalH = canvas.height * (pdfW / canvas.width);
       let pos = 0; let remaining = totalH;
-      pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH);
+      pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
       remaining -= pdfH;
-      while (remaining > 0) { pos -= pdfH; pdf.addPage(); pdf.addImage(imgData, "PNG", 0, pos, pdfW, totalH); remaining -= pdfH; }
+      while (remaining > 0) { pos -= pdfH; pdf.addPage(); pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH); remaining -= pdfH; }
       pdf.save(`protocolo-${workingTpl.id}-${selectedCliente.nombre.replace(/\s+/g, "-").slice(0, 25)}-${new Date().toISOString().slice(0, 10)}.pdf`);
     } finally { setGenerating(false); }
   }
