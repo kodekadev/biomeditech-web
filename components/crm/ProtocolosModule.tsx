@@ -497,10 +497,16 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
       const pdfW = pdf.internal.pageSize.getWidth();
       const pdfH = pdf.internal.pageSize.getHeight();
       const totalH = canvas.height * (pdfW / canvas.width);
-      let pos = 0; let remaining = totalH;
-      pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
-      remaining -= pdfH;
-      while (remaining > 0) { pos -= pdfH; pdf.addPage(); pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH); remaining -= pdfH; }
+      const pageTopMargin = 14;
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfW, totalH);
+      let consumed = pdfH;
+      while (consumed < totalH) {
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, pageTopMargin - consumed, pdfW, totalH);
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, 0, pdfW, pageTopMargin, "F");
+        consumed += pdfH - pageTopMargin;
+      }
       pdf.save(`protocolo-${correlativo}-${workingTpl.label.replace(/\s+/g, "-").slice(0, 20)}-${new Date().toISOString().slice(0, 10)}.pdf`);
     } finally { setGenerating(false); }
   }

@@ -652,15 +652,15 @@ export default function CRMPrototype() {
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
     const totalH = canvas.height * (pdfW / canvas.width);
-    let pos = 0;
-    let remaining = totalH;
-    pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
-    remaining -= pdfH;
-    while (remaining > 0) {
-      pos -= pdfH;
+    const pageTopMargin = 14;
+    pdf.addImage(imgData, "JPEG", 0, 0, pdfW, totalH);
+    let consumed = pdfH;
+    while (consumed < totalH) {
       pdf.addPage();
-      pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
-      remaining -= pdfH;
+      pdf.addImage(imgData, "JPEG", 0, pageTopMargin - consumed, pdfW, totalH);
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pdfW, pageTopMargin, "F");
+      consumed += pdfH - pageTopMargin;
     }
     const clienteObj = clientes.find((c) => c.id === det.cliente_id);
     const empresa = (clienteObj?.nombre ?? "cliente").replace(/\s+/g, "").replace(/[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ]/g, "");
@@ -836,15 +836,15 @@ export default function CRMPrototype() {
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
     const totalH = canvas.height * (pdfW / canvas.width);
-    let pos = 0;
-    let remaining = totalH;
-    pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
-    remaining -= pdfH;
-    while (remaining > 0) {
-      pos -= pdfH;
+    const pageTopMargin = 14;
+    pdf.addImage(imgData, "JPEG", 0, 0, pdfW, totalH);
+    let consumed = pdfH;
+    while (consumed < totalH) {
       pdf.addPage();
-      pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
-      remaining -= pdfH;
+      pdf.addImage(imgData, "JPEG", 0, pageTopMargin - consumed, pdfW, totalH);
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pdfW, pageTopMargin, "F");
+      consumed += pdfH - pageTopMargin;
     }
     const cliente = clientes.find((c) => c.id === cotizClienteId);
     const fechaPDF = new Date().toISOString().slice(0, 10);
