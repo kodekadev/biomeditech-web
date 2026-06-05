@@ -482,10 +482,13 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
       await new Promise((r) => setTimeout(r, 600));
       const iDoc = iframe.contentDocument;
       if (!iDoc) { document.body.removeChild(iframe); return; }
-      // Expand iframe to full content height so applyPageBreakFix and html2canvas capture everything
+      // First expand so applyPageBreakFix can measure offsetTop values correctly
       iframe.style.height = `${iDoc.body.scrollHeight + 200}px`;
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 150));
       applyPageBreakFix(iDoc);
+      await new Promise((r) => setTimeout(r, 150));
+      // Re-expand: applyPageBreakFix adds margins that increase total height
+      iframe.style.height = `${iDoc.body.scrollHeight + 200}px`;
       await new Promise((r) => setTimeout(r, 150));
       const canvas = await html2canvas(iDoc.body, { useCORS: true, scale: 2, backgroundColor: "#ffffff", windowWidth: 794 });
       document.body.removeChild(iframe);
