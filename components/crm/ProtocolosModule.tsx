@@ -78,8 +78,10 @@ export function buildProtocolHtml(params: {
   signature: string;
   signatureCliente: string;
   calibEquipos: CalibEquipo[];
+  condicionesIniciales?: string;
+  correlativo?: string;
 }): string {
-  const { template, cliente, marca, modelo, anio, serie, servicio, tecnico, fecha, subFill, conclusionFill, observaciones, photos, signature, signatureCliente, calibEquipos } = params;
+  const { template, cliente, marca, modelo, anio, serie, servicio, tecnico, fecha, subFill, conclusionFill, observaciones, photos, signature, signatureCliente, calibEquipos, condicionesIniciales, correlativo } = params;
 
   const W_NUM = "34px";
   const W_CHECK = "42px";
@@ -179,7 +181,7 @@ export function buildProtocolHtml(params: {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${template.label}</title><style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
     @page{margin:0;size:A4}
-    body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:36px 40px}
+    body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:28px 32px}
     header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #0e948b}
     h3{margin:18px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
     .data-block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#0e948b;margin-bottom:8px;font-weight:700}
@@ -191,7 +193,7 @@ export function buildProtocolHtml(params: {
   </style></head><body>
   <header>
     <div><img src="${LOGO_B64}" alt="BIOMEDITECH" style="height:48px;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none"/></div>
-    <div style="text-align:right"><strong style="display:block;font-size:16px;color:#0f2340">${template.label}</strong><span style="font-size:11px;color:#64748b">Protocolo de Mantención · BIOMEDITECH</span></div>
+    <div style="text-align:right">${correlativo ? `<span style="font-size:11px;color:#94a3b8;display:block;margin-bottom:2px">N° ${correlativo}</span>` : ""}<strong style="display:block;font-size:16px;color:#0f2340">${template.label}</strong><span style="font-size:11px;color:#64748b">Protocolo de Mantención · BIOMEDITECH</span></div>
   </header>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:start">
     <div class="data-block">
@@ -218,8 +220,9 @@ export function buildProtocolHtml(params: {
       </dl>
     </div>
   </div>
-  ${calibHtml}
+  ${condicionesIniciales ? `<div class="avoid-break" style="margin-bottom:16px"><div style="background:#f0faf5;border:1px solid #0e948b;border-left:4px solid #0e948b;border-radius:6px;padding:12px 14px;font-size:12px;color:#1e293b;white-space:pre-wrap;line-height:1.5"><strong style="display:block;margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#0e948b">Condiciones iniciales</strong>${condicionesIniciales}</div></div>` : ""}
   ${tableHtml}
+  ${calibHtml}
   ${obsHtml}
   ${conclusionsHtml}
   ${photosHtml}
@@ -252,6 +255,9 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
   const [servicio, setServicio] = useState("");
   const [tecnico, setTecnico] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [sinCliente, setSinCliente] = useState(false);
+  const [condIniciales, setCondIniciales] = useState("");
+  const [condInicialesOn, setCondInicialesOn] = useState(false);
   const [calibEquipos, setCalibEquipos] = useState<CalibEquipo[]>([
     { id: pId(), equipo: "", marca: "", modelo: "", sn: "" },
     { id: pId(), equipo: "", marca: "", modelo: "", sn: "" },
@@ -341,9 +347,9 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
 
   useEffect(() => {
     setCalibEquipos((prev) => prev.map((row, i) =>
-      i === 0 ? { ...row, equipo: workingTpl?.label ?? row.equipo, marca, modelo, sn: serie } : row
+      i === 0 ? { ...row, marca, modelo, sn: serie } : row
     ));
-  }, [marca, modelo, serie, workingTpl?.label]);
+  }, [marca, modelo, serie]);
 
   function getCanvasPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
     const rect = canvas.getBoundingClientRect();
@@ -455,12 +461,18 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
 
   async function handleDownload() {
     if (!activeTplId || !workingTpl) { notify("Selecciona un tipo de protocolo"); return; }
-    if (!selectedCliente) { notify("Selecciona un cliente"); return; }
+    if (!sinCliente && !selectedCliente) { notify("Selecciona un cliente"); return; }
     setGenerating(true);
     notify("Generando PDF…");
     const fecha = new Date().toLocaleDateString("es-CL");
+    const correlativo = (() => {
+      const n = parseInt(localStorage.getItem("proto_correlativo") || "0") + 1;
+      localStorage.setItem("proto_correlativo", String(n));
+      return `PT-${String(n).padStart(3, "0")}`;
+    })();
+    const clienteParaPDF: Cliente = selectedCliente ?? { id: "", rut: "", nombre: "— Sin datos de cliente —", contacto: "", telefono: "", correo: "", estado: "Activo", ciudad: "", comuna: "", direccion: "" };
     try {
-      const html = buildProtocolHtml({ template: workingTpl, cliente: selectedCliente, marca, modelo, anio, serie, servicio, tecnico, fecha, subFill, conclusionFill, observaciones, photos, signature: getSignatureUrl(), signatureCliente: getSignatureClienteUrl(), calibEquipos });
+      const html = buildProtocolHtml({ template: workingTpl, cliente: clienteParaPDF, marca, modelo, anio, serie, servicio, tecnico, fecha, subFill, conclusionFill, observaciones, photos, signature: getSignatureUrl(), signatureCliente: getSignatureClienteUrl(), calibEquipos, condicionesIniciales: condInicialesOn ? condIniciales : "", correlativo });
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
       const iframe = document.createElement("iframe");
       iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;height:1122px;border:none;visibility:hidden;";
@@ -485,7 +497,7 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
       pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH);
       remaining -= pdfH;
       while (remaining > 0) { pos -= pdfH; pdf.addPage(); pdf.addImage(imgData, "JPEG", 0, pos, pdfW, totalH); remaining -= pdfH; }
-      pdf.save(`protocolo-${workingTpl.id}-${selectedCliente.nombre.replace(/\s+/g, "-").slice(0, 25)}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      pdf.save(`protocolo-${correlativo}-${workingTpl.label.replace(/\s+/g, "-").slice(0, 20)}-${new Date().toISOString().slice(0, 10)}.pdf`);
     } finally { setGenerating(false); }
   }
 
@@ -537,10 +549,13 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <tbody>
-                  {templates.map((tpl) => (
+                  {templates.map((tpl) => {
+                    const isDup = templates.filter((t) => t.label === tpl.label).length > 1;
+                    return (
                     <tr key={tpl.id} style={{ borderBottom: "1px solid var(--border)" }}>
                       <td style={{ padding: "10px 4px" }}>
                         <strong>{tpl.label}</strong>
+                        {isDup && <span style={{ fontSize: 10, background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca", borderRadius: 4, padding: "1px 5px", marginLeft: 6 }}>Duplicado</span>}
                         <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 8 }}>
                           {tpl.items.length} secciones · {tpl.items.reduce((a, it) => a + it.subItems.length, 0)} ítems · {tpl.conclusions.length} conclusiones
                         </span>
@@ -555,7 +570,8 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
                         }} style={{ fontSize: 12, color: "#dc2626", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={13} /></button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -640,9 +656,9 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 20, alignItems: "start" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "start" }}>
         {/* Left column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%", maxWidth: 360, minWidth: 260 }}>
           <div className="panel">
             <div className="panel-title" style={{ marginBottom: 12 }}><FileArchive size={16} />Tipo de protocolo</div>
             <select value={activeTplId} onChange={(e) => {
@@ -665,7 +681,13 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
           </div>
 
           <div className="panel">
-            <div className="panel-title" style={{ marginBottom: 12 }}><Search size={16} />Cliente</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div className="panel-title" style={{ marginBottom: 0 }}><Search size={16} />Cliente</div>
+              <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#64748b", cursor: "pointer", userSelect: "none" }}>
+                <input type="checkbox" checked={sinCliente} onChange={(e) => { setSinCliente(e.target.checked); if (e.target.checked) setSelectedCliente(null); }} style={{ accentColor: "#0e948b" }} />
+                Reporte en blanco
+              </label>
+            </div>
             <div style={{ position: "relative" }}>
               {selectedCliente && !clienteOpen ? (
                 <div
@@ -710,6 +732,19 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
           </div>
 
           <div className="panel">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: condInicialesOn ? 10 : 0 }}>
+              <div className="panel-title" style={{ marginBottom: 0 }}><FileText size={16} />Condiciones iniciales</div>
+              <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#64748b", cursor: "pointer", userSelect: "none" }}>
+                <input type="checkbox" checked={condInicialesOn} onChange={(e) => setCondInicialesOn(e.target.checked)} style={{ accentColor: "#0e948b" }} />
+                Activar
+              </label>
+            </div>
+            {condInicialesOn && (
+              <textarea value={condIniciales} onChange={(e) => setCondIniciales(e.target.value)} placeholder="Estado inicial del equipo, condiciones previas al servicio..." rows={3} style={{ width: "100%", resize: "vertical", marginTop: 4 }} />
+            )}
+          </div>
+
+          <div className="panel">
             <div className="panel-title" style={{ marginBottom: 12 }}><Wrench size={16} />Datos del equipo</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={{ fontSize: 12 }}>Marca<input value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Ej: Mindray" style={{ marginTop: 3, display: "block", width: "100%" }} /></label>
@@ -725,7 +760,7 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
         </div>
 
         {/* Right column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1, minWidth: 280 }}>
           {workingTpl ? (
             <div className="panel">
               <div className="panel-head">
