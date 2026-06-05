@@ -313,13 +313,14 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
       Array.from(apiIds).forEach((id) => {
         if (!updatedIds.has(id)) { api.deleteProtocol(id); apiIds.delete(id); }
       });
-      // Create or update
+      // Create or update — add to apiIds immediately to prevent duplicate creates on rapid re-renders
       for (const tpl of templates) {
         if (apiIds.has(tpl.id)) {
           api.updateProtocol(tpl.id, tpl.label, tpl.items, tpl.conclusions);
         } else {
+          apiIds.add(tpl.id);
           api.createProtocol(tpl.id, tpl.label, tpl.items, tpl.conclusions)
-            .then((ok) => { if (ok) apiIds.add(tpl.id); });
+            .catch(() => apiIds.delete(tpl.id));
         }
       }
     }, 1200);
