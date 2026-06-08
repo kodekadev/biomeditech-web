@@ -477,7 +477,21 @@ export function ProductsModule({
                     if (!id) { notify("Debe ingresar un código"); return; }
                     if (!label) { notify("Debe ingresar el nombre del servicio"); return; }
                     if (serviceTypes.some((s) => s.id === id)) { notify(`El código "${id}" ya existe`); return; }
-                    setServiceTypes((p) => { const next = [...p, { id, label, defaultPrice: Number(newSvcPrice) || 0 }]; scheduleCfgSave({ svc_types: next }); return next; });
+                    const newTypes = [...serviceTypes, { id, label, defaultPrice: Number(newSvcPrice) || 0 }];
+                    setServiceTypes(() => { scheduleCfgSave({ svc_types: newTypes }); return newTypes; });
+                    // Auto-include new type in all categories that already have explicit mappings
+                    setCatServiceMap((prev) => {
+                      const updated = { ...prev };
+                      let changed = false;
+                      for (const cat of Object.keys(updated)) {
+                        if (updated[cat] && updated[cat].length > 0 && !updated[cat].includes(id)) {
+                          updated[cat] = [...updated[cat], id];
+                          changed = true;
+                        }
+                      }
+                      if (changed) scheduleCfgSave({ cat_svc_map: updated });
+                      return changed ? updated : prev;
+                    });
                     setNewSvcId(""); setNewSvcLabel(""); setNewSvcPrice("");
                   }}
                 ><Plus size={14} />Agregar</button>

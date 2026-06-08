@@ -916,6 +916,17 @@ textarea {
   font-size: 13px;
 }
 
+input[type="checkbox"],
+input[type="radio"] {
+  min-height: auto;
+  height: auto;
+  width: auto;
+  padding: 0;
+  border: revert;
+  border-radius: 0;
+  background: transparent;
+}
+
 textarea {
   resize: vertical;
 }
