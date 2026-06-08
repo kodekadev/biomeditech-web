@@ -478,20 +478,19 @@ export function ProductsModule({
                     if (!label) { notify("Debe ingresar el nombre del servicio"); return; }
                     if (serviceTypes.some((s) => s.id === id)) { notify(`El código "${id}" ya existe`); return; }
                     const newTypes = [...serviceTypes, { id, label, defaultPrice: Number(newSvcPrice) || 0 }];
-                    setServiceTypes(() => { scheduleCfgSave({ svc_types: newTypes }); return newTypes; });
-                    // Auto-include new type in all categories that already have explicit mappings
-                    setCatServiceMap((prev) => {
-                      const updated = { ...prev };
-                      let changed = false;
-                      for (const cat of Object.keys(updated)) {
-                        if (updated[cat] && updated[cat].length > 0 && !updated[cat].includes(id)) {
-                          updated[cat] = [...updated[cat], id];
-                          changed = true;
-                        }
+                    // Auto-include new type in categories that already have explicit mappings
+                    const updatedMap = { ...catServiceMap };
+                    let mapChanged = false;
+                    for (const cat of Object.keys(updatedMap)) {
+                      if (updatedMap[cat] && updatedMap[cat].length > 0 && !updatedMap[cat].includes(id)) {
+                        updatedMap[cat] = [...updatedMap[cat], id];
+                        mapChanged = true;
                       }
-                      if (changed) scheduleCfgSave({ cat_svc_map: updated });
-                      return changed ? updated : prev;
-                    });
+                    }
+                    setServiceTypes(() => newTypes);
+                    if (mapChanged) setCatServiceMap(() => updatedMap);
+                    // Single scheduleCfgSave to avoid debounce race (second call would cancel first)
+                    scheduleCfgSave({ svc_types: newTypes, ...(mapChanged ? { cat_svc_map: updatedMap } : {}) });
                     setNewSvcId(""); setNewSvcLabel(""); setNewSvcPrice("");
                   }}
                 ><Plus size={14} />Agregar</button>
