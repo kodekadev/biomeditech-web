@@ -479,10 +479,9 @@ export default function CRMPrototype() {
     const clienteObj = clientes.find((c) => c.id === det.cliente_id);
     const rowsHtml = det.items.map((it, i) => {
       const disc = it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : "";
-      const detalle = it.descripcion_larga ? `<div style="font-size:11px;color:#64748b;margin-top:3px;line-height:1.4">${it.descripcion_larga}</div>` : "";
       return `<tr>
         <td>${i + 1}</td>
-        <td>${it.descripcion}${disc}${detalle}</td>
+        <td>${it.descripcion}${disc}</td>
         <td>${it.cantidad}</td>
         <td>${money(it.precio_unitario)}</td>
         <td><strong>${money(it.subtotal)}</strong></td>
