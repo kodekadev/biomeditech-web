@@ -130,7 +130,6 @@ export default function CRMPrototype() {
         });
       }).catch(() => {});
       api.fetchPlantillas().then((plt) => { if (!cancelled && plt.length > 0) setPlantillas(plt); }).catch(() => {});
-      api.fetchProtocolosHistorial().then((ph) => { if (!cancelled) setProtocolosHistorial(ph); }).catch(() => {});
       api.fetchCrmSettings().then((cfg) => {
         if (cancelled || !cfg.condiciones) return;
         setCotizCondiciones(cfg.condiciones);
@@ -150,6 +149,12 @@ export default function CRMPrototype() {
 
     return () => { cancelled = true; clearInterval(interval); };
   }, [loggedIn]);
+
+  useEffect(() => {
+    if (active === "historial-protocolos") {
+      api.fetchProtocolosHistorial().then((ph) => setProtocolosHistorial(ph)).catch(() => {});
+    }
+  }, [active]);
 
   // All hooks must be called before any conditional return
   const noCotizados = useMemo(() => leads.filter((l) => l.estado === "no-cotizado"), [leads]);
