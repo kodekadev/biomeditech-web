@@ -1,9 +1,12 @@
 "use client";
 
-import { ClipboardList, Search, Trash2, X } from "lucide-react";
+import { ClipboardList, Eye, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ProtocoloInstancia } from "@/lib/api";
 import { PeriodoPicker, SortTh } from "./shared";
+import { buildProtocolHtml } from "./ProtocolosModule";
+import type { ProtoTemplate, SubFill, CalibEquipo } from "./types";
+import type { Cliente } from "@/lib/api";
 
 export function HistorialProtocolosModule({
   registros,
@@ -57,6 +60,69 @@ export function HistorialProtocolosModule({
     return r.creado_en;
   });
 
+  function handleVer(r: ProtocoloInstancia) {
+    if (!r.datos_json) {
+      alert("Este registro no tiene datos guardados para previsualizar.");
+      return;
+    }
+    let parsed: {
+      workingTpl: ProtoTemplate;
+      subFill: Record<string, SubFill>;
+      conclusionFill: Record<string, boolean>;
+      calibEquipos: CalibEquipo[];
+      condicionesIniciales: string;
+      cliente: Cliente;
+    };
+    try {
+      parsed = JSON.parse(r.datos_json);
+    } catch {
+      alert("Error al leer los datos del protocolo.");
+      return;
+    }
+    const html = buildProtocolHtml({
+      template: parsed.workingTpl,
+      cliente: parsed.cliente,
+      marca: r.marca,
+      modelo: r.modelo,
+      anio: r.anio,
+      serie: r.serie,
+      servicio: r.servicio,
+      tecnico: r.tecnico,
+      fecha: r.fecha,
+      subFill: parsed.subFill,
+      conclusionFill: parsed.conclusionFill,
+      observaciones: r.observaciones,
+      photos: [],
+      signature: "",
+      signatureCliente: "",
+      calibEquipos: parsed.calibEquipos ?? [],
+      condicionesIniciales: parsed.condicionesIniciales ?? "",
+      correlativo: r.correlativo,
+    });
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const withBar = html.replace("</body></html>",
+      `<style>
+        .action-bar{position:fixed;top:0;left:0;right:0;background:#0f2340;color:#fff;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;z-index:999;gap:12px}
+        .action-bar span{font-weight:600;font-size:14px}
+        .action-bar .btn-print{background:#0e948b;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+        .action-bar .btn-close{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+        body{padding-top:60px!important}
+        @media print{.action-bar{display:none}body{padding-top:0!important}}
+      </style>
+      <div class="action-bar">
+        <span>${r.correlativo} — ${r.plantilla_label}</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn-print" onclick="window.print()">Imprimir / Guardar PDF</button>
+          <button class="btn-close" onclick="window.close()">Cerrar</button>
+        </div>
+      </div>
+      </body></html>`
+    );
+    win.document.write(withBar);
+    win.document.close();
+  }
+
   return (
     <div className="panel table-card">
       <div className="panel-head">
@@ -107,12 +173,20 @@ export function HistorialProtocolosModule({
               </td>
               <td style={{ color: "#64748b", fontSize: 12 }}>{r.fecha}</td>
               <td>
-                <button
-                  onClick={() => { if (!confirm(`¿Eliminar registro ${r.correlativo}? Esta acción no se puede deshacer.`)) return; onDelete(r.id); }}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#dc2626", fontWeight: 600, background: "none", border: "1px solid #fecaca", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}
-                >
-                  <Trash2 size={13} />Eliminar
-                </button>
+                <div style={{ display: "flex", gap: 5 }}>
+                  <button
+                    onClick={() => handleVer(r)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#0e948b", fontWeight: 600, background: "none", border: "1px solid #bbf7d0", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}
+                  >
+                    <Eye size={13} />Ver
+                  </button>
+                  <button
+                    onClick={() => { if (!confirm(`¿Eliminar registro ${r.correlativo}? Esta acción no se puede deshacer.`)) return; onDelete(r.id); }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#dc2626", fontWeight: 600, background: "none", border: "1px solid #fecaca", borderRadius: 6, cursor: "pointer", padding: "4px 9px" }}
+                  >
+                    <Trash2 size={13} />Eliminar
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

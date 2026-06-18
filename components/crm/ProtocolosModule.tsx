@@ -236,7 +236,7 @@ export function buildProtocolHtml(params: {
 export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
   clientes: Cliente[];
   notify: (msg: string) => void;
-  onSaveHistorial?: (data: { correlativo: string; plantilla_id: string; plantilla_label: string; cliente_id: string; cliente_nombre: string; tecnico: string; marca: string; modelo: string; serie: string; anio: string; servicio: string; observaciones: string; fecha: string }) => void;
+  onSaveHistorial?: (data: { correlativo: string; plantilla_id: string; plantilla_label: string; cliente_id: string; cliente_nombre: string; tecnico: string; marca: string; modelo: string; serie: string; anio: string; servicio: string; observaciones: string; fecha: string; datos_json: string }) => void;
 }) {
   const [templates, setTemplates] = useState<ProtoTemplate[]>(() => loadTemplates());
   const [view, setView] = useState<"form" | "tpls">("form");
@@ -526,6 +526,14 @@ export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
         servicio,
         observaciones,
         fecha,
+        datos_json: JSON.stringify({
+          workingTpl,
+          subFill,
+          conclusionFill,
+          calibEquipos,
+          condicionesIniciales: condInicialesOn ? condIniciales : "",
+          cliente: selectedCliente ?? { id: "", rut: "", nombre: "— Sin datos de cliente —", contacto: "", telefono: "", correo: "", estado: "Activo", ciudad: "", comuna: "", direccion: "" },
+        }),
       });
     } finally { setGenerating(false); }
   }

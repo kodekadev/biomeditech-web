@@ -900,6 +900,7 @@ export interface ProtocoloInstancia {
   observaciones: string;
   fecha: string;
   creado_en: string;
+  datos_json?: string;
 }
 
 function mapProtocoloInstancia(v: unknown): ProtocoloInstancia {
