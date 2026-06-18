@@ -152,7 +152,13 @@ export default function CRMPrototype() {
 
   useEffect(() => {
     if (active === "historial-protocolos") {
-      api.fetchProtocolosHistorial().then((ph) => setProtocolosHistorial(ph)).catch(() => {});
+      api.fetchProtocolosHistorial().then((ph) => {
+        setProtocolosHistorial((prev) => {
+          const apiIds = new Set(ph.map((r) => r.id));
+          const optimistic = prev.filter((r) => !apiIds.has(r.id));
+          return [...optimistic, ...ph];
+        });
+      }).catch(() => {});
     }
   }, [active]);
 
@@ -892,6 +898,9 @@ export default function CRMPrototype() {
     const created = await api.createProtocoloInstancia(data);
     if (created) {
       setProtocolosHistorial((prev) => [created, ...prev]);
+      notify("Protocolo guardado en historial");
+    } else {
+      notify("Error al guardar en historial — revisa la consola");
     }
   }
 

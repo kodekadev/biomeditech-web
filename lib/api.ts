@@ -371,9 +371,10 @@ async function apiMutate<T>(method: string, path: string, body?: unknown): Promi
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     if (res.status === 401) { clearToken(); return null; }
-    if (!res.ok) return null;
+    if (!res.ok) { console.error(`[api] ${method} ${path} → ${res.status}`); return null; }
     return res.json() as Promise<T>;
-  } catch {
+  } catch (e) {
+    console.error(`[api] ${method} ${path} threw:`, e);
     return null;
   }
 }
@@ -921,6 +922,7 @@ function mapProtocoloInstancia(v: unknown): ProtocoloInstancia {
     observaciones: str(r.observaciones),
     fecha: str(r.fecha),
     creado_en: str(r.creado_en),
+    datos_json: r.datos_json ? str(r.datos_json) : undefined,
   };
 }
 
