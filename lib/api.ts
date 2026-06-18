@@ -928,9 +928,10 @@ export async function fetchProtocolosHistorial(): Promise<ProtocoloInstancia[]> 
   return (r?.data ?? []).map(mapProtocoloInstancia);
 }
 
-export async function createProtocoloInstancia(data: Omit<ProtocoloInstancia, "id" | "creado_en">): Promise<boolean> {
+export async function createProtocoloInstancia(data: Omit<ProtocoloInstancia, "id" | "creado_en">): Promise<ProtocoloInstancia | null> {
   const r = await apiMutate<{ data: unknown }>("POST", "/api/protocolos-historial", data);
-  return r != null;
+  if (!r) return null;
+  return mapProtocoloInstancia(r.data);
 }
 
 export async function deleteProtocoloInstancia(id: string): Promise<void> {

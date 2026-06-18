@@ -889,9 +889,9 @@ export default function CRMPrototype() {
   }
 
   async function handleSaveProtocoloHistorial(data: Omit<ProtocoloInstancia, "id" | "creado_en">) {
-    const ok = await api.createProtocoloInstancia(data);
-    if (ok) {
-      api.fetchProtocolosHistorial().then((ph) => setProtocolosHistorial(ph)).catch(() => {});
+    const created = await api.createProtocoloInstancia(data);
+    if (created) {
+      setProtocolosHistorial((prev) => [created, ...prev]);
     }
   }
 
