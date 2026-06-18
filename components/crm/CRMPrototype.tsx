@@ -10,7 +10,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as api from "@/lib/api";
 import { LOGO_B64 } from "@/lib/logo-b64";
-import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, Plantilla, CotizacionItemForm, CotizacionDetalle } from "@/lib/api";
+import type { Lead, Cliente, Producto, Cotizacion, DashboardStats, LeadForm, ClienteForm, ProductoForm, CatalogoItem, Plantilla, CotizacionItemForm, CotizacionDetalle, ProtocoloInstancia } from "@/lib/api";
 import { money, normalizeRut } from "@/lib/utils";
 // normalizeRut used in handleCotizarLead + handleSaveLead
 import type { ModuleId, LeadStatus, LeadChannel, QuoteService } from "./types";
@@ -23,6 +23,7 @@ import { LeadsModule } from "./LeadsModule";
 import { ClientesModule } from "./ClientesModule";
 import { CotizacionesModule } from "./CotizacionesModule";
 import { HistorialModule } from "./HistorialModule";
+import { HistorialProtocolosModule } from "./HistorialProtocolosModule";
 import { ProtocolosModule } from "./ProtocolosModule";
 import { Modal } from "./Modal";
 
@@ -40,6 +41,7 @@ export default function CRMPrototype() {
   const [clientes, setClientes] = useState<Cliente[]>(INITIAL_CLIENTES);
   const [productos, setProductos] = useState<Producto[]>(INITIAL_PRODUCTOS);
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>(INITIAL_COTIZACIONES);
+  const [protocolosHistorial, setProtocolosHistorial] = useState<ProtocoloInstancia[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,6 +130,7 @@ export default function CRMPrototype() {
         });
       }).catch(() => {});
       api.fetchPlantillas().then((plt) => { if (!cancelled && plt.length > 0) setPlantillas(plt); }).catch(() => {});
+      api.fetchProtocolosHistorial().then((ph) => { if (!cancelled) setProtocolosHistorial(ph); }).catch(() => {});
       api.fetchCrmSettings().then((cfg) => {
         if (cancelled || !cfg.condiciones) return;
         setCotizCondiciones(cfg.condiciones);
@@ -880,6 +883,19 @@ export default function CRMPrototype() {
     notify("Cotización eliminada");
   }
 
+  async function handleSaveProtocoloHistorial(data: Omit<ProtocoloInstancia, "id" | "creado_en">) {
+    const ok = await api.createProtocoloInstancia(data);
+    if (ok) {
+      api.fetchProtocolosHistorial().then((ph) => setProtocolosHistorial(ph)).catch(() => {});
+    }
+  }
+
+  async function handleDeleteProtocoloHistorial(id: string) {
+    setProtocolosHistorial((prev) => prev.filter((r) => r.id !== id));
+    await api.deleteProtocoloInstancia(id);
+    notify("Registro eliminado");
+  }
+
   function handleUpsertPlantilla(existingId: string | null, codigo: string, descripcion: string) {
     setPlantillas((prev) => {
       const idx = prev.findIndex((p) => p.codigo === codigo);
@@ -1038,7 +1054,13 @@ export default function CRMPrototype() {
             </section>
           )}
 
-          {active === "protocolos" && <ProtocolosModule clientes={clientes} notify={notify} />}
+          {active === "protocolos" && <ProtocolosModule clientes={clientes} notify={notify} onSaveHistorial={handleSaveProtocoloHistorial} />}
+
+          {active === "historial-protocolos" && (
+            <section className="stack">
+              <HistorialProtocolosModule registros={protocolosHistorial} onDelete={handleDeleteProtocoloHistorial} />
+            </section>
+          )}
         </section>
       </main>
 

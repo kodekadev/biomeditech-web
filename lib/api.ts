@@ -882,6 +882,61 @@ export async function deleteProtocol(id: string): Promise<void> {
   await apiMutate("DELETE", `/api/protocolos-plantillas/${id}`);
 }
 
+// --- Protocolos historial ---
+
+export interface ProtocoloInstancia {
+  id: string;
+  correlativo: string;
+  plantilla_id: string;
+  plantilla_label: string;
+  cliente_id: string;
+  cliente_nombre: string;
+  tecnico: string;
+  marca: string;
+  modelo: string;
+  serie: string;
+  anio: string;
+  servicio: string;
+  observaciones: string;
+  fecha: string;
+  creado_en: string;
+}
+
+function mapProtocoloInstancia(v: unknown): ProtocoloInstancia {
+  const r = v as Record<string, unknown>;
+  return {
+    id: str(r.id),
+    correlativo: str(r.correlativo),
+    plantilla_id: str(r.plantilla_id),
+    plantilla_label: str(r.plantilla_label),
+    cliente_id: str(r.cliente_id),
+    cliente_nombre: str(r.cliente_nombre),
+    tecnico: str(r.tecnico),
+    marca: str(r.marca),
+    modelo: str(r.modelo),
+    serie: str(r.serie),
+    anio: str(r.anio),
+    servicio: str(r.servicio),
+    observaciones: str(r.observaciones),
+    fecha: str(r.fecha),
+    creado_en: str(r.creado_en),
+  };
+}
+
+export async function fetchProtocolosHistorial(): Promise<ProtocoloInstancia[]> {
+  const r = await apiGet<{ data: unknown[] }>("/api/protocolos-historial?limit=200");
+  return (r?.data ?? []).map(mapProtocoloInstancia);
+}
+
+export async function createProtocoloInstancia(data: Omit<ProtocoloInstancia, "id" | "creado_en">): Promise<boolean> {
+  const r = await apiMutate<{ data: unknown }>("POST", "/api/protocolos-historial", data);
+  return r != null;
+}
+
+export async function deleteProtocoloInstancia(id: string): Promise<void> {
+  await apiMutate("DELETE", `/api/protocolos-historial/${id}`);
+}
+
 // --- Shared CRM settings (stored in configuracion table, id='global') ---
 
 export type CrmSettings = {

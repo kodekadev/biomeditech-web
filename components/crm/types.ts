@@ -1,7 +1,7 @@
 // Local types used within the CRM component tree
 // API types are re-exported from @/lib/api
 
-export type ModuleId = "dashboard" | "leads" | "clientes" | "productos" | "cotizaciones" | "historial" | "protocolos";
+export type ModuleId = "dashboard" | "leads" | "clientes" | "productos" | "cotizaciones" | "historial" | "protocolos" | "historial-protocolos";
 export type LeadStatus = "cotizado" | "no-cotizado" | "aprobado" | "rechazado";
 export type LeadChannel = "wsp" | "email";
 export type QuoteService = "diagnostico" | "reparacion" | "mantencion" | "instalacion" | "mixto" | "";

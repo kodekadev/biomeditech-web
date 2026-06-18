@@ -18,6 +18,7 @@ export const NAV_ITEMS: Array<{ id: ModuleId; label: string; icon: React.Element
   { id: "cotizaciones", label: "Cotizaciones", icon: ClipboardList, group: "Operaciones" },
   { id: "historial", label: "Historial de cotizaciones", icon: History, group: "Operaciones" },
   { id: "protocolos", label: "Protocolos Mantención", icon: FileArchive, group: "Operaciones" },
+  { id: "historial-protocolos", label: "Historial de protocolos", icon: History, group: "Operaciones" },
 ];
 
 export const INITIAL_LEADS: Lead[] = [];

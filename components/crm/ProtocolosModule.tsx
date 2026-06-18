@@ -233,7 +233,11 @@ export function buildProtocolHtml(params: {
 
 // ── ProtocolosModule ──────────────────────────────────────────────────────────
 
-export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; notify: (msg: string) => void }) {
+export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
+  clientes: Cliente[];
+  notify: (msg: string) => void;
+  onSaveHistorial?: (data: { correlativo: string; plantilla_id: string; plantilla_label: string; cliente_id: string; cliente_nombre: string; tecnico: string; marca: string; modelo: string; serie: string; anio: string; servicio: string; observaciones: string; fecha: string }) => void;
+}) {
   const [templates, setTemplates] = useState<ProtoTemplate[]>(() => loadTemplates());
   const [view, setView] = useState<"form" | "tpls">("form");
   const [editingTpl, setEditingTpl] = useState<ProtoTemplate | null>(null);
@@ -508,6 +512,21 @@ export function ProtocolosModule({ clientes, notify }: { clientes: Cliente[]; no
         consumed += pdfH - pageTopMargin;
       }
       pdf.save(`protocolo-${correlativo}-${workingTpl.label.replace(/\s+/g, "-").slice(0, 20)}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      onSaveHistorial?.({
+        correlativo,
+        plantilla_id: workingTpl.id,
+        plantilla_label: workingTpl.label,
+        cliente_id: selectedCliente?.id ?? "",
+        cliente_nombre: selectedCliente?.nombre ?? "Sin cliente",
+        tecnico,
+        marca,
+        modelo,
+        serie,
+        anio,
+        servicio,
+        observaciones,
+        fecha,
+      });
     } finally { setGenerating(false); }
   }
 
