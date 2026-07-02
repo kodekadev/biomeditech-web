@@ -262,11 +262,7 @@ export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
   const [sinCliente, setSinCliente] = useState(false);
   const [condIniciales, setCondIniciales] = useState("");
   const [condInicialesOn, setCondInicialesOn] = useState(false);
-  const [calibEquipos, setCalibEquipos] = useState<CalibEquipo[]>([
-    { id: pId(), equipo: "", marca: "", modelo: "", sn: "" },
-    { id: pId(), equipo: "", marca: "", modelo: "", sn: "" },
-    { id: pId(), equipo: "", marca: "", modelo: "", sn: "" },
-  ]);
+  const [calibEquipos, setCalibEquipos] = useState<CalibEquipo[]>([]);
   const [simuladores, setSimuladores] = useState<api.Simulador[]>([]);
   const [simSearch, setSimSearch] = useState("");
   const [simOpen, setSimOpen] = useState(false);
