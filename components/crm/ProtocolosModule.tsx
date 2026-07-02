@@ -1125,8 +1125,23 @@ export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
 
                 {/* Lista de simuladores */}
                 {simuladores.length === 0 ? (
-                  <div style={{ textAlign: "center", color: "var(--muted)", padding: "24px 0", fontSize: 13 }}>
-                    No hay equipos en el catálogo aún. Agrega el primero arriba.
+                  <div style={{ textAlign: "center", color: "var(--muted)", padding: "32px 0", fontSize: 13, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                    <span>No hay equipos en el catálogo aún.</span>
+                    <button
+                      onClick={async () => {
+                        setSimSaving(true);
+                        try {
+                          await api.setupSimuladores();
+                          const refreshed = await api.fetchSimuladores();
+                          setSimuladores(refreshed);
+                        } finally {
+                          setSimSaving(false);
+                        }
+                      }}
+                      disabled={simSaving}
+                      style={{ background: "#0e948b", color: "#fff", border: "none", padding: "8px 20px", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: simSaving ? "not-allowed" : "pointer", opacity: simSaving ? 0.7 : 1 }}>
+                      {simSaving ? "Cargando..." : "Cargar equipos por defecto"}
+                    </button>
                   </div>
                 ) : (
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>

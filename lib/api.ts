@@ -991,6 +991,11 @@ export async function deleteSimulador(id: string): Promise<void> {
   await apiMutate("DELETE", `/api/simuladores/${id}`);
 }
 
+export async function setupSimuladores(): Promise<{ ok: boolean; results: unknown[] }> {
+  const r = await apiMutate<{ ok: boolean; results: unknown[] }>("POST", "/api/setup/simuladores", {});
+  return r ?? { ok: false, results: [] };
+}
+
 // --- Shared CRM settings (stored in configuracion table, id='global') ---
 
 export type CrmSettings = {
