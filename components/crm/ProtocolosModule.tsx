@@ -359,7 +359,15 @@ export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
   }, [activeTplId]);
 
   useEffect(() => {
-    api.fetchSimuladores().then(setSimuladores).catch(() => {});
+    api.fetchSimuladores().then(async (data) => {
+      if (data.length > 0) { setSimuladores(data); return; }
+      // Primera vez: crear tabla y sembrar datos automáticamente
+      try {
+        await api.setupSimuladores();
+        const seeded = await api.fetchSimuladores();
+        setSimuladores(seeded);
+      } catch { /* sin catálogo, el usuario puede agregar manualmente */ }
+    }).catch(() => {});
   }, []);
 
   // Close combobox on outside click
