@@ -941,6 +941,56 @@ export async function deleteProtocoloInstancia(id: string): Promise<void> {
   await apiMutate("DELETE", `/api/protocolos-historial/${id}`);
 }
 
+// --- Simuladores catálogo ---
+
+export interface Simulador {
+  id: string;
+  nombre: string;
+  marca: string;
+  modelo: string;
+  serie: string;
+  activo: boolean;
+  creado_en?: string;
+}
+
+export async function fetchSimuladores(): Promise<Simulador[]> {
+  const r = await apiGet<{ data: unknown[] }>("/api/simuladores?limit=200");
+  return (r?.data ?? []).map((v) => {
+    const raw = v as Record<string, unknown>;
+    return {
+      id: str(raw.id),
+      nombre: str(raw.nombre),
+      marca: str(raw.marca),
+      modelo: str(raw.modelo),
+      serie: str(raw.serie),
+      activo: raw.activo !== false,
+      creado_en: str(raw.creado_en),
+    };
+  });
+}
+
+export async function createSimulador(data: Omit<Simulador, "id" | "creado_en">): Promise<Simulador | null> {
+  const r = await apiMutate<{ data: unknown }>("POST", "/api/simuladores", data);
+  if (!r) return null;
+  const raw = r.data as Record<string, unknown>;
+  return {
+    id: str(raw.id),
+    nombre: str(raw.nombre),
+    marca: str(raw.marca),
+    modelo: str(raw.modelo),
+    serie: str(raw.serie),
+    activo: raw.activo !== false,
+  };
+}
+
+export async function updateSimulador(id: string, data: Partial<Omit<Simulador, "id" | "creado_en">>): Promise<void> {
+  await apiMutate("PATCH", `/api/simuladores/${id}`, data);
+}
+
+export async function deleteSimulador(id: string): Promise<void> {
+  await apiMutate("DELETE", `/api/simuladores/${id}`);
+}
+
 // --- Shared CRM settings (stored in configuracion table, id='global') ---
 
 export type CrmSettings = {

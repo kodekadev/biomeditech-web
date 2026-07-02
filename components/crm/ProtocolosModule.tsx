@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ClipboardList, Download, Edit3, FileArchive, FileText, Plus, Search, Trash2, Wrench, X } from "lucide-react";
+import { Check, ClipboardList, Download, Edit3, FileArchive, FileText, Plus, Search, Settings, Trash2, Wrench, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import * as api from "@/lib/api";
 import type { Cliente, ProtocolRaw } from "@/lib/api";
@@ -267,6 +267,14 @@ export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
     { id: pId(), equipo: "", marca: "", modelo: "", sn: "" },
     { id: pId(), equipo: "", marca: "", modelo: "", sn: "" },
   ]);
+  const [simuladores, setSimuladores] = useState<api.Simulador[]>([]);
+  const [simSearch, setSimSearch] = useState("");
+  const [simOpen, setSimOpen] = useState(false);
+  const [showSimMgr, setShowSimMgr] = useState(false);
+  const [simForm, setSimForm] = useState({ nombre: "", marca: "", modelo: "", serie: "" });
+  const [simEditId, setSimEditId] = useState<string | null>(null);
+  const [simSaving, setSimSaving] = useState(false);
+  const simSearchRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const signatureRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
@@ -349,6 +357,22 @@ export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
       setDesignMode(false);
     }
   }, [activeTplId]);
+
+  useEffect(() => {
+    api.fetchSimuladores().then(setSimuladores).catch(() => {});
+  }, []);
+
+  // Close combobox on outside click
+  useEffect(() => {
+    if (!simOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (simSearchRef.current && !simSearchRef.current.closest("[data-sim-combo]")?.contains(e.target as Node)) {
+        setSimOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [simOpen]);
 
   useEffect(() => {
     setCalibEquipos((prev) => prev.map((row, i) =>
@@ -938,11 +962,66 @@ export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
           <div className="panel">
             <div className="panel-head">
               <div className="panel-title"><Wrench size={16} />Equipo de Calibración / Simulador</div>
-              <button onClick={() => setCalibEquipos((prev) => [...prev, { id: pId(), equipo: "", marca: "", modelo: "", sn: "" }])} style={{ fontSize: 12 }}>
-                <Plus size={12} style={{ marginRight: 4 }} />Agregar fila
-              </button>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => { setShowSimMgr(true); setSimEditId(null); setSimForm({ nombre: "", marca: "", modelo: "", serie: "" }); }}
+                  style={{ fontSize: 12, border: "1px solid var(--border)", background: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "var(--muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Settings size={12} />Catálogo
+                </button>
+                <button onClick={() => setCalibEquipos((prev) => [...prev, { id: pId(), equipo: "", marca: "", modelo: "", sn: "" }])} style={{ fontSize: 12 }}>
+                  <Plus size={12} style={{ marginRight: 4 }} />Agregar fila
+                </button>
+              </div>
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginTop: 8 }}>
+
+            {/* Combobox para insertar desde catálogo */}
+            <div style={{ position: "relative", marginBottom: 10 }} data-sim-combo="">
+              <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--border)", borderRadius: 8, padding: "6px 10px", background: "#fff" }}>
+                <Search size={13} style={{ color: "var(--muted)", flexShrink: 0 }} />
+                <input
+                  ref={simSearchRef}
+                  value={simSearch}
+                  onFocus={() => setSimOpen(true)}
+                  onChange={(e) => { setSimSearch(e.target.value); setSimOpen(true); }}
+                  placeholder={simuladores.length ? "Buscar simulador del catálogo para agregar..." : "Catálogo vacío — usa el botón «Catálogo» para agregar equipos"}
+                  style={{ border: "none", outline: "none", flex: 1, fontSize: 12, background: "transparent" }}
+                />
+                {simSearch && (
+                  <button onClick={() => { setSimSearch(""); setSimOpen(false); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 0, display: "flex" }}>
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+              {simOpen && simuladores.length > 0 && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,.1)", zIndex: 100, maxHeight: 220, overflowY: "auto", marginTop: 2 }}>
+                  {(() => {
+                    const q = simSearch.toLowerCase();
+                    const filtered = simuladores.filter((s) =>
+                      !q || s.nombre.toLowerCase().includes(q) || s.marca.toLowerCase().includes(q) || s.modelo.toLowerCase().includes(q)
+                    );
+                    if (!filtered.length) return <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>Sin resultados</div>;
+                    return filtered.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          setCalibEquipos((prev) => [...prev, { id: pId(), equipo: s.nombre, marca: s.marca, modelo: s.modelo, sn: s.serie }]);
+                          setSimSearch("");
+                          setSimOpen(false);
+                        }}
+                        style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", border: "none", borderBottom: "1px solid var(--border)", background: "none", cursor: "pointer", fontSize: 12 }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                      >
+                        <span style={{ fontWeight: 600 }}>{s.nombre}</span>
+                        {s.marca && <span style={{ color: "var(--muted)", marginLeft: 8 }}>{s.marca}{s.modelo ? ` · ${s.modelo}` : ""}</span>}
+                        {s.serie && <span style={{ color: "var(--muted)", marginLeft: 8, fontSize: 11 }}>SN: {s.serie}</span>}
+                      </button>
+                    ));
+                  })()}
+                </div>
+              )}
+            </div>
+
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr>
                   <th style={{ ...thStyle, width: 32, textAlign: "center" }}>No.</th>
@@ -977,6 +1056,114 @@ export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
               </tbody>
             </table>
           </div>
+
+          {/* ── Modal: gestión del catálogo de simuladores ── */}
+          {showSimMgr && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}
+              onClick={(e) => { if (e.target === e.currentTarget) { setShowSimMgr(false); setSimEditId(null); setSimForm({ nombre: "", marca: "", modelo: "", serie: "" }); } }}>
+              <div style={{ background: "#fff", borderRadius: 12, width: "min(700px, 95vw)", maxHeight: "90vh", overflow: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 16, boxShadow: "0 8px 32px rgba(0,0,0,.18)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, display: "flex", alignItems: "center", gap: 8 }}><Wrench size={16} />Catálogo de Equipos de Calibración</div>
+                  <button onClick={() => { setShowSimMgr(false); setSimEditId(null); setSimForm({ nombre: "", marca: "", modelo: "", serie: "" }); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}><X size={20} /></button>
+                </div>
+
+                {/* Formulario agregar / editar */}
+                <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 16, background: "var(--bg)" }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: "#475569" }}>{simEditId ? "Editar simulador" : "Agregar nuevo"}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Nombre / Tipo *</label>
+                      <input value={simForm.nombre} onChange={(e) => setSimForm((f) => ({ ...f, nombre: e.target.value }))}
+                        placeholder="ej: Simulador de ECG" style={{ width: "100%", fontSize: 12 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Marca</label>
+                      <input value={simForm.marca} onChange={(e) => setSimForm((f) => ({ ...f, marca: e.target.value }))}
+                        placeholder="ej: Fluke" style={{ width: "100%", fontSize: 12 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Modelo</label>
+                      <input value={simForm.modelo} onChange={(e) => setSimForm((f) => ({ ...f, modelo: e.target.value }))}
+                        placeholder="ej: 87V" style={{ width: "100%", fontSize: 12 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>N° Serie</label>
+                      <input value={simForm.serie} onChange={(e) => setSimForm((f) => ({ ...f, serie: e.target.value }))}
+                        placeholder="ej: 38850529" style={{ width: "100%", fontSize: 12 }} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
+                    {simEditId && (
+                      <button onClick={() => { setSimEditId(null); setSimForm({ nombre: "", marca: "", modelo: "", serie: "" }); }}
+                        style={{ border: "1px solid var(--border)", background: "none", padding: "7px 14px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>Cancelar</button>
+                    )}
+                    <button
+                      disabled={simSaving || !simForm.nombre.trim()}
+                      onClick={async () => {
+                        if (!simForm.nombre.trim()) return;
+                        setSimSaving(true);
+                        try {
+                          if (simEditId) {
+                            await api.updateSimulador(simEditId, { ...simForm, activo: true });
+                            setSimuladores((prev) => prev.map((s) => s.id === simEditId ? { ...s, ...simForm } : s));
+                            setSimEditId(null);
+                          } else {
+                            const created = await api.createSimulador({ ...simForm, activo: true });
+                            if (created) setSimuladores((prev) => [...prev, created]);
+                          }
+                          setSimForm({ nombre: "", marca: "", modelo: "", serie: "" });
+                        } finally {
+                          setSimSaving(false);
+                        }
+                      }}
+                      style={{ background: "#0e948b", color: "#fff", border: "none", padding: "7px 18px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: simSaving || !simForm.nombre.trim() ? "not-allowed" : "pointer", opacity: simSaving || !simForm.nombre.trim() ? 0.6 : 1 }}>
+                      {simSaving ? "Guardando..." : simEditId ? "Guardar cambios" : "Agregar"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Lista de simuladores */}
+                {simuladores.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "var(--muted)", padding: "24px 0", fontSize: 13 }}>
+                    No hay equipos en el catálogo aún. Agrega el primero arriba.
+                  </div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "var(--bg)" }}>
+                        <th style={{ textAlign: "left", padding: "8px 10px", borderBottom: "2px solid var(--border)", fontWeight: 600 }}>Equipo</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", borderBottom: "2px solid var(--border)", fontWeight: 600 }}>Marca</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", borderBottom: "2px solid var(--border)", fontWeight: 600 }}>Modelo</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", borderBottom: "2px solid var(--border)", fontWeight: 600 }}>N° Serie</th>
+                        <th style={{ width: 72, borderBottom: "2px solid var(--border)" }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {simuladores.map((s, i) => (
+                        <tr key={s.id} style={{ background: i % 2 === 0 ? "#fff" : "var(--bg)" }}>
+                          <td style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", fontWeight: 500 }}>{s.nombre}</td>
+                          <td style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", color: "var(--muted)" }}>{s.marca}</td>
+                          <td style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", color: "var(--muted)" }}>{s.modelo}</td>
+                          <td style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", color: "var(--muted)", fontSize: 11 }}>{s.serie}</td>
+                          <td style={{ padding: "4px 8px", borderBottom: "1px solid var(--border)", textAlign: "center", whiteSpace: "nowrap" }}>
+                            <button onClick={() => { setSimEditId(s.id); setSimForm({ nombre: s.nombre, marca: s.marca, modelo: s.modelo, serie: s.serie }); }}
+                              style={{ background: "none", border: "none", cursor: "pointer", color: "#0e948b", padding: "3px 5px" }}><Edit3 size={13} /></button>
+                            <button onClick={async () => {
+                              if (!confirm(`¿Eliminar "${s.nombre}" del catálogo?`)) return;
+                              await api.deleteSimulador(s.id);
+                              setSimuladores((prev) => prev.filter((x) => x.id !== s.id));
+                              if (simEditId === s.id) { setSimEditId(null); setSimForm({ nombre: "", marca: "", modelo: "", serie: "" }); }
+                            }} style={{ background: "none", border: "none", cursor: "pointer", color: "#dc2626", padding: "3px 5px" }}><Trash2 size={13} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="panel">
             <div className="panel-title" style={{ marginBottom: 12 }}><FileText size={16} />Observaciones generales</div>
