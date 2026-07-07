@@ -382,7 +382,7 @@ async function apiMutate<T>(method: string, path: string, body?: unknown): Promi
 // --- Public API functions ---
 
 export async function fetchLeads(): Promise<Lead[]> {
-  const r = await apiGet<{ data: unknown[] }>("/api/leads?limit=100");
+  const r = await apiGet<{ data: unknown[] }>("/api/leads?limit=500");
   return (r?.data ?? []).map(mapLead);
 }
 
@@ -418,7 +418,7 @@ export async function deleteLead(id: string): Promise<void> {
 }
 
 export async function fetchClientes(): Promise<Cliente[]> {
-  const r = await apiGet<{ data: unknown[] }>("/api/clientes?limit=100");
+  const r = await apiGet<{ data: unknown[] }>("/api/clientes?limit=500");
   return (r?.data ?? []).map(mapCliente);
 }
 
@@ -467,7 +467,7 @@ export async function deleteProducto(id: string): Promise<void> {
 }
 
 export async function fetchCotizaciones(): Promise<Cotizacion[]> {
-  const r = await apiGet<{ data: unknown[] }>("/api/cotizaciones?limit=100");
+  const r = await apiGet<{ data: unknown[] }>("/api/cotizaciones?limit=500");
   return (r?.data ?? []).map(mapCotizacion);
 }
 
@@ -849,7 +849,7 @@ export async function fetchDashboard(): Promise<DashboardStats | null> {
 export type ProtocolRaw = { id: string; label: string; items_json: string; conclusiones_json: string };
 
 export async function fetchProtocols(): Promise<ProtocolRaw[]> {
-  const r = await apiGet<{ data: unknown[] }>("/api/protocolos-plantillas?limit=100");
+  const r = await apiGet<{ data: unknown[] }>("/api/protocolos-plantillas?limit=500");
   return (r?.data ?? []).map((v) => {
     const raw = v as Record<string, unknown>;
     return {
@@ -927,7 +927,7 @@ function mapProtocoloInstancia(v: unknown): ProtocoloInstancia {
 }
 
 export async function fetchProtocolosHistorial(): Promise<ProtocoloInstancia[]> {
-  const r = await apiGet<{ data: unknown[] }>("/api/protocolos-historial?limit=200");
+  const r = await apiGet<{ data: unknown[] }>("/api/protocolos-historial?limit=1000");
   return (r?.data ?? []).map(mapProtocoloInstancia);
 }
 
