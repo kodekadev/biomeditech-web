@@ -54,20 +54,13 @@ export function initCFill(tpl: ProtoTemplate): Record<string, boolean> {
 }
 
 export function applyPageBreakFix(iDoc: Document) {
-  // La primera pagina del PDF mide PAGE_H, pero las siguientes reservan
-  // pageTopMargin (14mm) arriba -- ver el consumed += pdfH - pageTopMargin
-  // del armado del PDF. Sin este ajuste, las paginas 2+ se calculan mas
-  // largas de lo que realmente son y el corte se desalinea.
   const PAGE_H = 1122;
-  const PAGE_MARGIN_PX = 14 * (794 / 210);
-  const PAGE_STEP = PAGE_H - PAGE_MARGIN_PX;
   const els = iDoc.querySelectorAll<HTMLElement>(".avoid-break");
   els.forEach((el) => {
     const top = el.offsetTop;
     const h = el.offsetHeight;
     if (h >= PAGE_H) return;
-    let pageEnd = PAGE_H;
-    while (top >= pageEnd) pageEnd += PAGE_STEP;
+    const pageEnd = (Math.floor(top / PAGE_H) + 1) * PAGE_H;
     if (top + h > pageEnd) {
       el.style.marginTop = (parseFloat(el.style.marginTop || "0") + pageEnd - top) + "px";
     }
