@@ -378,6 +378,12 @@ export function ProtocolosModule({ clientes, notify, onSaveHistorial }: {
     return () => document.removeEventListener("mousedown", handler);
   }, [simOpen]);
 
+  useEffect(() => {
+    setCalibEquipos((prev) => prev.map((row, i) =>
+      i === 0 ? { ...row, marca, modelo, sn: serie } : row
+    ));
+  }, [marca, modelo, serie]);
+
   function getCanvasPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
     const rect = canvas.getBoundingClientRect();
     const sx = canvas.width / rect.width;
