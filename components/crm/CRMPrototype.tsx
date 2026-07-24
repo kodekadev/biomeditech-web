@@ -493,9 +493,10 @@ export default function CRMPrototype() {
     const clienteObj = clientes.find((c) => c.id === det.cliente_id);
     const rowsHtml = det.items.map((it, i) => {
       const disc = it.descuento_pct > 0 ? ` (-${it.descuento_pct}%)` : "";
+      const glosaHtml = it.glosa ? `<br/><span style="font-size:11px;color:#64748b;white-space:pre-line">${it.glosa}</span>` : "";
       return `<tr>
         <td>${i + 1}</td>
-        <td>${it.descripcion}${disc}</td>
+        <td>${it.descripcion}${disc}${glosaHtml}</td>
         <td>${it.cantidad}</td>
         <td>${money(it.precio_unitario)}</td>
         <td><strong>${money(it.subtotal)}</strong></td>
@@ -510,8 +511,8 @@ export default function CRMPrototype() {
         plantillas.find((p) => p.codigo === it.tipo_servicio)?.descripcion_larga ||
         plantillas.find((p) => p.codigo === `${it.tipo_servicio}_GENERAL`)?.descripcion_larga ||
         localTemplates[`${it.tipo_servicio}_GENERAL`] || "";
-      if (descLarga && key && !seenGloss.has(key)) {
-        seenGloss.add(key);
+      if (descLarga && key && !seenGloss.has(descLarga)) {
+        seenGloss.add(descLarga);
         glossaryEntries.push({ label: key, desc: descLarga });
       }
     });
@@ -707,8 +708,8 @@ export default function CRMPrototype() {
         plantillas.find((p) => p.codigo === it.tipo_servicio)?.descripcion_larga ||
         plantillas.find((p) => p.codigo === `${it.tipo_servicio}_GENERAL`)?.descripcion_larga ||
         localTemplates[`${it.tipo_servicio}_GENERAL`] || "";
-      if (descLarga && key && !seenGloss.has(key)) {
-        seenGloss.add(key);
+      if (descLarga && key && !seenGloss.has(descLarga)) {
+        seenGloss.add(descLarga);
         glossaryEntries.push({ label: key, desc: descLarga });
       }
     });
